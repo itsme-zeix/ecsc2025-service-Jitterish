@@ -17,24 +17,64 @@ using namespace generated_parser;
  * Convert overly verbose ANTLR stuff into our own slim AST
  */
 class AstGeneratingVisitor : public JitterishVisitor {
-public:
-    std::any visitMain(JitterishParser::MainContext *context) override {
-        return context->children.at(0)->accept(this);
+    template<class T>
+    NodeRef ast(T *ctx) {
+        return std::any_cast<NodeRef>(ctx->accept(this));
     }
 
-    std::any visitNumber(JitterishParser::NumberContext *context) override {
-        return NodeRef(new ConstantInt(stoi(context->getText())));
+    template<class T>
+    std::vector<NodeRef> ast(const std::vector<T *> &ctx) {
+        std::vector<NodeRef> result;
+        for (auto x: ctx) {
+            result.push_back(std::any_cast<NodeRef>(x->accept(this)));
+        }
+        return result;
+    }
+
+public:
+    std::any visitMain(JitterishParser::MainContext *context) override {
+        return ast(context->children.at(0));
     }
 
     std::any visitRawExpr(JitterishParser::RawExprContext *context) override {
-        return context->children.at(0)->accept(this);
+        return ast(context->children.at(0));
+    }
+
+    std::any visitRawPrimaryExpr(JitterishParser::RawPrimaryExprContext *context) override {
+        return ast(context->expr());
+    }
+
+    std::any visitConstantInt(JitterishParser::ConstantIntContext *context) override {
+        return NodeRef(new ConstantInt(stoi(context->getText())));
+    }
+
+    std::any visitConstantString(JitterishParser::ConstantStringContext *context) override {
+        return NodeRef(new ConstantString(context->getText()));
     }
 
     std::any visitBinaryOp(JitterishParser::BinaryOpContext *context) override {
-        auto left = context->children.at(0)->accept(this);
-        auto op = context->children.at(1)->getText();
-        auto right = context->children.at(2)->accept(this);
-        return NodeRef(new BinaryOp(op, std::any_cast<NodeRef>(left), std::any_cast<NodeRef>(right)));
+        auto op = context->op->getText();
+        return NodeRef(new BinaryOp(op, ast(context->left), ast(context->rght)));
+    }
+
+    std::any visitCallExpr(JitterishParser::CallExprContext *context) override {
+        auto call = new Call(ast(context->primary_expr()));
+        for (auto param: context->expr()) {
+            call->addParam(ast(param));
+        }
+        return NodeRef(call);
+    }
+
+    std::any visitNamed(JitterishParser::NamedContext *context) override {
+        return NodeRef(new NamedExpr(context->getText()));
+    }
+
+    std::any visitExprStmt(JitterishParser::ExprStmtContext *context) override {
+        return NodeRef(new ExprStmt(ast(context->expr())));
+    }
+
+    std::any visitBlockStmt(JitterishParser::BlockStmtContext *context) override {
+        return NodeRef(new BlockStmt(ast(context->stmt())));
     }
 };
 
