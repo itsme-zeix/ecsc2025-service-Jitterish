@@ -1,0 +1,6 @@
+/.idea
+/cmake-build-*
+/lib
+/src/generated
+/dist
+/*.jar
