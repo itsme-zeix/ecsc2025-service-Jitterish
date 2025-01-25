@@ -43,7 +43,7 @@ public:
         if (op == "+") {
             auto lft = children[0]->codegen(ctx);
             auto rght = children[1]->codegen(ctx);
-            auto result = ctx.callRuntime("__add__", lft, rght);
+            auto result = ctx.callRuntime("jit_rt_add", lft, rght);
             return result;
         }
         return Expr::codegen(ctx);
@@ -71,7 +71,7 @@ public:
 
     Register codegen(CodegenContext &ctx) override {
         auto arg = children[1]->codegen(ctx);
-        auto result = ctx.callRuntime("__print__", arg);
+        auto result = ctx.callRuntime("jit_rt_print", arg);
         return result;
     }
 };

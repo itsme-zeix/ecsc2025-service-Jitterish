@@ -20,35 +20,28 @@ private:
     uint64_t container; // 8bit type + 56bit data
 
 public:
-    Value() : container(0) {}  // "undefined"
+    inline Value() : container(0) {}  // "undefined"
 
     template<class T>
-    Value(ValueType type, T data) : container(((uint64_t) type) | (DATA_MASK & (uint64_t) data)) {}
+    inline Value(ValueType type, T data) : container(((uint64_t) type) | (DATA_MASK & (uint64_t) data)) {}
 
-    uint64_t raw() const { return container; }
+    inline uint64_t raw() const { return container; }
 
-    ValueType type() const {
+    inline ValueType type() const {
         return (ValueType) (TYPE_MASK & container);
     }
 
-    bool is(ValueType t) const { return type() == t; }
+    inline bool is(ValueType t) const { return type() == t; }
 
     template<class T>
-    T data() const {
+    inline T data() const {
         return (T) (DATA_MASK & container);
     }
 
-    uint64_t integer() const { return data<uint64_t>(); }
+    inline uint64_t integer() const { return data<uint64_t>(); }
 
 };
 
-
-#define API_FUNCTION extern "C"
-
-API_FUNCTION
-Value __print__(Value v);
-
-API_FUNCTION
-Value __add__(Value v1, Value v2);
+extern void* jit_functions[];
 
 #endif //JIT_PLAYGROUND_JIT_RUNTIME_H

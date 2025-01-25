@@ -3,7 +3,6 @@ module;
 #include <iostream>
 #include <ranges>
 #include <stack>
-#include <set>
 #include "../rtlib/jit_runtime.h"
 
 export module CodegenContext;
@@ -41,20 +40,20 @@ struct RegisterInfo {
 
 static RegisterInfo infos[MAX_REGISTER_VALUE] = {
         {"INVALID-REGISTER", false},
-        {"rax",              true},
-        {"rbx",              false},
-        {"rcx",              true},
-        {"rdx",              true},
-        {"rsi",              true},
-        {"rdi",              true},
-        {"r8",               true},
-        {"r9",               true},
-        {"r10",              true},
-        {"r11",              true},
-        {"r12",              false},
-        {"r13",              false},
-        {"r14",              false},
-        {"r15",              false},
+        {"%rax",             true},
+        {"%rbx",             false},
+        {"%rcx",             true},
+        {"%rdx",             true},
+        {"%rsi",             true},
+        {"%rdi",             true},
+        {"%r8",              true},
+        {"%r9",              true},
+        {"%r10",             true},
+        {"%r11",             true},
+        {"%r12",             false},
+        {"%r13",             false},
+        {"%r14",             false},
+        {"%r15",             false},
         //{"INVALID-REGISTER", false},
 };
 
@@ -65,10 +64,11 @@ export std::ostream &operator<<(std::ostream &out, const Register &r) {
 
 
 export class CodegenContext {
-    std::ostream &out;
     std::stack<Register> freeRegisters;
     std::array<bool, MAX_REGISTER_VALUE> registerTaken;
 public:
+    std::ostream &out;
+
     explicit CodegenContext(std::ostream &out) : out(out) {
         for (int r = None; r < MAX_REGISTER_VALUE; r++) {
             releaseRegister((Register) r);
@@ -100,6 +100,23 @@ public:
         registerTaken[r] = false;
     }
 
+    // === overall functions ===
+    void start() {
+        out << ".section .note.GNU-stack,\"\",@progbits\n";
+        out << ".text\n";
+        startFunction("jit_entrypoint");
+    }
+
+    void end() {
+        out << "int3\n\n";
+    }
+
+    void startFunction(std::string name) {
+        out << ".globl " << name << "\n";
+        out << ".type " << name << ", @function\n";
+        out << name << ":\n";
+    }
+
     // === asm utility functions ===
 
     std::stack<Register> pushTakenRegistersBeforeCall() {
@@ -122,11 +139,11 @@ public:
 
     Register callRuntime(std::string name, Register arg1, Register arg2 = Register::None) {
         if (arg1 != Register::None && arg1 != Register::RDI) {
-            out << "movq " << arg1 << " " << Register::RDI << "\n";
+            out << "movq " << arg1 << ", " << Register::RDI << "\n";
             releaseRegister(arg1);
         }
         if (arg2 != Register::None && arg2 != Register::RSI) {
-            out << "movq " << arg2 << " " << Register::RSI << "\n";
+            out << "movq " << arg2 << ", " << Register::RSI << "\n";
             releaseRegister(arg2);
         }
 
@@ -137,7 +154,7 @@ public:
         auto result = Register::RAX;
         if (registerTaken[Register::RAX]) {
             result = takeRegister();
-            out << "movq " << Register::RAX << " " << result << "\n";
+            out << "movq " << Register::RAX << ", " << result << "\n";
         } else {
             registerTaken[Register::RAX] = true;
         }
@@ -149,7 +166,7 @@ public:
 
     Register constantInt(int i) {
         auto reg = takeRegister();
-        out << "movq " << Value(ValueType::INT, i).raw() << " " << reg << "  ; = int " << i << "\n";
+        out << "movq $" << Value(ValueType::INT, i).raw() << ", " << reg << "  # = int " << i << "\n";
         return reg;
     }
 

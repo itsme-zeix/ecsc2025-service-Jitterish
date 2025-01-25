@@ -20,6 +20,7 @@ set(ANTLR_GENERATED_SOURCES
 		${PROJECT_SOURCE_DIR}/src/generated/JitterishBaseVisitor.cpp
 		${PROJECT_SOURCE_DIR}/src/generated/JitterishListener.cpp
 		${PROJECT_SOURCE_DIR}/src/generated/JitterishVisitor.cpp
+		src/rtlib/jit_values.h
 )
 
 foreach (src_file ${ANTLR_GENERATED_SOURCES})
@@ -46,10 +47,15 @@ include_directories(
 		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/support
 )
 
-add_executable(jit_playground
-		src/main.cpp
+add_library(jit_rt SHARED
 		src/rtlib/jit_runtime.cpp
 		src/rtlib/jit_runtime.h
+)
+
+add_executable(jit_playground
+		src/main.cpp
+		src/rtlib/jit_runtime.h
+		src/rtlib/jit_values.h
 		${ANTLR_GENERATED_SOURCES}
 )
 
@@ -62,9 +68,10 @@ target_sources(jit_playground
 		src/ast/expr.cppm
 		src/codegen/AsmWriter.cppm
 		src/codegen/CodegenContext.cppm
+		src/JitRunner.cppm
 )
 
 
 add_dependencies(jit_playground GenerateParser)
 
-target_link_libraries(jit_playground antlr4_static)
+target_link_libraries(jit_playground antlr4_static jit_rt)

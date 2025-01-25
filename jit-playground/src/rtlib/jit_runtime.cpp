@@ -1,6 +1,15 @@
 #include "jit_runtime.h"
 #include <iostream>
 
+#define API_FUNCTION(n) __attribute__((visibility ("default"))) __attribute__((used)) Value n
+
+extern "C" {
+API_FUNCTION(jit_rt_print)(Value v);
+
+API_FUNCTION(jit_rt_add)(Value v1, Value v2);
+}
+
+
 static void print(Value v) {
     switch (v.type()) {
         case ValueType::UNDEFINED:
@@ -15,15 +24,20 @@ static void print(Value v) {
     }
 }
 
-Value __print__(Value v) {
+Value jit_rt_print(Value v) {
     print(v);
     std::cout << "\n";
     return {};
 }
 
-Value __add__(Value v1, Value v2) {
+Value jit_rt_add(Value v1, Value v2) {
     if (v1.is(ValueType::INT) && v2.is(ValueType::INT)) {
-        return Value(ValueType::INT, v1.integer() + v2.integer());
+        return {ValueType::INT, v1.integer() + v2.integer()};
     }
     return {};
 }
+
+void *jit_functions[] = {
+        (void *) jit_rt_add,
+        (void *) jit_rt_print
+};
