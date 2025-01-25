@@ -9,7 +9,6 @@ export module stmt;
 import ast;
 import expr;
 import CodegenContext;
-import AsmWriter;
 
 export class Stmt : public Node {
 };

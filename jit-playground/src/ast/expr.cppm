@@ -9,7 +9,6 @@ export module expr;
 
 import ast;
 import CodegenContext;
-import AsmWriter;
 
 export class Expr : public Node {
 };
@@ -52,12 +51,9 @@ public:
 
 export class Call : public Expr {
 public:
-    explicit Call(const NodeRef &callee) {
+    explicit Call(const NodeRef &callee, std::vector<NodeRef> params) {
         children.push_back(callee);
-    }
-
-    void addParam(const NodeRef &param) {
-        children.push_back(param);
+        children.insert(children.end(), params.begin(), params.end());
     }
 
     void print(std::ostream &out) const override {

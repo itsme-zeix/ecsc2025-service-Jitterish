@@ -7,8 +7,6 @@ module;
 
 export module CodegenContext;
 
-import AsmWriter;
-
 // call arguments: RDI, RSI, RDX, RCX, R8, R9
 // callee saves RBX, RSP, RBP, and R12–R15
 // caller saves rax, rcx, rdx, ...

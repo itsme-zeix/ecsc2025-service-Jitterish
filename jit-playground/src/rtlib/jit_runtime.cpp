@@ -1,12 +1,12 @@
 #include "jit_runtime.h"
 #include <iostream>
 
-#define API_FUNCTION(n) __attribute__((visibility ("default"))) __attribute__((used)) Value n
+#define API_FUNCTION __attribute__((visibility ("default"))) __attribute__((used))
 
 extern "C" {
-API_FUNCTION(jit_rt_print)(Value v);
+API_FUNCTION Value jit_rt_print(Value v);
 
-API_FUNCTION(jit_rt_add)(Value v1, Value v2);
+API_FUNCTION Value jit_rt_add(Value v1, Value v2);
 }
 
 

@@ -6,7 +6,6 @@ module;
 export module ast;
 
 import CodegenContext;
-import AsmWriter;
 
 
 export class Node;

@@ -60,10 +60,7 @@ public:
     }
 
     std::any visitCallExpr(JitterishParser::CallExprContext *context) override {
-        auto call = new Call(ast(context->primary_expr()));
-        for (auto param: context->expr()) {
-            call->addParam(ast(param));
-        }
+        auto call = new Call(ast(context->primary_expr()), ast(context->expr()));
         return NodeRef(call);
     }
 

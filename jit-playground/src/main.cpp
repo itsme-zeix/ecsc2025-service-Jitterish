@@ -2,7 +2,6 @@
 
 import parser;
 import CodegenContext;
-import AsmWriter;
 import JitRunner;
 
 std::string assemble(std::string code) {
