@@ -1,33 +1,17 @@
 module;
 
-#include <utility>
 #include <vector>
 #include <memory>
+#include <string>
+#include <iostream>
 
-export module ast;
+import ast;
+import CodegenContext;
+import AsmWriter;
 
-
-export class Node;
-
-export typedef std::shared_ptr<Node> NodeRef;
-
-export class Node {
-protected:
-    std::vector<NodeRef> children;
-public:
-    virtual ~Node() = default;
-
-    virtual void print(std::ostream &out) const = 0;
-};
-
-std::ostream &operator<<(std::ostream &out, const Node &n) {
-    n.print(out);
-    return out;
-}
-
+export module expr;
 
 export class Expr : public Node {
-
 };
 
 // variable/function name
@@ -54,6 +38,15 @@ public:
     void print(std::ostream &out) const override {
         out << "(" << *children[0] << " " << op << " " << *children[1] << ")";
     }
+
+    Register codegen(CodegenContext &ctx) override {
+        if (op == "+") {
+            auto rght = children[1]->codegen(ctx);
+            auto lft = children[0]->codegen(ctx);
+            return ctx.writer.callRuntime("__add__", lft, rght);
+        }
+        return Expr::codegen(ctx);
+    }
 };
 
 export class Call : public Expr {
@@ -74,6 +67,10 @@ public:
         }
         out << ")";
     }
+
+    Register codegen(CodegenContext &ctx) override {
+        return ctx.writer.callRuntime("__print__", children[1]->codegen(ctx));
+    }
 };
 
 export class ConstantInt : public Expr {
@@ -85,6 +82,10 @@ public:
     void print(std::ostream &out) const override {
         out << i;
     }
+
+    Register codegen(CodegenContext &ctx) override {
+        return ctx.writer.constantInt(i);
+    }
 };
 
 export class ConstantString : public Expr {
@@ -95,35 +96,5 @@ public:
 
     void print(std::ostream &out) const override {
         out << s;
-    }
-};
-
-
-export class Stmt : public Node {
-
-};
-
-export class ExprStmt : public Stmt {
-public:
-    explicit ExprStmt(const NodeRef &expr) {
-        children.push_back(expr);
-    }
-
-    void print(std::ostream &out) const override {
-        out << *children[0] << ";";
-    }
-};
-
-export class BlockStmt : public Stmt {
-public:
-    explicit BlockStmt(const std::vector<NodeRef> &stmts) {
-        children.assign(stmts.begin(), stmts.end());
-    }
-
-    void print(std::ostream &out) const override {
-        out << "{\n";
-        for (const auto& c: children)
-            out << "\t" << *c << "\n";
-        out << "}";
     }
 };

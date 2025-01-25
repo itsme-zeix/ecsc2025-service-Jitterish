@@ -6,6 +6,8 @@ module;
 #include "generated/JitterishVisitor.h"
 
 import ast;
+import stmt;
+import expr;
 
 export module parser;
 

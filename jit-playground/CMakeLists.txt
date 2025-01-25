@@ -28,31 +28,40 @@ endforeach (src_file ${ANTLR_GENERATED_SOURCES})
 
 add_custom_target(GenerateParser DEPENDS ${ANTLR_GENERATED_SOURCES})
 add_custom_command(OUTPUT ${ANTLR_GENERATED_SOURCES}
-   COMMAND
-   ${CMAKE_COMMAND} -E make_directory ${PROJECT_SOURCE_DIR}/src/generated/
-   COMMAND
-   "${Java_JAVA_EXECUTABLE}" -jar ${ANTLR_JAR_LOCATION} -Werror -Dlanguage=Cpp -listener -visitor -o ${PROJECT_SOURCE_DIR}/src/generated/ -package generated_parser ${PROJECT_SOURCE_DIR}/Jitterish.g4
-   WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-   DEPENDS ${PROJECT_SOURCE_DIR}/Jitterish.g4
-   )
+		COMMAND
+		${CMAKE_COMMAND} -E make_directory ${PROJECT_SOURCE_DIR}/src/generated/
+		COMMAND
+		"${Java_JAVA_EXECUTABLE}" -jar ${ANTLR_JAR_LOCATION} -Werror -Dlanguage=Cpp -listener -visitor -o ${PROJECT_SOURCE_DIR}/src/generated/ -package generated_parser ${PROJECT_SOURCE_DIR}/Jitterish.g4
+		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+		DEPENDS ${PROJECT_SOURCE_DIR}/Jitterish.g4
+)
 
 
 include_directories(
-  ${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src
-  ${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/misc
-  ${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/atn
-  ${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/dfa
-  ${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/tree
-  ${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/support
-  )
+		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src
+		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/misc
+		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/atn
+		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/dfa
+		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/tree
+		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/support
+)
 
-add_executable(jit_playground src/main.cpp ${ANTLR_GENERATED_SOURCES})
+add_executable(jit_playground
+		src/main.cpp
+		src/rtlib/jit_runtime.cpp
+		src/rtlib/jit_runtime.h
+		${ANTLR_GENERATED_SOURCES}
+)
 
 target_sources(jit_playground
 		PUBLIC
 		FILE_SET CXX_MODULES FILES
 		src/parser.cppm
-		src/ast.cppm
+		src/ast/ast.cppm
+		src/ast/stmt.cppm
+		src/ast/expr.cppm
+		src/codegen/AsmWriter.cppm
+		src/codegen/CodegenContext.cppm
 )
 
 
