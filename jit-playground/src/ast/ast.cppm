@@ -3,10 +3,10 @@ module;
 #include <vector>
 #include <memory>
 
+export module ast;
+
 import CodegenContext;
 import AsmWriter;
-
-export module ast;
 
 
 export class Node;
@@ -22,7 +22,7 @@ public:
     virtual void print(std::ostream &out) const = 0;
 
     virtual Register codegen(CodegenContext &ctx) {
-        throw std::runtime_error("not implemented");
+        throw std::runtime_error("codegen not implemented");
     }
 };
 

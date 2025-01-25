@@ -5,11 +5,11 @@ module;
 #include <string>
 #include <iostream>
 
+export module expr;
+
 import ast;
 import CodegenContext;
 import AsmWriter;
-
-export module expr;
 
 export class Expr : public Node {
 };
@@ -41,9 +41,10 @@ public:
 
     Register codegen(CodegenContext &ctx) override {
         if (op == "+") {
-            auto rght = children[1]->codegen(ctx);
             auto lft = children[0]->codegen(ctx);
-            return ctx.writer.callRuntime("__add__", lft, rght);
+            auto rght = children[1]->codegen(ctx);
+            auto result = ctx.callRuntime("__add__", lft, rght);
+            return result;
         }
         return Expr::codegen(ctx);
     }
@@ -69,7 +70,9 @@ public:
     }
 
     Register codegen(CodegenContext &ctx) override {
-        return ctx.writer.callRuntime("__print__", children[1]->codegen(ctx));
+        auto arg = children[1]->codegen(ctx);
+        auto result = ctx.callRuntime("__print__", arg);
+        return result;
     }
 };
 
@@ -84,7 +87,7 @@ public:
     }
 
     Register codegen(CodegenContext &ctx) override {
-        return ctx.writer.constantInt(i);
+        return ctx.constantInt(i);
     }
 };
 

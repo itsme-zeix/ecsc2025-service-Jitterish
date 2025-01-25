@@ -5,11 +5,11 @@ module;
 #include "generated/JitterishParser.h"
 #include "generated/JitterishVisitor.h"
 
+export module parser;
+
 import ast;
 import stmt;
 import expr;
-
-export module parser;
 
 using namespace antlr4;
 using namespace generated_parser;

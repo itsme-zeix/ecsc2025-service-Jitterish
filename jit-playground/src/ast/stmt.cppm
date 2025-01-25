@@ -3,14 +3,13 @@ module;
 #include <iostream>
 #include <vector>
 #include <memory>
-#include <string>
+
+export module stmt;
 
 import ast;
 import expr;
 import CodegenContext;
 import AsmWriter;
-
-export module stmt;
 
 export class Stmt : public Node {
 };
@@ -27,6 +26,7 @@ public:
 
     Register codegen(CodegenContext &ctx) override {
         auto reg = children[0]->codegen(ctx);
+        ctx.releaseRegister(reg);
         // TODO free value?
         return Register::None;
     }
