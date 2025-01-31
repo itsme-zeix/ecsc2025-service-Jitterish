@@ -102,17 +102,20 @@ public:
     void start() {
         out << ".section .note.GNU-stack,\"\",@progbits\n";
         out << ".text\n";
-        startFunction("jit_entrypoint");
     }
 
-    void end() {
-        out << "int3\n\n";
-    }
+    void end() {}
 
-    void startFunction(std::string name) {
+    void startFunction(std::string name, int stackSize) {
         out << ".globl " << name << "\n";
         out << ".type " << name << ", @function\n";
         out << name << ":\n";
+        out << "enter $" << stackSize << ", $0\n";
+    }
+
+    void endFunction(int stackSize) {
+        out << "leave\n";
+        out << "ret\n\n";
     }
 
     // === asm utility functions ===
@@ -166,6 +169,16 @@ public:
         auto reg = takeRegister();
         out << "movq $" << Value(ValueType::INT, i).raw() << ", " << reg << "  # = int " << i << "\n";
         return reg;
+    }
+
+    Register stackLoad(int offset) {
+        auto reg = takeRegister();
+        out << "movq -" << offset << "(%rbp), " << reg << "\n";
+        return reg;
+    }
+
+    void stackStore(int offset, Register reg) {
+        out << "movq " << reg << ", -" << offset << "(%rbp)\n";
     }
 
 };

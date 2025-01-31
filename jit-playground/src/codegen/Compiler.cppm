@@ -14,10 +14,27 @@ using namespace antlr4;
 using namespace generated_parser;
 
 
+struct Variables : public JitterishBaseVisitor {
+    std::map<std::string, int> offsets;
+
+    int stackSize() { return offsets.size() * 8; }
+
+    std::any visitAssignToNamed(JitterishParser::AssignToNamedContext *ctx) override {
+        auto name = ctx->NAME()->getText();
+        if (offsets.find(name) == offsets.end()) {
+            offsets[name] = offsets.size() * 8;
+        }
+        return {};
+    }
+};
+
+
 class CodegenVisitor : public JitterishBaseVisitor {
     std::stringstream ss;
 
     CodegenContext codegen;
+
+    Variables vars;
 
 protected:
     std::any defaultResult() override {
@@ -46,7 +63,14 @@ public:
 
     std::any visitMain(JitterishParser::MainContext *ctx) override {
         codegen.start();
+
+        vars = Variables();
+        vars.visit(ctx->stmt());
+        codegen.startFunction("jit_entrypoint", vars.stackSize());
+
         compile(ctx->stmt());
+
+        codegen.endFunction(vars.stackSize());
         codegen.end();
         return Register::None;
     }
@@ -68,13 +92,30 @@ public:
         throw std::runtime_error("unknown operator: " + op);
     }
 
+    std::any visitCallExpr(JitterishParser::CallExprContext *ctx) override {
+        auto arg = compile(ctx->expr(0));
+        return codegen.callRuntime("jit_rt_print", arg);
+    }
+
     std::any visitConstantInt(JitterishParser::ConstantIntContext *ctx) override {
         return codegen.constantInt(stoi(ctx->getText()));
     }
 
-    std::any visitCallExpr(JitterishParser::CallExprContext *ctx) override {
-        auto arg = compile(ctx->expr(0));
-        return codegen.callRuntime("jit_rt_print", arg);
+    // === Variables ===
+
+    std::any visitNamed(JitterishParser::NamedContext *ctx) override {
+        auto name = ctx->NAME()->getText();
+        return codegen.stackLoad(vars.offsets.at(name));
+    }
+
+    std::any visitAssignment(JitterishParser::AssignmentContext *ctx) override {
+        auto value = compile(ctx->rght);
+        if (auto named = dynamic_cast<JitterishParser::AssignToNamedContext*>(ctx->left)) {
+            codegen.stackStore(vars.offsets.at(named->NAME()->getText()), value);
+            return value;
+        } else {
+            throw std::runtime_error("not implemented");
+        }
     }
 
 };

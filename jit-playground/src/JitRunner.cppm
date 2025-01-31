@@ -20,5 +20,6 @@ public:
         auto fptr = (void (*)()) ref;
         fprintf(stderr, "Let's go! %p\n", fptr);
         fptr();
+        fprintf(stderr, "Jit returned.\n");
     }
 };

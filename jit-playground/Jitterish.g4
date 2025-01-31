@@ -9,8 +9,14 @@ primary_expr
     | STRING_LITERAL  # ConstantString
     ;
 
+assignable_expr
+    : NAME  # AssignToNamed
+    // add "x[y]" and "x.y" later
+    ;
+
 expr: left=expr op=('*' | '/') rght=expr  # BinaryOp
     | left=expr op=('+' | '-') rght=expr  # BinaryOp
+    | left=assignable_expr '=' rght=expr  # Assignment
     | callee=primary_expr '(' (expr (',' expr)* ','?)? ')'  # CallExpr
     | primary_expr  # RawExpr
     ;
