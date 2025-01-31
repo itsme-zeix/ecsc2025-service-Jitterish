@@ -17,7 +17,7 @@ assignable_expr
 expr: left=expr op=('*' | '/') rght=expr  # BinaryOp
     | left=expr op=('+' | '-') rght=expr  # BinaryOp
     | left=assignable_expr '=' rght=expr  # Assignment
-    | callee=primary_expr '(' (expr (',' expr)* ','?)? ')'  # CallExpr
+    | callee=NAME '(' (expr (',' expr)* ','?)? ')'  # CallExpr
     | primary_expr  # RawExpr
     ;
 

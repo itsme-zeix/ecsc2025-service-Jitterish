@@ -1,6 +1,7 @@
 module;
 
 #include <string>
+#include <ranges>
 #include "antlr4-runtime.h"
 #include "../generated/JitterishLexer.h"
 #include "../generated/JitterishParser.h"
@@ -20,7 +21,7 @@ class Variables : public JitterishBaseVisitor {
 public:
     std::map<std::string, int> offsets;
 
-    int stackSize() const { return (stackCount + 1) / 2 * 16; }
+    int stackSize() const { return stackCount * 8; }
 
     std::any visitAssignToNamed(JitterishParser::AssignToNamedContext *ctx) override {
         auto name = ctx->NAME()->getText();
@@ -119,8 +120,21 @@ public:
     }
 
     std::any visitCallExpr(JitterishParser::CallExprContext *ctx) override {
-        auto arg = compile(ctx->expr(0));
-        return codegen.callRuntime("jit_rt_print", arg);
+        if (ctx->callee->getText() == "print")
+            return codegen.callRuntime("jit_rt_print", compile(ctx->expr(0)));
+
+        auto saved = codegen.pushTakenRegistersBeforeCall();
+        for (auto param: std::ranges::reverse_view(ctx->expr())) {
+            codegen.pushCallArg(compile(param));
+        }
+
+        auto result = codegen.call(ctx->callee->getText());
+
+        for (auto param: ctx->expr()) {
+            codegen.releaseRegister(codegen.popCallArg());
+        }
+        codegen.popTakenRegistersAfterCall(saved);
+        return result;
     }
 
     std::any visitConstantInt(JitterishParser::ConstantIntContext *ctx) override {

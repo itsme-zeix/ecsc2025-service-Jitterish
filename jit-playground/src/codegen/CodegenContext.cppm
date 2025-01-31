@@ -111,15 +111,28 @@ public:
         out << ".type " << name << ", @function\n";
         out << name << ":\n";
         out << "enter $" << stackSize << ", $0\n";
+        out << "pushq %rbx\n";
+        out << "pushq %r12\n";
+        out << "pushq %r13\n";
+        out << "pushq %r14\n";
+        out << "pushq %r15\n";
     }
 
     void returnFunction(Register r) {
-        if (r != Register::None && r != Register::RAX)
+        if (r == Register::None) {
+            out << "movq $0, %rax\n";
+        } else if (r != Register::RAX) {
             out << "movq " << r << ", %rax\n";
+        }
         endFunction();
     }
 
     void endFunction() {
+        out << "popq %r15\n";
+        out << "popq %r14\n";
+        out << "popq %r13\n";
+        out << "popq %r12\n";
+        out << "popq %rbx\n";
         out << "leave\n";
         out << "ret\n\n";
     }
@@ -144,6 +157,31 @@ public:
         }
     }
 
+    void pushCallArg(Register r) {
+        out << "pushq " << r << "\n";
+        releaseRegister(r);
+    }
+
+    Register popCallArg() {
+        auto r = takeRegister();
+        out << "popq " << r << "\n";
+        return r;
+    }
+
+    Register call(std::string name) {
+        out << "call " << name << "\n";
+
+        // result register is rax by default, unless already taken
+        auto result = Register::RAX;
+        if (registerTaken[Register::RAX]) {
+            result = takeRegister();
+            out << "movq " << Register::RAX << ", " << result << "\n";
+        } else {
+            registerTaken[Register::RAX] = true;
+        }
+        return result;
+    }
+
     Register callRuntime(std::string name, Register arg1, Register arg2 = Register::None) {
         if (arg1 != Register::None && arg1 != Register::RDI) {
             out << "movq " << arg1 << ", " << Register::RDI << "\n";
@@ -155,17 +193,7 @@ public:
         }
 
         auto storedRegisters = pushTakenRegistersBeforeCall();
-        out << "call " << name << "\n";
-
-        // result register is rax by default, unless already taken
-        auto result = Register::RAX;
-        if (registerTaken[Register::RAX]) {
-            result = takeRegister();
-            out << "movq " << Register::RAX << ", " << result << "\n";
-        } else {
-            registerTaken[Register::RAX] = true;
-        }
-
+        auto result = call(name);
         popTakenRegistersAfterCall(storedRegisters);
 
         return result;

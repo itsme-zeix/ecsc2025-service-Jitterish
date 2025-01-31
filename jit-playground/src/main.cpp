@@ -16,7 +16,7 @@ std::string assemble(std::string code) {
 int main() {
     // auto program = "print(print(1 + 2 + 3 + 4 + 5));";
     // auto program = "func jit_entrypoint(){ a = 1 + 2 * (1+2) - 4; print(a); print(a+1); }";
-    auto program = "func jit_entrypoint(a){ b = 1; c = 2; return b + c; }";
+    auto program = "func helper(a, b) { return a+b; } func jit_entrypoint(){ return 4 + helper(1, 2) + helper(7, 1) + 3; }";
 
     std::cout << "\n----------------------------------------" << std::endl << std::endl;
 
