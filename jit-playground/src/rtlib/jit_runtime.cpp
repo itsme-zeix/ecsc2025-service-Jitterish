@@ -13,7 +13,7 @@ API_FUNCTION Value jit_rt_div(Value v1, Value v2);
 }
 
 
-static void print(Value v) {
+void printValue(Value v) {
     switch (v.type()) {
         case ValueType::UNDEFINED:
             std::cout << "undefined";
@@ -28,7 +28,7 @@ static void print(Value v) {
 }
 
 Value jit_rt_print(Value v) {
-    print(v);
+    printValue(v);
     std::cout << "\n";
     return {};
 }

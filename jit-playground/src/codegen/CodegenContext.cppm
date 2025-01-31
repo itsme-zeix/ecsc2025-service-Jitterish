@@ -113,7 +113,13 @@ public:
         out << "enter $" << stackSize << ", $0\n";
     }
 
-    void endFunction(int stackSize) {
+    void returnFunction(Register r) {
+        if (r != Register::None && r != Register::RAX)
+            out << "movq " << r << ", %rax\n";
+        endFunction();
+    }
+
+    void endFunction() {
         out << "leave\n";
         out << "ret\n\n";
     }
@@ -173,12 +179,12 @@ public:
 
     Register stackLoad(int offset) {
         auto reg = takeRegister();
-        out << "movq -" << offset << "(%rbp), " << reg << "\n";
+        out << "movq " << offset << "(%rbp), " << reg << "\n";
         return reg;
     }
 
     void stackStore(int offset, Register reg) {
-        out << "movq " << reg << ", -" << offset << "(%rbp)\n";
+        out << "movq " << reg << ", " << offset << "(%rbp)\n";
     }
 
 };

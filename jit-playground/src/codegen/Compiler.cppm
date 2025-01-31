@@ -14,17 +14,24 @@ using namespace antlr4;
 using namespace generated_parser;
 
 
-struct Variables : public JitterishBaseVisitor {
+class Variables : public JitterishBaseVisitor {
+    int stackCount = 0;
+    int paramCount = 0;
+public:
     std::map<std::string, int> offsets;
 
-    int stackSize() { return offsets.size() * 8; }
+    int stackSize() const { return (stackCount + 1) / 2 * 16; }
 
     std::any visitAssignToNamed(JitterishParser::AssignToNamedContext *ctx) override {
         auto name = ctx->NAME()->getText();
         if (offsets.find(name) == offsets.end()) {
-            offsets[name] = offsets.size() * 8;
+            offsets[name] = (++stackCount) * -8;
         }
         return {};
+    }
+
+    void addParam(std::string name) {
+        offsets[name] = (++paramCount) * 8;
     }
 };
 
@@ -63,22 +70,35 @@ public:
 
     std::any visitMain(JitterishParser::MainContext *ctx) override {
         codegen.start();
-
-        vars = Variables();
-        vars.visit(ctx->stmt());
-        codegen.startFunction("jit_entrypoint", vars.stackSize());
-
-        compile(ctx->stmt());
-
-        codegen.endFunction(vars.stackSize());
+        for (auto f: ctx->func()) {
+            compile(f);
+        }
         codegen.end();
         return Register::None;
     }
 
-    std::any visitBlockStmt(JitterishParser::BlockStmtContext *ctx) override {
-        for (auto stmt: ctx->stmt()) {
-            codegen.releaseRegister(compile(stmt));
-        }
+    std::any visitFunc(JitterishParser::FuncContext *ctx) override {
+        vars = Variables();
+        vars.visit(ctx->body);
+        for (auto arg: ctx->NAME())
+            std::cout << "DEBUG: ARG = " << arg->getText() << "\n";
+        for (auto arg: ctx->NAME())
+            vars.addParam(arg->getText());
+        codegen.startFunction(ctx->name->getText(), vars.stackSize());
+        compile(ctx->body);
+        codegen.endFunction();
+        return Register::None;
+    }
+
+    std::any visitReturnStmt(JitterishParser::ReturnStmtContext *ctx) override {
+        auto reg = compile(ctx->expr());
+        codegen.returnFunction(reg);
+        codegen.releaseRegister(reg);
+        return Register::None;
+    }
+
+    std::any visitExprStmt(JitterishParser::ExprStmtContext *ctx) override {
+        codegen.releaseRegister(compile(ctx->expr()));
         return Register::None;
     }
 
@@ -116,7 +136,7 @@ public:
 
     std::any visitAssignment(JitterishParser::AssignmentContext *ctx) override {
         auto value = compile(ctx->rght);
-        if (auto named = dynamic_cast<JitterishParser::AssignToNamedContext*>(ctx->left)) {
+        if (auto named = dynamic_cast<JitterishParser::AssignToNamedContext *>(ctx->left)) {
             codegen.stackStore(vars.offsets.at(named->NAME()->getText()), value);
             return value;
         } else {

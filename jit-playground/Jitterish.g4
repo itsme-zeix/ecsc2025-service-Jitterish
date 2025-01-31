@@ -1,6 +1,6 @@
 grammar Jitterish;
 
-main: stmt EOF;
+main: func* EOF;
 
 primary_expr
     : '(' expr ')'  # RawPrimaryExpr
@@ -22,8 +22,13 @@ expr: left=expr op=('*' | '/') rght=expr  # BinaryOp
     ;
 
 stmt: expr ';'  # ExprStmt
-    | '{' stmt* '}'  # BlockStmt
+    | stmtBlock  # BlockStmt
+    | 'return' expr ';'  # ReturnStmt
     ;
+
+stmtBlock: '{' stmt* '}';
+
+func: 'func' name=NAME '(' (arg=NAME ','?)* ')' body=stmtBlock;
 
 
 // lexer rules
@@ -31,5 +36,5 @@ fragment DIGIT: [0-9];
 fragment LETTER: [a-zA-Z];
 INT: DIGIT+;
 STRING_LITERAL: '"'.*?'"';
-NAME: LETTER(LETTER | DIGIT)*;
+NAME: LETTER(LETTER | DIGIT | '_')*;
 WS: [\t\r\n ]+ -> skip;

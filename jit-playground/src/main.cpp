@@ -15,7 +15,8 @@ std::string assemble(std::string code) {
 
 int main() {
     // auto program = "print(print(1 + 2 + 3 + 4 + 5));";
-    auto program = "{ a = 1 + 2 * (1+2) - 4; print(a); print(a+1); }";
+    // auto program = "func jit_entrypoint(){ a = 1 + 2 * (1+2) - 4; print(a); print(a+1); }";
+    auto program = "func jit_entrypoint(a){ b = 1; c = 2; return b + c; }";
 
     std::cout << "\n----------------------------------------" << std::endl << std::endl;
 
@@ -25,8 +26,7 @@ int main() {
 
 
     std::cout << "\n----------------------------------------" << std::endl << std::endl;
-    JitRunner r;
-    r.run(assembled);
+    JitRunner::run(assembled);
 
     return 0;
 }

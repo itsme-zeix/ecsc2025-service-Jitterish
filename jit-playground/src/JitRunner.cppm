@@ -2,24 +2,39 @@ module;
 
 #include <dlfcn.h>
 #include <cstdio>
-#include "rtlib/jit_runtime.h"
 #include <string>
+#include <iostream>
+#include "rtlib/jit_runtime.h"
 
 export module JitRunner;
 
 export class JitRunner {
+    void *handle;
 public:
-    JitRunner() {
+    explicit JitRunner(const std::string filename) {
         (void) jit_functions;  // import runtime library
+        handle = dlopen(filename.c_str(), RTLD_LAZY);
+        fprintf(stderr, "Loaded: %p\n", handle);
     }
 
-    void run(std::string filename) {
-        auto *handle = dlopen(filename.c_str(), RTLD_LAZY);
-        fprintf(stderr, "Loaded: %p\n", handle);
-        auto ref = dlsym(handle, "jit_entrypoint");
-        auto fptr = (void (*)()) ref;
-        fprintf(stderr, "Let's go! %p\n", fptr);
-        fptr();
-        fprintf(stderr, "Jit returned.\n");
+    ~JitRunner() {
+        if (handle) {
+            dlclose(handle);
+        }
+    }
+
+    Value call(const std::string function) {
+        auto ref = dlsym(handle, function.c_str());
+        auto fptr = (Value (*)()) ref;
+        fprintf(stderr, "%s: %p\n", function.c_str(), fptr);
+        auto result = fptr();
+        fprintf(stderr, "Jit returned from %s.\n", function.c_str());
+        return result;
+    }
+
+    static void run(std::string filename) {
+        JitRunner r(filename);
+        printValue(r.call("jit_entrypoint"));
+        std::cout << std::endl;
     }
 };

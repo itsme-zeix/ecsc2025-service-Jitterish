@@ -42,6 +42,8 @@ public:
 
 };
 
+void printValue(Value v);
+
 extern void* jit_functions[];
 
 #endif //JIT_PLAYGROUND_JIT_RUNTIME_H
