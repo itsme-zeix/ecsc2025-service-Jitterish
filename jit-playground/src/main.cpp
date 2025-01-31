@@ -3,6 +3,7 @@
 import parser;
 import CodegenContext;
 import JitRunner;
+import direct_codegen;
 
 std::string assemble(std::string code) {
     std::ofstream f("output.s");
@@ -14,11 +15,13 @@ std::string assemble(std::string code) {
 }
 
 int main() {
-    auto ast = parse_string("print(print(1 + 2 + 3 + 4 + 5));");
+    auto program = "print(print(1 + 2 + 3 + 4 + 5));";
+    auto ast = parse_string(program);
     ast->print(std::cout);
 
     std::cout << "\n----------------------------------------" << std::endl << std::endl;
 
+    /*
     std::stringstream ss;
     CodegenContext ctx(ss);
     ctx.start();
@@ -27,6 +30,12 @@ int main() {
     std::cout << ss.str() << "\n";
 
     auto assembled = assemble(ss.str());
+     */
+
+    auto assembly = compile_string(program);
+    std::cout << assembly << std::endl;
+    auto assembled = assemble(assembly);
+
 
     std::cout << "\n----------------------------------------" << std::endl << std::endl;
     JitRunner r;

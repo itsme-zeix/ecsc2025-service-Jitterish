@@ -11,7 +11,7 @@ primary_expr
 
 expr: left=expr op=('*' | '/') rght=expr  # BinaryOp
     | left=expr op=('+' | '-') rght=expr  # BinaryOp
-    | primary_expr '(' (expr (',' expr)* ','?)? ')'  # CallExpr
+    | callee=primary_expr '(' (expr (',' expr)* ','?)? ')'  # CallExpr
     | primary_expr  # RawExpr
     ;
 

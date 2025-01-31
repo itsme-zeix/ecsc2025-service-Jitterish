@@ -68,6 +68,7 @@ target_sources(jit_playground
 		src/ast/expr.cppm
 		src/codegen/CodegenContext.cppm
 		src/JitRunner.cppm
+		src/attempt2/direct_codegen.cppm
 )
 
 
