@@ -88,6 +88,12 @@ public:
         auto rght = compile(ctx->rght);
         if (op == "+") {
             return codegen.callRuntime("jit_rt_add", lft, rght);
+        } else if (op == "-") {
+            return codegen.callRuntime("jit_rt_sub", lft, rght);
+        } else if (op == "*") {
+            return codegen.callRuntime("jit_rt_mul", lft, rght);
+        } else if (op == "/") {
+            return codegen.callRuntime("jit_rt_div", lft, rght);
         }
         throw std::runtime_error("unknown operator: " + op);
     }
