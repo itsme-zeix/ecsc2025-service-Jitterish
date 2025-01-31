@@ -6,7 +6,7 @@ module;
 #include "../generated/JitterishParser.h"
 #include "../generated/JitterishBaseVisitor.h"
 
-export module direct_codegen;
+export module Compiler;
 
 import CodegenContext;
 

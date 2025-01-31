@@ -62,13 +62,9 @@ add_executable(jit_playground
 target_sources(jit_playground
 		PUBLIC
 		FILE_SET CXX_MODULES FILES
-		src/parser.cppm
-		src/ast/ast.cppm
-		src/ast/stmt.cppm
-		src/ast/expr.cppm
 		src/codegen/CodegenContext.cppm
+		src/codegen/Compiler.cppm
 		src/JitRunner.cppm
-		src/attempt2/direct_codegen.cppm
 )
 
 
