@@ -15,10 +15,16 @@ API_FUNCTION Value jit_rt_sub(Value v1, Value v2);
 API_FUNCTION Value jit_rt_mul(Value v1, Value v2);
 API_FUNCTION Value jit_rt_div(Value v1, Value v2);
 API_FUNCTION Value jit_rt_not(Value v);
+API_FUNCTION Value jit_rt_and(Value v1, Value v2);
+API_FUNCTION Value jit_rt_or(Value v1, Value v2);
 API_FUNCTION Value jit_rt_equal(Value v1, Value v2);
 API_FUNCTION Value jit_rt_lt(Value v1, Value v2);
 API_FUNCTION Value jit_rt_getproperty(Value v1, Value v2);
 API_FUNCTION Value jit_rt_setproperty(Value object, Value key, Value v);
+API_FUNCTION Value jit_rt_object_new();
+API_FUNCTION Value jit_rt_array_new();
+API_FUNCTION Value jit_rt_array_append(Value array, Value v);
+API_FUNCTION Value jit_rt_len(Value v);
 API_FUNCTION bool jit_rt_bool(Value v);
 }
 
@@ -38,7 +44,7 @@ void printValue(Value v) {
             std::cout << v.integer();
             break;
         case ValueType::STRING:
-            std::cout << '"' << v.str() << '"'; // TODO escaping
+            std::cout << json(v.str());
             break;
         case ValueType::ARRAY: {
             char c = '[';
@@ -52,8 +58,8 @@ void printValue(Value v) {
         }
         case ValueType::OBJECT: {
             char c = '{';
-            for (auto kv: *v.data<ObjectData *>()) {
-                std::cout << c << '"' << kv.first << "\":";  // TODO escaping
+            for (const auto& kv: *v.data<ObjectData *>()) {
+                std::cout << c << json(kv.first) << ":";
                 printValue(kv.second);
                 c = ',';
             }
@@ -79,14 +85,14 @@ Value json_to_value(const json &j) {
     if (j.is_string()) return {ValueType::STRING, new StringData(j.template get<std::string>())};
     if (j.is_array()) {
         auto data = new ArrayData();
-        for (auto item: j) {
+        for (const auto& item: j) {
             data->push_back(json_to_value(item));
         }
         return {ValueType::ARRAY, data};
     }
     if (j.is_object()) {
         auto data = new ObjectData();
-        for (auto item: j.items()) {
+        for (const auto& item: j.items()) {
             (*data)[item.key()] = json_to_value(item.value());
         }
         return {ValueType::OBJECT, data};
@@ -134,6 +140,14 @@ Value jit_rt_not(Value v) {
     return {ValueType::BOOL, !v.is_true()};
 }
 
+Value jit_rt_and(Value v1, Value v2) {
+    return {ValueType::BOOL, v1.is_true() && v2.is_true()};
+}
+
+Value jit_rt_or(Value v1, Value v2) {
+    return {ValueType::BOOL, v1.is_true() || v2.is_true()};
+}
+
 Value jit_rt_equal(Value v1, Value v2) {
     if (v1.type() != v2.type())
         return {ValueType::BOOL, false};
@@ -177,6 +191,32 @@ Value jit_rt_setproperty(Value object, Value key, Value v) {
     return v;
 }
 
+Value jit_rt_object_new() {
+    return {ValueType::OBJECT, new ObjectData()};
+}
+
+Value jit_rt_array_new() {
+    return {ValueType::ARRAY, new ArrayData()};
+}
+
+Value jit_rt_array_append(Value array, Value v) {
+    if (array.is(ValueType::ARRAY)) {
+        array.data<ArrayData*>()->push_back(v);
+    }
+    return array;
+}
+
+Value jit_rt_len(Value v) {
+    if (v.is(ValueType::STRING)) {
+        return {ValueType::INT, v.data<StringData *>()->size()};
+    } else if (v.is(ValueType::ARRAY)) {
+        return {ValueType::INT, v.data<ArrayData *>()->size()};
+    } else if (v.is(ValueType::OBJECT)) {
+        return {ValueType::INT, v.data<ObjectData *>()->size()};
+    }
+    return {};
+}
+
 bool jit_rt_bool(Value v) {
     return v.is_true();
 }
@@ -187,10 +227,17 @@ void *jit_functions[] = {
         (void *) jit_rt_sub,
         (void *) jit_rt_mul,
         (void *) jit_rt_div,
+        (void *) jit_rt_not,
+        (void *) jit_rt_and,
+        (void *) jit_rt_or,
         (void *) jit_rt_equal,
         (void *) jit_rt_lt,
         (void *) jit_rt_getproperty,
         (void *) jit_rt_setproperty,
+        (void *) jit_rt_object_new,
+        (void *) jit_rt_array_new,
+        (void *) jit_rt_array_append,
+        (void *) jit_rt_len,
         (void *) jit_rt_bool,
         (void *) jit_rt_print
 };

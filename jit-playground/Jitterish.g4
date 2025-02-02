@@ -2,32 +2,28 @@ grammar Jitterish;
 
 main: func* EOF;
 
-constant_expr
-    : STRING_LITERAL
-    | INT
-    | 'null' | 'true' | 'false'
-    | '[' (constant_expr ','?) * ']'
-    | '{' (STRING_LITERAL ':' constant_expr ','?)* '}'
-    ;
 
 primary_expr
     : '(' expr ')'  # RawPrimaryExpr
+    | op=('!' | '-' | 'len') expr  # UnaryOp
     | left=primary_expr '[' rght=expr ']'  # PropertyGet
-    // | left=primary_expr '.' right=NAME  # PropertyGetString
     | NAME  # Named
     | INT  # ConstantInt
-    | constant_expr  # ConstantExpr
+    | ('null' | 'true' | 'false' | STRING_LITERAL)  # ConstantExpr
+    | '[' (expr ','?) * ']'  # ArrayExpr
+    | '{' (STRING_LITERAL ':' expr ','?)* '}'  # ObjectExpr
     ;
 
-assignable_expr
+assignable_expr  // left side of an assignment
     : NAME  # AssignToNamed
     | left=primary_expr '[' right=expr ']'  # AssignToProperty
-    // add "x[y]" and "x.y" later
+    | left=primary_expr '[' '+' ']'  # AssignAppend
     ;
 
 expr: left=expr op=('*' | '/') rght=expr  # BinaryOp
     | left=expr op=('+' | '-') rght=expr  # BinaryOp
     | left=expr op=('==' | '!=' | '<' | '>' | '<=' | '>=') rght=expr  # BinaryOp
+    | left=expr op=('||' | '&&') rght=expr  # BinaryOp
     | left=assignable_expr '=' rght=expr  # Assignment
     | callee=NAME '(' (expr (',' expr)* ','?)? ')'  # CallExpr
     | primary_expr  # RawExpr

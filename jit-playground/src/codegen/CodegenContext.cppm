@@ -7,22 +7,22 @@ module;
 
 export module CodegenContext;
 
-// call arguments: RDI, RSI, RDX, RCX, R8, R9
+// runtime call arguments: RDI, RSI, RDX, RCX, R8, R9
 // callee saves RBX, RSP, RBP, and R12–R15
 // caller saves rax, rcx, rdx, ...
 
 export enum Register {
     None = 0,
     RAX,
-    RBX,
-    RCX,
-    RDX,
-    RSI,
     RDI,
+    RSI,
+    RDX,
+    RCX,
     R8,
     R9,
     R10,
     R11,
+    RBX,
     R12,
     R13,
     R14,
@@ -39,20 +39,19 @@ struct RegisterInfo {
 static RegisterInfo infos[MAX_REGISTER_VALUE] = {
         {"INVALID-REGISTER", false},
         {"%rax",             true},
-        {"%rbx",             false},
-        {"%rcx",             true},
-        {"%rdx",             true},
-        {"%rsi",             true},
         {"%rdi",             true},
+        {"%rsi",             true},
+        {"%rdx",             true},
+        {"%rcx",             true},
         {"%r8",              true},
         {"%r9",              true},
         {"%r10",             true},
         {"%r11",             true},
+        {"%rbx",             false},
         {"%r12",             false},
         {"%r13",             false},
         {"%r14",             false},
         {"%r15",             false},
-        //{"INVALID-REGISTER", false},
 };
 
 export std::ostream &operator<<(std::ostream &out, const Register &r) {
@@ -62,8 +61,8 @@ export std::ostream &operator<<(std::ostream &out, const Register &r) {
 
 
 export class CodegenContext {
-    std::stack<Register> freeRegisters;
     std::array<bool, MAX_REGISTER_VALUE> registerTaken;
+    int labelCount = 0;
 public:
     std::ostream &out;
 
@@ -74,27 +73,20 @@ public:
     }
 
     Register takeRegister() {
-        // TODO register selection might be simpler. For example: sort register enum, callee-saved before caller-saved
-        // TODO rework register selection when we have a calling convention for our functions
-        if (freeRegisters.empty()) {
-            for (int r = Register::R11; r > Register::None; r--) {
-                if (!registerTaken[r]) {
-                    registerTaken[r] = true;
-                    return (Register) r;
-                }
+        for (int r = Register::R15; r > Register::None; r--) {
+            if (!registerTaken[r]) {
+                registerTaken[r] = true;
+                return (Register) r;
             }
-            throw std::runtime_error("no registers available");
-        } else {
-            auto reg = freeRegisters.top();
-            freeRegisters.pop();
-            registerTaken[reg] = true;
-            return reg;
         }
+        throw std::runtime_error("no registers available");
+    }
+
+    void takeRegister(Register r) {
+        registerTaken[r] = true;
     }
 
     void releaseRegister(Register r) {
-        if (!infos[r].callerSaved)
-            freeRegisters.push(r);
         registerTaken[r] = false;
     }
 
@@ -188,7 +180,7 @@ public:
         return result;
     }
 
-    Register callRuntime(std::string name, Register arg1, Register arg2 = Register::None, Register arg3 = Register::None) {
+    Register callRuntime(std::string name, Register arg1 = Register::None, Register arg2 = Register::None, Register arg3 = Register::None) {
         if (arg1 != Register::None && arg1 != Register::RDI) {
             out << "movq " << arg1 << ", " << Register::RDI << "\n";
             releaseRegister(arg1);
@@ -209,21 +201,18 @@ public:
         return result;
     }
 
-    Register constantInt(int i) {
+    Register constantValue(Value v) {
         auto reg = takeRegister();
-        out << "movq $" << Value(ValueType::INT, i).raw() << ", " << reg << "  # = int " << i << "\n";
+        out << "movq $" << v.raw() << ", " << reg << "\n";
         return reg;
     }
 
     Register constantFromJson(const std::string &json) {
-        // TODO label
-        auto label = ".L.str";
-
+        auto label = ".L.str" + std::to_string(labelCount++);
         out << ".section .rodata,\"a\",@progbits\n";
-        out << label << ": .asciz \"";
-        for (auto c: json) out << "\\" << std::oct << (int) c;
-        out << std::dec;
-        out << "\"\n";
+        out << label << ": .asciz \"" << std::oct;
+        for (auto c: json) out << "\\" << (int) c;
+        out << "\"\n" << std::dec;
         out << ".text\n";
 
         out << "leaq " << label << "(%rip), " << Register::RDI << "\n";

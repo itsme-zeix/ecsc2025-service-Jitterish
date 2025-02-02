@@ -6,6 +6,7 @@ module;
 #include "../generated/JitterishLexer.h"
 #include "../generated/JitterishParser.h"
 #include "../generated/JitterishBaseVisitor.h"
+#include "../rtlib/jit_runtime.h"
 
 export module Compiler;
 
@@ -125,6 +126,23 @@ public:
             return codegen.callRuntime("jit_rt_not", codegen.callRuntime("jit_rt_lt", rght, lft));
         } else if (op == ">=") {
             return codegen.callRuntime("jit_rt_not", codegen.callRuntime("jit_rt_lt", lft, rght));
+        } else if (op == "&&") {
+            return codegen.callRuntime("jit_rt_and", lft, rght);
+        } else if (op == "||") {
+            return codegen.callRuntime("jit_rt_or", lft, rght);
+        }
+        throw std::runtime_error("unknown operator: " + op);
+    }
+
+    std::any visitUnaryOp(JitterishParser::UnaryOpContext *ctx) override {
+        auto op = ctx->op->getText();
+        auto expr = compile(ctx->expr());
+        if (op == "!") {
+            return codegen.callRuntime("jit_rt_not", expr);
+        } else if (op == "-") {
+            return codegen.callRuntime("jit_rt_sub", codegen.constantValue(Value{ValueType::INT, 0}), expr);
+        } else if (op == "len") {
+            return codegen.callRuntime("jit_rt_len", expr);
         }
         throw std::runtime_error("unknown operator: " + op);
     }
@@ -154,11 +172,31 @@ public:
     }
 
     std::any visitConstantInt(JitterishParser::ConstantIntContext *ctx) override {
-        return codegen.constantInt(stoi(ctx->getText()));
+        return codegen.constantValue(Value{ValueType::INT, stoi(ctx->getText())});
     }
 
     std::any visitConstantExpr(JitterishParser::ConstantExprContext *ctx) override {
         return codegen.constantFromJson(ctx->getText());
+    }
+
+    std::any visitArrayExpr(JitterishParser::ArrayExprContext *ctx) override {
+        auto array = codegen.callRuntime("jit_rt_array_new");
+        for (auto e: ctx->expr()) {
+            auto value = compile(e);
+            array = codegen.callRuntime("jit_rt_array_append", array, value);
+        }
+        return array;
+    }
+
+    std::any visitObjectExpr(JitterishParser::ObjectExprContext *ctx) override {
+        auto obj = codegen.callRuntime("jit_rt_object_new");
+        for (size_t i = 0; i < ctx->STRING_LITERAL().size(); i++) {
+            auto value = compile(ctx->expr(i));
+            auto key = codegen.constantFromJson(ctx->STRING_LITERAL(i)->getText());
+            codegen.releaseRegister(codegen.callRuntime("jit_rt_setproperty", obj, key, value));
+            codegen.takeRegister(obj);  // keep the obj register taken
+        }
+        return obj;
     }
 
     // === Variables ===
@@ -176,8 +214,10 @@ public:
         } else if (auto property = dynamic_cast<JitterishParser::AssignToPropertyContext *>(ctx->left)) {
             auto object = compile(property->left);
             auto key = compile(property->right);
-            codegen.callRuntime("jit_rt_setproperty", object, key, value);
-            return value;
+            return codegen.callRuntime("jit_rt_setproperty", object, key, value);
+        } else if (auto append = dynamic_cast<JitterishParser::AssignAppendContext *>(ctx->left)) {
+            auto array = compile(append->left);
+            return codegen.callRuntime("jit_rt_array_append", array, value);
         } else {
             throw std::runtime_error("not implemented");
         }
