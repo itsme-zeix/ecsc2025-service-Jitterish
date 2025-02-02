@@ -1,10 +1,14 @@
 #include "jit_runtime.h"
 #include <iostream>
+#include <nlohmann/json.hpp>
+
+using namespace nlohmann;
 
 #define API_FUNCTION __attribute__((visibility ("default"))) __attribute__((used))
 
 extern "C" {
 API_FUNCTION Value jit_rt_print(Value v);
+API_FUNCTION Value jit_rt_constant(const char *data, size_t len);
 
 API_FUNCTION Value jit_rt_add(Value v1, Value v2);
 API_FUNCTION Value jit_rt_sub(Value v1, Value v2);
@@ -68,6 +72,33 @@ Value jit_rt_print(Value v) {
     return {};
 }
 
+Value json_to_value(const json &j) {
+    if (j.is_null()) return {ValueType::NULLVALUE, 0};
+    if (j.is_boolean()) return {ValueType::BOOL, j.template get<bool>()};
+    if (j.is_number()) return {ValueType::INT, j.template get<uint64_t>()};
+    if (j.is_string()) return {ValueType::STRING, new StringData(j.template get<std::string>())};
+    if (j.is_array()) {
+        auto data = new ArrayData();
+        for (auto item: j) {
+            data->push_back(json_to_value(item));
+        }
+        return {ValueType::ARRAY, data};
+    }
+    if (j.is_object()) {
+        auto data = new ObjectData();
+        for (auto item: j.items()) {
+            (*data)[item.key()] = json_to_value(item.value());
+        }
+        return {ValueType::OBJECT, data};
+    }
+    return {};
+}
+
+Value jit_rt_constant(const char *data, size_t len) {
+    auto result = json::parse(std::string(data, len));
+    return json_to_value(result);
+}
+
 Value jit_rt_add(Value v1, Value v2) {
     if (v1.is(ValueType::INT) && v2.is(ValueType::INT)) {
         return {ValueType::INT, v1.integer() + v2.integer()};
@@ -120,13 +151,13 @@ Value jit_rt_lt(Value v1, Value v2) {
 
 Value jit_rt_getproperty(Value v1, Value v2) {
     if (v1.is(ValueType::STRING) && v2.is(ValueType::INT)) {
-        return {ValueType::INT, v2.data<StringData *>()->at(v2.integer())};
+        return {ValueType::INT, v1.data<StringData *>()->at(v2.integer())};
     }
     if (v1.is(ValueType::ARRAY) && v2.is(ValueType::INT)) {
-        return v2.data<ArrayData *>()->at(v2.integer());
+        return v1.data<ArrayData *>()->at(v2.integer());
     }
     if (v1.is(ValueType::OBJECT)) {
-        auto data = v2.data<ObjectData *>();
+        auto data = v1.data<ObjectData *>();
         auto it = data->find(v2.str());
         if (it != data->end()) {
             return it->second;
@@ -151,6 +182,7 @@ bool jit_rt_bool(Value v) {
 }
 
 void *jit_functions[] = {
+        (void *) jit_rt_constant,
         (void *) jit_rt_add,
         (void *) jit_rt_sub,
         (void *) jit_rt_mul,

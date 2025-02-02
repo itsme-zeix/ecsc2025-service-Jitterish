@@ -3,6 +3,12 @@ project(jit_playground)
 
 set(CMAKE_CXX_STANDARD 23)
 
+# JSON library
+include(FetchContent)
+FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
+FetchContent_MakeAvailable(json)
+
+
 # TODO not so clean - saw some autodetect in another package
 set(Java_JAVA_EXECUTABLE java)
 set(ANTLR_JAR_LOCATION ${PROJECT_SOURCE_DIR}/antlr.jar)
@@ -67,7 +73,7 @@ target_sources(jit_playground
 		src/JitRunner.cppm
 )
 
+target_link_libraries(jit_rt PRIVATE nlohmann_json::nlohmann_json)
 
 add_dependencies(jit_playground GenerateParser)
-
 target_link_libraries(jit_playground antlr4_static jit_rt)

@@ -18,7 +18,7 @@ int main() {
     // auto program = "func jit_entrypoint(){ a = 1 + 2 * (1+2) - 4; print(a); print(a+1); }";
     // auto program = "func helper(a, b) { return a+b; } func jit_entrypoint(){ return 4 + helper(1, 2) + helper(7, 1) + 3; }";
     // auto program = "func jit_entrypoint() { system(1); }";
-    auto program = "func jit_entrypoint() { print(1 > 2); print(2 > 1); return 1[2]; }";
+    auto program = R"(func jit_entrypoint() { print(1 > 2); print(2 > 1); return "ab\u1234c"; })";
 
     std::cout << "\n----------------------------------------" << std::endl << std::endl;
 

@@ -157,6 +157,10 @@ public:
         return codegen.constantInt(stoi(ctx->getText()));
     }
 
+    std::any visitConstantExpr(JitterishParser::ConstantExprContext *ctx) override {
+        return codegen.constantFromJson(ctx->getText());
+    }
+
     // === Variables ===
 
     std::any visitNamed(JitterishParser::NamedContext *ctx) override {
@@ -173,6 +177,7 @@ public:
             auto object = compile(property->left);
             auto key = compile(property->right);
             codegen.callRuntime("jit_rt_setproperty", object, key, value);
+            return value;
         } else {
             throw std::runtime_error("not implemented");
         }

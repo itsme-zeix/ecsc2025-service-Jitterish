@@ -2,13 +2,21 @@ grammar Jitterish;
 
 main: func* EOF;
 
+constant_expr
+    : STRING_LITERAL
+    | INT
+    | 'null' | 'true' | 'false'
+    | '[' (constant_expr ','?) * ']'
+    | '{' (STRING_LITERAL ':' constant_expr ','?)* '}'
+    ;
+
 primary_expr
     : '(' expr ')'  # RawPrimaryExpr
     | left=primary_expr '[' rght=expr ']'  # PropertyGet
     // | left=primary_expr '.' right=NAME  # PropertyGetString
     | NAME  # Named
     | INT  # ConstantInt
-    | STRING_LITERAL  # ConstantString
+    | constant_expr  # ConstantExpr
     ;
 
 assignable_expr
@@ -38,7 +46,8 @@ func: 'func' name=NAME '(' (arg=NAME ','?)* ')' body=stmtBlock;
 // lexer rules
 fragment DIGIT: [0-9];
 fragment LETTER: [a-zA-Z];
+fragment LETTERU: [a-zA-Z_];
 INT: DIGIT+;
 STRING_LITERAL: '"'.*?'"';
-NAME: LETTER(LETTER | DIGIT | '_')*;
+NAME: LETTERU(LETTERU | DIGIT)*;
 WS: [\t\r\n ]+ -> skip;

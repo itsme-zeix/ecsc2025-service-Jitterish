@@ -107,6 +107,7 @@ public:
     void end() {}
 
     void startFunction(std::string name, int stackSize) {
+        if (stackSize % 16 == 0) stackSize += 8; // align stack on 16byte boundary
         out << ".globl " << name << "\n";
         out << ".type " << name << ", @function\n";
         out << name << ":\n";
@@ -146,6 +147,11 @@ public:
                 out << "pushq " << (Register) i << "\n";
                 result.push((Register) i);
             }
+        }
+        // keep stack aligned 16byte
+        if (result.size() % 2 == 1) {
+            out << "pushq " << Register::RDI << "\n";
+            result.push(Register::RDI);
         }
         return result;
     }
@@ -207,6 +213,22 @@ public:
         auto reg = takeRegister();
         out << "movq $" << Value(ValueType::INT, i).raw() << ", " << reg << "  # = int " << i << "\n";
         return reg;
+    }
+
+    Register constantFromJson(const std::string &json) {
+        // TODO label
+        auto label = ".L.str";
+
+        out << ".section .rodata,\"a\",@progbits\n";
+        out << label << ": .asciz \"";
+        for (auto c: json) out << "\\" << std::oct << (int) c;
+        out << std::dec;
+        out << "\"\n";
+        out << ".text\n";
+
+        out << "leaq " << label << "(%rip), " << Register::RDI << "\n";
+        out << "movq $" << json.size() << ", " << Register::RSI << "\n";
+        return callRuntime("jit_rt_constant", Register::RDI, Register::RSI);
     }
 
     Register stackLoad(int offset) {
