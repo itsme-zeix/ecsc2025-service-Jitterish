@@ -4,6 +4,8 @@ main: func* EOF;
 
 primary_expr
     : '(' expr ')'  # RawPrimaryExpr
+    | left=primary_expr '[' rght=expr ']'  # PropertyGet
+    // | left=primary_expr '.' right=NAME  # PropertyGetString
     | NAME  # Named
     | INT  # ConstantInt
     | STRING_LITERAL  # ConstantString
@@ -11,11 +13,13 @@ primary_expr
 
 assignable_expr
     : NAME  # AssignToNamed
+    | left=primary_expr '[' right=expr ']'  # AssignToProperty
     // add "x[y]" and "x.y" later
     ;
 
 expr: left=expr op=('*' | '/') rght=expr  # BinaryOp
     | left=expr op=('+' | '-') rght=expr  # BinaryOp
+    | left=expr op=('==' | '!=' | '<' | '>' | '<=' | '>=') rght=expr  # BinaryOp
     | left=assignable_expr '=' rght=expr  # Assignment
     | callee=NAME '(' (expr (',' expr)* ','?)? ')'  # CallExpr
     | primary_expr  # RawExpr

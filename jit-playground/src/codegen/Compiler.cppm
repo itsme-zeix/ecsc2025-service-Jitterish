@@ -82,8 +82,6 @@ public:
         vars = Variables();
         vars.visit(ctx->body);
         for (auto arg: ctx->NAME())
-            std::cout << "DEBUG: ARG = " << arg->getText() << "\n";
-        for (auto arg: ctx->NAME())
             vars.addParam(arg->getText());
         codegen.startFunction(ctx->name->getText(), vars.stackSize());
         compile(ctx->body);
@@ -115,8 +113,26 @@ public:
             return codegen.callRuntime("jit_rt_mul", lft, rght);
         } else if (op == "/") {
             return codegen.callRuntime("jit_rt_div", lft, rght);
+        } else if (op == "==") {
+            return codegen.callRuntime("jit_rt_equal", lft, rght);
+        } else if (op == "!=") {
+            return codegen.callRuntime("jit_rt_not", codegen.callRuntime("jit_rt_equal", lft, rght));
+        } else if (op == "<") {
+            return codegen.callRuntime("jit_rt_lt", lft, rght);
+        } else if (op == ">") {
+            return codegen.callRuntime("jit_rt_lt", rght, lft);
+        } else if (op == "<=") {
+            return codegen.callRuntime("jit_rt_not", codegen.callRuntime("jit_rt_lt", rght, lft));
+        } else if (op == ">=") {
+            return codegen.callRuntime("jit_rt_not", codegen.callRuntime("jit_rt_lt", lft, rght));
         }
         throw std::runtime_error("unknown operator: " + op);
+    }
+
+    std::any visitPropertyGet(JitterishParser::PropertyGetContext *ctx) override {
+        auto lft = compile(ctx->left);
+        auto rght = compile(ctx->rght);
+        return codegen.callRuntime("jit_rt_getproperty", lft, rght);
     }
 
     std::any visitCallExpr(JitterishParser::CallExprContext *ctx) override {
@@ -153,6 +169,10 @@ public:
         if (auto named = dynamic_cast<JitterishParser::AssignToNamedContext *>(ctx->left)) {
             codegen.stackStore(vars.offsets.at(named->NAME()->getText()), value);
             return value;
+        } else if (auto property = dynamic_cast<JitterishParser::AssignToPropertyContext *>(ctx->left)) {
+            auto object = compile(property->left);
+            auto key = compile(property->right);
+            codegen.callRuntime("jit_rt_setproperty", object, key, value);
         } else {
             throw std::runtime_error("not implemented");
         }

@@ -182,7 +182,7 @@ public:
         return result;
     }
 
-    Register callRuntime(std::string name, Register arg1, Register arg2 = Register::None) {
+    Register callRuntime(std::string name, Register arg1, Register arg2 = Register::None, Register arg3 = Register::None) {
         if (arg1 != Register::None && arg1 != Register::RDI) {
             out << "movq " << arg1 << ", " << Register::RDI << "\n";
             releaseRegister(arg1);
@@ -190,6 +190,10 @@ public:
         if (arg2 != Register::None && arg2 != Register::RSI) {
             out << "movq " << arg2 << ", " << Register::RSI << "\n";
             releaseRegister(arg2);
+        }
+        if (arg3 != Register::None && arg3 != Register::RDX) {
+            out << "movq " << arg3 << ", " << Register::RDX << "\n";
+            releaseRegister(arg3);
         }
 
         auto storedRegisters = pushTakenRegistersBeforeCall();
