@@ -1,6 +1,6 @@
 grammar Jitterish;
 
-main: func* EOF;
+main: func* query* EOF;
 
 
 primary_expr
@@ -23,7 +23,7 @@ assignable_expr  // left side of an assignment
 expr: left=expr op=('*' | '/') rght=expr  # BinaryOp
     | left=expr op=('+' | '-') rght=expr  # BinaryOp
     | left=expr op=('==' | '!=' | '<' | '>' | '<=' | '>=') rght=expr  # BinaryOp
-    | left=expr op=('||' | '&&') rght=expr  # BinaryOp
+    | left=expr op=('||' | '&&' | '?:') rght=expr  # BinaryOp
     | left=assignable_expr '=' rght=expr  # Assignment
     | callee=NAME '(' (expr (',' expr)* ','?)? ')'  # CallExpr
     | primary_expr  # RawExpr
@@ -38,12 +38,21 @@ stmtBlock: '{' stmt* '}';
 
 func: 'func' name=NAME '(' (arg=NAME ','?)* ')' body=stmtBlock;
 
+query:
+    'query' name=NAME
+    'on' collection=NAME
+    ('filter' filter=NAME)?
+    ('map' map=NAME)?
+    ('reduce' reduce=NAME)?
+    ';';
+
 
 // lexer rules
 fragment DIGIT: [0-9];
-fragment LETTER: [a-zA-Z];
-fragment LETTERU: [a-zA-Z_];
+fragment LETTER: [a-zA-Z_];
 INT: DIGIT+;
 STRING_LITERAL: '"'.*?'"';
-NAME: LETTERU(LETTERU | DIGIT)*;
+NAME: LETTER(LETTER | DIGIT)*;
 WS: [\t\r\n ]+ -> skip;
+COMMENT: '/*' .*? '*/' -> skip;
+LINE_COMMENT: '//' ~[\r\n]* -> skip;

@@ -101,6 +101,7 @@ public:
     void startFunction(std::string name, int stackSize) {
         if (stackSize % 16 == 0) stackSize += 8; // align stack on 16byte boundary
         out << ".globl " << name << "\n";
+        out << ".p2align 4\n";
         out << ".type " << name << ", @function\n";
         out << name << ":\n";
         out << "enter $" << stackSize << ", $0\n";
@@ -155,15 +156,19 @@ public:
         }
     }
 
-    void pushCallArg(Register r) {
-        out << "pushq " << r << "\n";
-        releaseRegister(r);
+    void prepareCallArgs(int count) {
+        int bytes = ((count + 1) / 2) * 16;
+        out << "subq $" << bytes << ", %rsp\n";
     }
 
-    Register popCallArg() {
-        auto r = takeRegister();
-        out << "popq " << r << "\n";
-        return r;
+    void removeCallArgs(int count) {
+        int bytes = ((count + 1) / 2) * 16;
+        out << "addq $" << bytes << ", %rsp\n";
+    }
+
+    void writeCallArg(int num, Register r) {
+        out << "movq " << r << ", " << (num * 8) << "(%rsp)\n";
+        releaseRegister(r);
     }
 
     Register call(std::string name) {
@@ -208,14 +213,7 @@ public:
     }
 
     Register constantFromJson(const std::string &json) {
-        auto label = ".L.str" + std::to_string(labelCount++);
-        out << ".section .rodata,\"a\",@progbits\n";
-        out << label << ": .asciz \"" << std::oct;
-        for (auto c: json) out << "\\" << (int) c;
-        out << "\"\n" << std::dec;
-        out << ".text\n";
-
-        out << "leaq " << label << "(%rip), " << Register::RDI << "\n";
+        labelToRegister(stringConstant(json), Register::RDI);
         out << "movq $" << json.size() << ", " << Register::RSI << "\n";
         return callRuntime("jit_rt_constant", Register::RDI, Register::RSI);
     }
@@ -228,6 +226,24 @@ public:
 
     void stackStore(int offset, Register reg) {
         out << "movq " << reg << ", " << offset << "(%rbp)\n";
+    }
+
+    std::string stringConstant(const std::string &s) {
+        auto label = ".L.str" + std::to_string(labelCount++);
+        out << ".section .rodata,\"a\",@progbits\n";
+        out << label << ": .asciz \"" << std::oct;
+        for (auto c: s) out << "\\" << (int) c;
+        out << "\"\n" << std::dec;
+        out << ".text\n";
+        return label;
+    }
+
+    void labelToRegister(const std::string &label, Register reg) {
+        if (label.contains("@GOTPCREL")) { // function symbols
+            out << "movq " << label << "(%rip), " << reg << "\n";
+        } else { // local string symbols
+            out << "leaq " << label << "(%rip), " << reg << "\n";
+        }
     }
 
 };

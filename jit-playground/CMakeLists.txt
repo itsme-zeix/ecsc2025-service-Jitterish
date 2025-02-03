@@ -56,6 +56,7 @@ include_directories(
 add_library(jit_rt SHARED
 		src/rtlib/jit_runtime.cpp
 		src/rtlib/jit_runtime.h
+		src/rtlib/storage.h
 )
 
 add_executable(jit_playground

@@ -1,6 +1,7 @@
 #include "jit_runtime.h"
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include "storage.h"
 
 using namespace nlohmann;
 
@@ -17,6 +18,7 @@ API_FUNCTION Value jit_rt_div(Value v1, Value v2);
 API_FUNCTION Value jit_rt_not(Value v);
 API_FUNCTION Value jit_rt_and(Value v1, Value v2);
 API_FUNCTION Value jit_rt_or(Value v1, Value v2);
+API_FUNCTION Value jit_rt_default(Value v1, Value v2);
 API_FUNCTION Value jit_rt_equal(Value v1, Value v2);
 API_FUNCTION Value jit_rt_lt(Value v1, Value v2);
 API_FUNCTION Value jit_rt_getproperty(Value v1, Value v2);
@@ -26,6 +28,7 @@ API_FUNCTION Value jit_rt_array_new();
 API_FUNCTION Value jit_rt_array_append(Value array, Value v);
 API_FUNCTION Value jit_rt_len(Value v);
 API_FUNCTION bool jit_rt_bool(Value v);
+API_FUNCTION Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, JitFunction reduce, Value param);
 }
 
 
@@ -58,7 +61,7 @@ void printValue(Value v) {
         }
         case ValueType::OBJECT: {
             char c = '{';
-            for (const auto& kv: *v.data<ObjectData *>()) {
+            for (const auto &kv: *v.data<ObjectData *>()) {
                 std::cout << c << json(kv.first) << ":";
                 printValue(kv.second);
                 c = ',';
@@ -85,14 +88,14 @@ Value json_to_value(const json &j) {
     if (j.is_string()) return {ValueType::STRING, new StringData(j.template get<std::string>())};
     if (j.is_array()) {
         auto data = new ArrayData();
-        for (const auto& item: j) {
+        for (const auto &item: j) {
             data->push_back(json_to_value(item));
         }
         return {ValueType::ARRAY, data};
     }
     if (j.is_object()) {
         auto data = new ObjectData();
-        for (const auto& item: j.items()) {
+        for (const auto &item: j.items()) {
             (*data)[item.key()] = json_to_value(item.value());
         }
         return {ValueType::OBJECT, data};
@@ -148,6 +151,10 @@ Value jit_rt_or(Value v1, Value v2) {
     return {ValueType::BOOL, v1.is_true() || v2.is_true()};
 }
 
+Value jit_rt_default(Value v1, Value v2) {
+    return v1.is_true() ? v1 : v2;
+}
+
 Value jit_rt_equal(Value v1, Value v2) {
     if (v1.type() != v2.type())
         return {ValueType::BOOL, false};
@@ -201,7 +208,7 @@ Value jit_rt_array_new() {
 
 Value jit_rt_array_append(Value array, Value v) {
     if (array.is(ValueType::ARRAY)) {
-        array.data<ArrayData*>()->push_back(v);
+        array.data<ArrayData *>()->push_back(v);
     }
     return array;
 }
@@ -221,6 +228,28 @@ bool jit_rt_bool(Value v) {
     return v.is_true();
 }
 
+Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, JitFunction reduce, Value param) {
+    auto storage = DataStorage(std::string(collection) + ".json");
+    Value result = reduce ? Value {} : jit_rt_array_new();
+
+    while (auto jsonEntry = storage.nextEntry()) {
+        Value entry = json_to_value(*jsonEntry);
+        if (filter && !callJitFunction(filter, entry, param).is_true()) {
+            continue;
+        }
+        if (map) {
+            entry = callJitFunction(map, entry, param);
+        }
+        if (reduce) {
+            result = callJitFunction(reduce, entry, result, param);
+        } else {
+            result.data<ArrayData *>()->push_back(entry);
+        }
+    }
+
+    return result;
+}
+
 void *jit_functions[] = {
         (void *) jit_rt_constant,
         (void *) jit_rt_add,
@@ -230,6 +259,7 @@ void *jit_functions[] = {
         (void *) jit_rt_not,
         (void *) jit_rt_and,
         (void *) jit_rt_or,
+        (void *) jit_rt_default,
         (void *) jit_rt_equal,
         (void *) jit_rt_lt,
         (void *) jit_rt_getproperty,
@@ -239,5 +269,6 @@ void *jit_functions[] = {
         (void *) jit_rt_array_append,
         (void *) jit_rt_len,
         (void *) jit_rt_bool,
-        (void *) jit_rt_print
+        (void *) jit_rt_print,
+        (void *) jit_rt_query
 };

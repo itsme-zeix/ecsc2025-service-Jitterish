@@ -88,4 +88,8 @@ void printValue(Value v);
 
 extern void *jit_functions[];
 
+typedef Value (*JitFunction)(...);
+
+#define callJitFunction(f, ...) f(0, 0, 0, 0, 0, 0, __VA_ARGS__)
+
 #endif //JIT_PLAYGROUND_JIT_RUNTIME_H

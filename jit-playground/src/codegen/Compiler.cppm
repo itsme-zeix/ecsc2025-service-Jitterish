@@ -33,7 +33,7 @@ public:
     }
 
     void addParam(std::string name) {
-        offsets[name] = (++paramCount) * 8;
+        offsets[name] = (++paramCount) * 8 + 8;
     }
 };
 
@@ -75,15 +75,21 @@ public:
         for (auto f: ctx->func()) {
             compile(f);
         }
+        for (auto q: ctx->query()) {
+            compile(q);
+        }
         codegen.end();
         return Register::None;
     }
+
+    // === Functions ===
 
     std::any visitFunc(JitterishParser::FuncContext *ctx) override {
         vars = Variables();
         vars.visit(ctx->body);
         for (auto arg: ctx->NAME())
-            vars.addParam(arg->getText());
+            if (arg->getSymbol() != ctx->name)
+                vars.addParam(arg->getText());
         codegen.startFunction(ctx->name->getText(), vars.stackSize());
         compile(ctx->body);
         codegen.endFunction();
@@ -96,6 +102,25 @@ public:
         codegen.releaseRegister(reg);
         return Register::None;
     }
+
+    std::any visitCallExpr(JitterishParser::CallExprContext *ctx) override {
+        if (ctx->callee->getText() == "print")
+            return codegen.callRuntime("jit_rt_print", compile(ctx->expr(0)));
+
+        auto saved = codegen.pushTakenRegistersBeforeCall();
+        codegen.prepareCallArgs(ctx->expr().size());
+        for (size_t i = 0; i < ctx->expr().size(); i++) {
+            codegen.writeCallArg(i, compile(ctx->expr(i)));
+        }
+
+        auto result = codegen.call(ctx->callee->getText());
+
+        codegen.removeCallArgs(ctx->expr().size());
+        codegen.popTakenRegistersAfterCall(saved);
+        return result;
+    }
+
+    // === Expressions ===
 
     std::any visitExprStmt(JitterishParser::ExprStmtContext *ctx) override {
         codegen.releaseRegister(compile(ctx->expr()));
@@ -130,6 +155,8 @@ public:
             return codegen.callRuntime("jit_rt_and", lft, rght);
         } else if (op == "||") {
             return codegen.callRuntime("jit_rt_or", lft, rght);
+        } else if (op == "?:") {
+            return codegen.callRuntime("jit_rt_default", lft, rght);
         }
         throw std::runtime_error("unknown operator: " + op);
     }
@@ -151,24 +178,6 @@ public:
         auto lft = compile(ctx->left);
         auto rght = compile(ctx->rght);
         return codegen.callRuntime("jit_rt_getproperty", lft, rght);
-    }
-
-    std::any visitCallExpr(JitterishParser::CallExprContext *ctx) override {
-        if (ctx->callee->getText() == "print")
-            return codegen.callRuntime("jit_rt_print", compile(ctx->expr(0)));
-
-        auto saved = codegen.pushTakenRegistersBeforeCall();
-        for (auto param: std::ranges::reverse_view(ctx->expr())) {
-            codegen.pushCallArg(compile(param));
-        }
-
-        auto result = codegen.call(ctx->callee->getText());
-
-        for (auto param: ctx->expr()) {
-            codegen.releaseRegister(codegen.popCallArg());
-        }
-        codegen.popTakenRegistersAfterCall(saved);
-        return result;
     }
 
     std::any visitConstantInt(JitterishParser::ConstantIntContext *ctx) override {
@@ -223,6 +232,32 @@ public:
         }
     }
 
+    // === Queries ===
+    std::any visitQuery(JitterishParser::QueryContext *ctx) override {
+        codegen.startFunction(ctx->name->getText(), vars.stackSize());
+
+        codegen.labelToRegister(codegen.stringConstant(ctx->collection->getText()), Register::RDI);
+        if (ctx->filter) {
+            codegen.labelToRegister(ctx->filter->getText() + "@GOTPCREL", Register::RSI);
+        } else {
+            codegen.out << "movq $0, " << Register::RSI << "\n";
+        }
+        if (ctx->map) {
+            codegen.labelToRegister(ctx->map->getText() + "@GOTPCREL", Register::RDX);
+        } else {
+            codegen.out << "movq $0, " << Register::RDX << "\n";
+        }
+        if (ctx->reduce) {
+            codegen.labelToRegister(ctx->reduce->getText() + "@GOTPCREL", Register::RCX);
+        } else {
+            codegen.out << "movq $0, " << Register::RCX << "\n";
+        }
+        codegen.out << "movq 16(%rbp), " << Register::R8 << "\n";
+        codegen.releaseRegister(codegen.call("jit_rt_query"));
+
+        codegen.endFunction();
+        return Register::None;
+    }
 };
 
 

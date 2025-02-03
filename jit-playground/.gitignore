@@ -4,3 +4,5 @@
 /src/generated
 /dist
 /*.jar
+/demo/*.s
+/demo/*.so
