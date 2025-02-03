@@ -44,6 +44,7 @@ query:
     ('filter' filter=NAME)?
     ('map' map=NAME)?
     ('reduce' reduce=NAME)?
+    ('limit' limit=INT)?
     ';';
 
 

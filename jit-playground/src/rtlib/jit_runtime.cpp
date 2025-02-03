@@ -28,7 +28,7 @@ API_FUNCTION Value jit_rt_array_new();
 API_FUNCTION Value jit_rt_append(Value v1, Value v2);
 API_FUNCTION Value jit_rt_len(Value v);
 API_FUNCTION bool jit_rt_bool(Value v);
-API_FUNCTION Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, JitFunction reduce, Value param);
+API_FUNCTION Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, JitFunction reduce, size_t limit, Value param);
 }
 
 
@@ -231,7 +231,7 @@ bool jit_rt_bool(Value v) {
     return v.is_true();
 }
 
-Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, JitFunction reduce, Value param) {
+Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, JitFunction reduce, size_t limit, Value param) {
     auto storage = DataStorage(std::string(collection) + ".json");
     Value result = reduce ? Value {} : jit_rt_array_new();
 
@@ -248,6 +248,8 @@ Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, 
         } else {
             result.data<ArrayData *>()->push_back(entry);
         }
+        if ((--limit) == 0)
+            break;
     }
 
     return result;

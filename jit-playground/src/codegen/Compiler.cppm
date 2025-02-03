@@ -252,7 +252,9 @@ public:
         } else {
             codegen.out << "movq $0, " << Register::RCX << "\n";
         }
-        codegen.out << "movq 16(%rbp), " << Register::R8 << "\n";
+        size_t limit = ctx->limit ? std::stoi(ctx->limit->getText()) : 0xffffffff;
+        codegen.out << "movq $" << limit << ", " << Register::R8 << "\n";
+        codegen.out << "movq 16(%rbp), " << Register::R9 << "\n";
         codegen.releaseRegister(codegen.call("jit_rt_query"));
 
         codegen.endFunction();
