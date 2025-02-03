@@ -192,7 +192,7 @@ public:
         auto array = codegen.callRuntime("jit_rt_array_new");
         for (auto e: ctx->expr()) {
             auto value = compile(e);
-            array = codegen.callRuntime("jit_rt_array_append", array, value);
+            array = codegen.callRuntime("jit_rt_append", array, value);
         }
         return array;
     }
@@ -226,7 +226,7 @@ public:
             return codegen.callRuntime("jit_rt_setproperty", object, key, value);
         } else if (auto append = dynamic_cast<JitterishParser::AssignAppendContext *>(ctx->left)) {
             auto array = compile(append->left);
-            return codegen.callRuntime("jit_rt_array_append", array, value);
+            return codegen.callRuntime("jit_rt_append", array, value);
         } else {
             throw std::runtime_error("not implemented");
         }

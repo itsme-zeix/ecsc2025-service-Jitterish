@@ -25,7 +25,7 @@ API_FUNCTION Value jit_rt_getproperty(Value v1, Value v2);
 API_FUNCTION Value jit_rt_setproperty(Value object, Value key, Value v);
 API_FUNCTION Value jit_rt_object_new();
 API_FUNCTION Value jit_rt_array_new();
-API_FUNCTION Value jit_rt_array_append(Value array, Value v);
+API_FUNCTION Value jit_rt_append(Value v1, Value v2);
 API_FUNCTION Value jit_rt_len(Value v);
 API_FUNCTION bool jit_rt_bool(Value v);
 API_FUNCTION Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, JitFunction reduce, Value param);
@@ -206,11 +206,14 @@ Value jit_rt_array_new() {
     return {ValueType::ARRAY, new ArrayData()};
 }
 
-Value jit_rt_array_append(Value array, Value v) {
-    if (array.is(ValueType::ARRAY)) {
-        array.data<ArrayData *>()->push_back(v);
+Value jit_rt_append(Value v1, Value v2) {
+    if (v1.is(ValueType::ARRAY)) {
+        v1.data<ArrayData *>()->push_back(v2);
     }
-    return array;
+    if (v1.is(ValueType::STRING)) {
+        v1.data<StringData *>()->append(v2.str());
+    }
+    return v1;
 }
 
 Value jit_rt_len(Value v) {
@@ -266,7 +269,7 @@ void *jit_functions[] = {
         (void *) jit_rt_setproperty,
         (void *) jit_rt_object_new,
         (void *) jit_rt_array_new,
-        (void *) jit_rt_array_append,
+        (void *) jit_rt_append,
         (void *) jit_rt_len,
         (void *) jit_rt_bool,
         (void *) jit_rt_print,
