@@ -4,7 +4,7 @@ module;
 #include <cstdio>
 #include <string>
 #include <iostream>
-#include "rtlib/jit_runtime.h"
+#include "rtlib/jit_values.h"
 
 export module JitRunner;
 

@@ -4,25 +4,34 @@ import CodegenContext;
 import JitRunner;
 import Compiler;
 
-std::string assemble(std::string code) {
-    std::ofstream f("output.s");
+const std::string runtimeLibraryPath = "../cmake-build-debug";
+
+void assemble(std::string code, std::string output) {
+    std::ofstream f(output + ".s");
     f << code;
     f.close();
 
-    int rc = system("gcc -fPIC -g output.s -shared -o ./output.so");
+    // or: clang-18 -fuse-ld=lld
+    std::string cmd = "gcc";
+    cmd += " -fPIC -g -pie -export-dynamic";
+    if (!runtimeLibraryPath.empty())
+        cmd += " -L" + runtimeLibraryPath + " -Wl,-rpath," + runtimeLibraryPath;
+    cmd += " -ljit_rt";
+    cmd += " " + output + ".s -o \"" + output + "\"";
+    std::cerr << cmd << std::endl;
+    int rc = system(cmd.c_str());
     if (rc != 0)
         throw std::runtime_error("gcc failed");
-    return "./output.so";
 }
 
-std::string load_file(const char* filename) {
+std::string load_file(const char *filename) {
     std::ifstream ifs(filename);
     std::ostringstream oss;
     oss << ifs.rdbuf();
     return oss.str();
 }
 
-int main(int argc, const char* argv[]) {
+int demo_main(int argc, const char *argv[]) {
     // auto program = "print(print(1 + 2 + 3 + 4 + 5));";
     // auto program = "func jit_entrypoint(){ a = 1 + 2 * (1+2) - 4; print(a); print(a+1); }";
     // auto program = "func helper(a, b) { return a+b; } func jit_entrypoint(){ return 4 + helper(1, 2) + helper(7, 1) + 3; }";
@@ -37,11 +46,27 @@ int main(int argc, const char* argv[]) {
 
     auto assembly = compile_string(program);
     std::cout << assembly << std::endl;
-    auto assembled = assemble(assembly);
+    assemble(assembly, "./output.so");
 
 
     std::cout << "\n----------------------------------------" << std::endl << std::endl;
-    JitRunner::run(assembled);
+    JitRunner::run("./output.so");
 
     return 0;
+}
+
+int real_main(int argc, const char *argv[]) {
+    if (argc != 3) {
+        std::cerr << "USAGE: " << argv[0] << " <INPUT> <OUTPUT>" << std::endl;
+        return 1;
+    }
+
+    auto program = load_file(argv[1]);
+    auto assembly = compile_string(program);
+    assemble(assembly, argv[2]);
+    return 0;
+}
+
+int main(int argc, const char *argv[]) {
+    return real_main(argc, argv);
 }

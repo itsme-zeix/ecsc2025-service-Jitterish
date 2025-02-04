@@ -1,4 +1,4 @@
-#include "jit_runtime.h"
+#include "jit_values.h"
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include "storage.h"
@@ -81,7 +81,7 @@ Value jit_rt_print(Value v) {
     return {};
 }
 
-Value json_to_value(const json &j) {
+Value jsonToValue(const json &j) {
     if (j.is_null()) return {ValueType::NULLVALUE, 0};
     if (j.is_boolean()) return {ValueType::BOOL, j.template get<bool>()};
     if (j.is_number()) return {ValueType::INT, j.template get<uint64_t>()};
@@ -89,14 +89,14 @@ Value json_to_value(const json &j) {
     if (j.is_array()) {
         auto data = new ArrayData();
         for (const auto &item: j) {
-            data->push_back(json_to_value(item));
+            data->push_back(jsonToValue(item));
         }
         return {ValueType::ARRAY, data};
     }
     if (j.is_object()) {
         auto data = new ObjectData();
         for (const auto &item: j.items()) {
-            (*data)[item.key()] = json_to_value(item.value());
+            (*data)[item.key()] = jsonToValue(item.value());
         }
         return {ValueType::OBJECT, data};
     }
@@ -105,7 +105,7 @@ Value json_to_value(const json &j) {
 
 Value jit_rt_constant(const char *data, size_t len) {
     auto result = json::parse(std::string(data, len));
-    return json_to_value(result);
+    return jsonToValue(result);
 }
 
 Value jit_rt_add(Value v1, Value v2) {
@@ -236,7 +236,7 @@ Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, 
     Value result = reduce ? Value {} : jit_rt_array_new();
 
     while (auto jsonEntry = storage.nextEntry()) {
-        Value entry = json_to_value(*jsonEntry);
+        Value entry = jsonToValue(*jsonEntry);
         if (filter && !callJitFunction(filter, entry, param).is_true()) {
             continue;
         }

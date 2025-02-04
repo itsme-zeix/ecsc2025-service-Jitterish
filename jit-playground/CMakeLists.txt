@@ -55,13 +55,15 @@ include_directories(
 
 add_library(jit_rt SHARED
 		src/rtlib/jit_runtime.cpp
-		src/rtlib/jit_runtime.h
+		src/rtlib/jit_values.h
 		src/rtlib/storage.h
+		src/rtlib/jit_main.cpp
+		src/rtlib/jit_runtime.h
 )
 
 add_executable(jit_playground
 		src/main.cpp
-		src/rtlib/jit_runtime.h
+		src/rtlib/jit_values.h
 		src/rtlib/jit_values.h
 		${ANTLR_GENERATED_SOURCES}
 )
@@ -77,4 +79,4 @@ target_sources(jit_playground
 target_link_libraries(jit_rt PRIVATE nlohmann_json::nlohmann_json)
 
 add_dependencies(jit_playground GenerateParser)
-target_link_libraries(jit_playground antlr4_static jit_rt)
+target_link_libraries(jit_playground antlr4_static jit_rt nlohmann_json::nlohmann_json)
