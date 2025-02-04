@@ -60,7 +60,8 @@ void printValue(Value v) {
             break;
         }
         case ValueType::OBJECT: {
-            char c = '{';
+            std::cout << '{';
+            std::string c = "";
             for (const auto &kv: *v.data<ObjectData *>()) {
                 std::cout << c << json(kv.first) << ":";
                 printValue(kv.second);

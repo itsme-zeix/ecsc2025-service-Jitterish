@@ -82,10 +82,6 @@ public:
         throw std::runtime_error("no registers available");
     }
 
-    void takeRegister(Register r) {
-        registerTaken[r] = true;
-    }
-
     void releaseRegister(Register r) {
         registerTaken[r] = false;
     }

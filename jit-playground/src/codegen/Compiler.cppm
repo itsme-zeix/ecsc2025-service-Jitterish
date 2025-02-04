@@ -202,8 +202,8 @@ public:
         for (size_t i = 0; i < ctx->STRING_LITERAL().size(); i++) {
             auto value = compile(ctx->expr(i));
             auto key = codegen.constantFromJson(ctx->STRING_LITERAL(i)->getText());
-            codegen.releaseRegister(codegen.callRuntime("jit_rt_setproperty", obj, key, value));
-            codegen.takeRegister(obj);  // keep the obj register taken
+            codegen.out << "movq " << obj << ", " << Register::RDI << "\n";  // keep register "obj" allocated
+            codegen.releaseRegister(codegen.callRuntime("jit_rt_setproperty", Register::RDI, key, value));
         }
         return obj;
     }
