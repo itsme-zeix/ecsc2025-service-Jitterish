@@ -18,7 +18,7 @@ void assemble(std::string code, std::string output) {
         cmd += " -L" + runtimeLibraryPath + " -Wl,-rpath," + runtimeLibraryPath;
     cmd += " -ljit_rt";
     cmd += " " + output + ".s -o \"" + output + "\"";
-    std::cerr << cmd << std::endl;
+    // std::cerr << cmd << std::endl;
     int rc = system(cmd.c_str());
     if (rc != 0)
         throw std::runtime_error("gcc failed");

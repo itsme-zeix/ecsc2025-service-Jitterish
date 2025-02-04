@@ -50,7 +50,8 @@ void printValue(Value v) {
             std::cout << json(v.str());
             break;
         case ValueType::ARRAY: {
-            char c = '[';
+            std::cout << '[';
+            std::string c;
             for (auto v2: *v.data<ArrayData *>()) {
                 std::cout << c;
                 printValue(v2);
@@ -61,7 +62,7 @@ void printValue(Value v) {
         }
         case ValueType::OBJECT: {
             std::cout << '{';
-            std::string c = "";
+            std::string c;
             for (const auto &kv: *v.data<ObjectData *>()) {
                 std::cout << c << json(kv.first) << ":";
                 printValue(kv.second);
@@ -190,9 +191,9 @@ Value jit_rt_getproperty(Value v1, Value v2) {
 
 Value jit_rt_setproperty(Value object, Value key, Value v) {
     if (object.is(ValueType::STRING) && key.is(ValueType::INT)) {
-        key.data<StringData *>()->at(key.integer()) = v.integer();
+        object.data<StringData *>()->at(key.integer()) = (char) v.integer();
     } else if (object.is(ValueType::ARRAY) && key.is(ValueType::INT)) {
-        key.data<ArrayData *>()->at(key.integer()) = v;
+        object.data<ArrayData *>()->at(key.integer()) = v;
     } else if (object.is(ValueType::OBJECT)) {
         (*object.data<ObjectData *>())[key.str()] = v;
     }

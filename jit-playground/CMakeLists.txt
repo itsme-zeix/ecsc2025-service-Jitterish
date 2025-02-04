@@ -77,6 +77,7 @@ target_sources(jit_playground
 )
 
 target_link_libraries(jit_rt PRIVATE nlohmann_json::nlohmann_json)
+target_compile_options(jit_rt PRIVATE -Wno-return-type-c-linkage)
 
 add_dependencies(jit_playground GenerateParser)
 target_link_libraries(jit_playground antlr4_static jit_rt nlohmann_json::nlohmann_json)
