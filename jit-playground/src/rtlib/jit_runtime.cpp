@@ -235,6 +235,10 @@ bool jit_rt_bool(Value v) {
 
 Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, JitFunction reduce, size_t limit, Value param) {
     auto storage = DataStorage(std::string(collection) + ".json");
+    if (!storage.isPublic()) {
+        throw std::runtime_error("access denied");
+    }
+
     Value result = reduce ? Value {} : jit_rt_array_new();
 
     while (auto jsonEntry = storage.nextEntry()) {

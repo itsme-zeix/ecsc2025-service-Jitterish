@@ -16,12 +16,13 @@ class Line : std::string {
 }
 
 class DataStorage {
+    std::string filename;
     std::ifstream f;
 public:
-    explicit DataStorage(const std::string &filename) : f(filename) {}
+    explicit DataStorage(const std::string &filename) : filename(filename), f(filename) {}
 
     bool isPublic() {
-        return true;  // TODO implement
+        return !filename.contains("private");
     }
 
     std::optional<json> nextEntry() {
