@@ -6,7 +6,7 @@ module;
 #include "../generated/JitterishLexer.h"
 #include "../generated/JitterishParser.h"
 #include "../generated/JitterishBaseVisitor.h"
-#include "../rtlib/jit_runtime.h"
+#include "../rtlib/jit_values.h"
 
 export module Compiler;
 
@@ -167,7 +167,7 @@ public:
         if (op == "!") {
             return codegen.callRuntime("jit_rt_not", expr);
         } else if (op == "-") {
-            return codegen.callRuntime("jit_rt_sub", codegen.constantValue(Value{ValueType::INT, 0}), expr);
+            return codegen.callRuntime("jit_rt_sub", codegen.constantValue(Value {ValueType::INT, 0}), expr);
         } else if (op == "len") {
             return codegen.callRuntime("jit_rt_len", expr);
         }
@@ -181,7 +181,7 @@ public:
     }
 
     std::any visitConstantInt(JitterishParser::ConstantIntContext *ctx) override {
-        return codegen.constantValue(Value{ValueType::INT, stoi(ctx->getText())});
+        return codegen.constantValue(Value {ValueType::INT, stoi(ctx->getText())});
     }
 
     std::any visitConstantExpr(JitterishParser::ConstantExprContext *ctx) override {
@@ -263,12 +263,23 @@ public:
 };
 
 
+class ErrorListener : public BaseErrorListener {
+    void syntaxError(Recognizer *recognizer, Token *offendingSymbol, size_t line, size_t charPositionInLine,
+                     const std::string &msg, std::exception_ptr e) override {
+        throw std::runtime_error("line " + std::to_string(line) + ":" + std::to_string(charPositionInLine) + " " + msg);
+    }
+};
+
+
 export std::string compile_string(const std::string &s) {
     ANTLRInputStream input(s);
     JitterishLexer lexer(&input);
     CommonTokenStream tokens(&lexer);
     tokens.fill();
+
     JitterishParser parser(&tokens);
+    ErrorListener errors;
+    parser.addErrorListener(&errors);
     tree::ParseTree *tree = parser.main();
 
     CodegenVisitor v;
