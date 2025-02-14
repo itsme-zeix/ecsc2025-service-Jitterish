@@ -119,6 +119,7 @@ TBD.
 ### WP 2, Database Engine
 - implement database engine as described above. 
 - includes: protocol definitions (between all components)
+- includes: sandboxing/isolation of the RCEs (flag store 1 vulns)
 - includes: definition and prototype of flag store 2 vulnerability
 ### WP 3, Web Frontend
 - implement a frontend as described above. Features of that frontend scale on the amount of code already written - if the service is going too large, we'll cut short here.
