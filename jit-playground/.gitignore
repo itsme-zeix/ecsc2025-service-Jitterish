@@ -6,3 +6,8 @@
 /*.jar
 /demo/*.s
 /demo/*.so
+CMakeCache.txt
+CMakeFiles/
+build.ninja
+jit_playground
+lib/

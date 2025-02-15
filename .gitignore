@@ -1,0 +1,10 @@
+# rust build artifacts
+target/
+
+# c build artifacts
+*.so
+*.s
+*.cmake
+.ninja*
+_deps/
+Cargo.lock
