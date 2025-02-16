@@ -1,3 +1,6 @@
+# testing
+venv/
+
 # rust build artifacts
 target/
 
