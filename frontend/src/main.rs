@@ -1,48 +1,18 @@
 #[macro_use] extern crate rocket;
 
+use rocket::response::content;
+//use rocket::fs::NamedFile;
 use rocket::form::{Form, Strict};
+use rocket_dyn_templates::Template;
+use std::fs::File;
+use std::io::prelude::*;
+use rocket_dyn_templates::context;
+
 /*
  * according to the docs, this automatically handles
  * duplicates and unexpected values. How exactly does it 
  * do that? (using strict disables this behavior)
  */
-
-static STATIC_STR: &'static str= "
-<head><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css\" integrity=\"sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm\" crossorigin=\"anonymous\"></head>
-<body>
-<table class=\"table\">
-  <thead>
-    <tr>
-      <th scope=\"col\">#</th>
-      <th scope=\"col\">First</th>
-      <th scope=\"col\">Last</th>
-      <th scope=\"col\">Handle</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th scope=\"row\">1</th>
-      <td>Mark</td>
-      <td>Otto</td>
-      <td>@mdo</td>
-    </tr>
-    <tr>
-      <th scope=\"row\">2</th>
-      <td>Jacob</td>
-      <td>Thornton</td>
-      <td>@fat</td>
-    </tr>
-    <tr>
-      <th scope=\"row\">3</th>
-      <td>Larry</td>
-      <td>the Bird</td>
-      <td>@twitter</td>
-    </tr>
-  </tbody>
-</table>
-</body>
-";
-
 #[derive(FromForm)]
 struct User {
     name: String,
@@ -51,7 +21,38 @@ struct User {
 
 #[get("/")]
 fn index() -> &'static str {
-    STATIC_STR
+    "hello"
+}
+
+// a template example with an actual
+// template
+#[get("/templates")]
+fn templates() -> Template {
+    Template::render("index", context! {
+        title: "Hello",
+        name: Some("test"),
+        items: vec!["One", "Two", "Three"],
+    })
+}
+
+
+// this is better: this is a raw html file,
+// but has a template file extension and is served
+// with empty context
+#[get("/static-templates")]
+fn static_templates() -> Template {
+    Template::render("static-index", context! {})
+}
+
+
+// return raw html
+// this is a bit shitty, but works
+#[get("/static")]
+fn static_html() -> content::RawHtml<String> {
+    let mut f = File::open("static/static-index.html").expect("File does not exist");
+    let mut contents = String::new();
+    f.read_to_string(&mut contents).expect("Could not read file to string");
+    content::RawHtml(contents)
 }
 
 #[get("/<name>/<age>", rank = 2)]
@@ -59,6 +60,8 @@ fn wave(name: &str, age: u8) -> String {
     format!("👋 Hello, {} year old named {}!", age, name)
 }
 
+// a post endpoint
+// for actual user management, we want a cookie jar
 #[post("/login", data = "<user>")]
 fn login(user: Form<User>) -> String{
     format!("Logging in user with username {} and password {}", user.name, user.password)
@@ -67,7 +70,9 @@ fn login(user: Form<User>) -> String{
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![index, login])
+    rocket::build().mount("/", routes![index, login, static_html, static_templates, templates])
                 .mount("/wave", routes![wave])
+                // required to do templates
+                .attach(Template::fairing())
 }
 
