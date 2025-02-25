@@ -4,8 +4,12 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
-[dependencies]
-rocket = "0.5.1"
+# [dependencies]
+# rocket = "0.5.1"
+
+[dependencies.rocket]
+version = "0.5.1"
+features = ["secrets"]
 
 [dependencies.rocket_dyn_templates]
 # path = "../../contrib/dyn_templates"
