@@ -242,4 +242,22 @@ public:
         }
     }
 
+    std::string createLabel() {
+        return "lbl" + std::to_string(labelCount++);
+    }
+
+    void emitLabel(const std::string& label) {
+        out << label << ":\n";
+    }
+
+    void jump(const std::string &label) {
+        out << "jmp " << label << "\n";
+    }
+
+    void jumpIfZero(Register r, const std::string &label) {
+        out << "test " << r << ", " << r << "\n";
+        out << "jz " << label << "\n";
+        releaseRegister(r);
+    }
+
 };

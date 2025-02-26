@@ -120,6 +120,40 @@ public:
         return result;
     }
 
+    // === Statements ===
+    std::any visitIfStmt(JitterishParser::IfStmtContext *ctx) override {
+        auto lblElse = codegen.createLabel();
+        auto lblEnd = codegen.createLabel();
+
+        auto reg = codegen.callRuntime("jit_rt_bool", compile(ctx->expr()));
+        codegen.jumpIfZero(reg, lblElse);
+        compile(ctx->caseTrue);
+        if (ctx->caseFalse) {
+            codegen.jump(lblEnd);
+            codegen.emitLabel(lblElse);
+            compile(ctx->caseFalse);
+        } else {
+            codegen.emitLabel(lblElse);
+        }
+        codegen.emitLabel(lblEnd);
+
+        return Register::None;
+    }
+
+    std::any visitWhileStmt(JitterishParser::WhileStmtContext *ctx) override {
+        auto lblBegin = codegen.createLabel();
+        auto lblEnd = codegen.createLabel();
+
+        codegen.emitLabel(lblBegin);
+        auto reg = codegen.callRuntime("jit_rt_bool", compile(ctx->expr()));
+        codegen.jumpIfZero(reg, lblEnd);
+        compile(ctx->stmt());
+        codegen.jump(lblBegin);
+        codegen.emitLabel(lblEnd);
+
+        return Register::None;
+    }
+
     // === Expressions ===
 
     std::any visitExprStmt(JitterishParser::ExprStmtContext *ctx) override {

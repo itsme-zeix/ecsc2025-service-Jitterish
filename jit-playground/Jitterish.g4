@@ -32,6 +32,8 @@ expr: left=expr op=('*' | '/') rght=expr  # BinaryOp
 stmt: expr ';'  # ExprStmt
     | stmtBlock  # BlockStmt
     | 'return' expr ';'  # ReturnStmt
+    | 'if' expr caseTrue=stmt ('else' caseFalse=stmt)?  # IfStmt
+    | 'while' expr stmt  # WhileStmt
     ;
 
 stmtBlock: '{' stmt* '}';

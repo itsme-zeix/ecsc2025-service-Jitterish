@@ -84,6 +84,30 @@ class StatementsTestCase(CompileTestCase):
         '''
         self.assertEqual('3', self.run_prog(code))
 
+    def test_if(self):
+        self.assertEqual('2', self.run_stmt('''a = 0; if 1 { a = 2; } return a;'''))
+        self.assertEqual('2', self.run_stmt('''a = 0; if 1 a = 2; return a;'''))
+        self.assertEqual('2', self.run_stmt('''if 1 { a = 2; } else { a = 3; } return a;'''))
+        self.assertEqual('3', self.run_stmt('''if 1*0 { a = 2; } else { a = 3; } return a;'''))
+
+    def test_while(self):
+        self.assertEqual('1', self.run_stmt('''while 0 {} return 1;'''))
+        self.assertEqual('2', self.run_stmt('''while 1 { return 2; } return 1;'''))
+        code = '''
+        i = 5; s = 0;
+        while i > 0 { s = s + i;  i = i - 1; }
+        return s;
+        '''
+        self.assertEqual('15', self.run_stmt(code))
+
+    def test_truth_values(self):
+        true_cases = ['true', '1', '"abc"', '[1]', '{"a": 2}']
+        false_cases = ['false', '0', '""', 'null', '[]', '{}', '{}[1]']
+        for c in true_cases:
+            self.assertEqual('1', self.run_stmt(f'''if {c} return 1; else return 0;'''))
+        for c in false_cases:
+            self.assertEqual('0', self.run_stmt(f'''if {c} return 1; else return 0;'''))
+
 
 class QueriesTestCase(CompileTestCase):
     data1 = read_json_lines(DEMO_DIR / 'data1.json')
