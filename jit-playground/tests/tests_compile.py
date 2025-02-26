@@ -72,6 +72,9 @@ class StatementsTestCase(CompileTestCase):
     def test_print(self):
         self.assertEqual('1\n2\nundefined', self.run_stmt('print(1); return print(1+1, 3);'))
 
+    def test_print_nl(self):
+        self.assertEqual('"a\\nb\\r\\nc"\nundefined', self.run_stmt(r'print("a\nb\u000d\u000ac");'))
+
     def test_functions(self):
         code = '''
         func xadd(a, b) { return a+2*b; }
@@ -110,7 +113,7 @@ class StatementsTestCase(CompileTestCase):
 
 
 class QueriesTestCase(CompileTestCase):
-    data1 = read_json_lines(DEMO_DIR / 'data1.json')
+    data1 = read_json_lines(DEMO_DIR / 'data1.ndjson')
 
     def test_simple_query(self):
         self.assertEqual('[]', self.run_prog('query q on empty;', 'q'))
@@ -137,6 +140,10 @@ class QueriesTestCase(CompileTestCase):
         self.assertNotEqual(0, r.returncode)
         self.assertNotIn(b'SAAR', r.stdout)
         self.assertIn(b'access denied', r.stderr)
+
+    def test_failsafe(self):
+        result = self.run_prog('query jit_entrypoint on broken;')
+        self.assertEqual('[{"team":"x","points":1,"name":"a"},{"team":"x","points":1,"name":"c"}]', result)
 
 
 class ExploitsTestCase(CompileTestCase):

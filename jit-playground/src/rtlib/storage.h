@@ -27,8 +27,12 @@ public:
 
     std::optional<json> nextEntry() {
         std::string str;
-        if (std::getline(f, str)) {
-            return json::parse(str);
+        while (std::getline(f, str)) {
+            try {
+                return json::parse(str);
+            } catch (const json::parse_error &e) {
+                std::cerr << "[WARN] broken data in " << filename << std::endl;
+            }
         }
         return {};
     }
