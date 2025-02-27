@@ -2,6 +2,7 @@ module;
 
 #include <string>
 #include <ranges>
+#include <any>
 #include "antlr4-runtime.h"
 #include "../generated/JitterishLexer.h"
 #include "../generated/JitterishParser.h"

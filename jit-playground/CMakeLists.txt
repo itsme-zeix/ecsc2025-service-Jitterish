@@ -1,22 +1,30 @@
 cmake_minimum_required(VERSION 3.30)
 project(jit_playground)
+cmake_policy(SET CMP0135 NEW)
 
 set(CMAKE_CXX_STANDARD 23)
+LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 # JSON library
 include(FetchContent)
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
 FetchContent_MakeAvailable(json)
 
+# ANTLR
+if(NOT ANTLR4_VERSION)
+	set(ANTLR4_VERSION "4.13.2")
+endif()
+if(NOT ANTLR4_COMMAND)
+	file(DOWNLOAD "https://www.antlr.org/download/antlr-${ANTLR4_VERSION}-complete.jar" "${CMAKE_CURRENT_BINARY_DIR}/antlr4.jar")
+	set(ANTLR4_COMMAND java -jar ${CMAKE_CURRENT_BINARY_DIR}/antlr4.jar)
+endif()
 
-# TODO not so clean - saw some autodetect in another package
-set(Java_JAVA_EXECUTABLE java)
-set(ANTLR_JAR_LOCATION ${PROJECT_SOURCE_DIR}/antlr.jar)
-
-
-# TODO also not clean - we have to download this from cmake (or so)
+# ANTLR runtime
 set(ANTLR_BUILD_SHARED OFF)
-add_subdirectory(${PROJECT_SOURCE_DIR}/lib/antlr)
+set(ANTLR4_TAG ${ANTLR4_VERSION})
+include(ExternalAntlr4Cpp)
+include_directories(${ANTLR4CPP_INCLUDE_DIRS})
+link_directories(${ANTLR4CPP_LIBS})
 
 
 set(ANTLR_GENERATED_SOURCES
@@ -38,20 +46,20 @@ add_custom_command(OUTPUT ${ANTLR_GENERATED_SOURCES}
 		COMMAND
 		${CMAKE_COMMAND} -E make_directory ${PROJECT_SOURCE_DIR}/src/generated/
 		COMMAND
-		"${Java_JAVA_EXECUTABLE}" -jar ${ANTLR_JAR_LOCATION} -Werror -Dlanguage=Cpp -listener -visitor -o ${PROJECT_SOURCE_DIR}/src/generated/ -package generated_parser ${PROJECT_SOURCE_DIR}/Jitterish.g4
+		${ANTLR4_COMMAND} -Werror -Dlanguage=Cpp -listener -visitor -o ${PROJECT_SOURCE_DIR}/src/generated/ -package generated_parser ${PROJECT_SOURCE_DIR}/Jitterish.g4
 		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
 		DEPENDS ${PROJECT_SOURCE_DIR}/Jitterish.g4
 )
 
 
-include_directories(
-		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src
-		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/misc
-		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/atn
-		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/dfa
-		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/tree
-		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/support
-)
+#include_directories(
+#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src
+#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/misc
+#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/atn
+#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/dfa
+#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/tree
+#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/support
+#)
 
 add_library(jit_rt SHARED
 		src/rtlib/jit_runtime.cpp
@@ -80,4 +88,4 @@ target_link_libraries(jit_rt PRIVATE nlohmann_json::nlohmann_json)
 target_compile_options(jit_rt PRIVATE -Wno-return-type-c-linkage)
 
 add_dependencies(jit_playground GenerateParser)
-target_link_libraries(jit_playground antlr4_static jit_rt nlohmann_json::nlohmann_json)
+target_link_libraries(jit_playground antlr4_static jit_rt nlohmann_json::nlohmann_json)  # TODO antlr4-runtime

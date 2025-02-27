@@ -3,11 +3,13 @@
 /lib
 /src/generated
 /dist
+/build
 /*.jar
 /demo/*.s
 /demo/*.so
 CMakeCache.txt
 CMakeFiles/
 build.ninja
-jit_playground
+/jit_playground
 lib/
+__pycache__
