@@ -10,3 +10,6 @@ target/
 .ninja*
 _deps/
 Cargo.lock
+
+# PyCharm
+/.idea

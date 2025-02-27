@@ -1,0 +1,14 @@
+[package]
+name = "engine-playground"
+version = "0.1.0"
+authors = ["Markus Bauer <markus.bauer@cispa.saarland>"]
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+# unshare = "0.7.0"
+unshare = { path = "/home/markus/Projekte/repos/unshare" }
+nix = "0.20.2"
