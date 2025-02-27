@@ -1,66 +1,52 @@
 mod async_unshare;
 
 use crate::async_unshare::wait_async;
+use nix::sys::resource::{setrlimit, Resource};
 use std::future::Future;
-use std::time::Duration;
-use tokio::process::Command;
-use tokio::time::sleep;
-use unshare::Namespace;
+use unshare::{ExitStatus, Namespace};
 
-async fn test1() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::new("sh");
-    cmd.arg("-c").arg("id ; pwd ; ls -l");
+async fn run_sandboxed(s: &str, folder: &str) -> Result<i32, Box<dyn std::error::Error>> {
+    let mut cmd = unshare::Command::new("/usr/bin/sh");
+    cmd.arg("-c").arg(s);
 
-    cmd.uid(1);
+    // Namespaces limit access to system (no network etc)
+    cmd.unshare(&[
+        Namespace::User,
+        Namespace::Mount,
+        Namespace::Ipc,
+        Namespace::Pid,
+        Namespace::Net,
+    ]);
+    // Resource limits
     unsafe {
         cmd.pre_exec(|| {
-            // fs::chroot("/")?;
-            std::env::set_current_dir("/")?;
-            println!("pre-exec");
+            setrlimit(Resource::RLIMIT_NOFILE, 10, 10)?;
+            setrlimit(Resource::RLIMIT_CPU, 1, 1)?;
+            setrlimit(Resource::RLIMIT_NPROC, 3, 3)?;
+            setrlimit(Resource::RLIMIT_AS, 64 * 1024 * 1024, 64 * 1024 * 1024)?;
+            setrlimit(Resource::RLIMIT_RSS, 64 * 1024 * 1024, 64 * 1024 * 1024)?;
+            setrlimit(Resource::RLIMIT_NICE, 0, 0)?;
             Ok(())
         });
     }
-
-    let mut child = cmd.spawn().expect("failed to spawn");
-
-    // Await until the command completes
-    let status = child.wait().await?;
-    println!("the command exited with: {}", status);
-
-    Ok(())
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = unshare::Command::new("/usr/bin/sh");
-    cmd.arg("-c")
-        .arg("id ; pwd ; ls -l ; ip link ; ls -l /proc/self/fd ; sleep 1 ; exit 1");
-
-    cmd.unshare(&[
-        Namespace::User,
-        Namespace::Pid,
-        Namespace::Ipc,
-        Namespace::Net,
-        Namespace::Mount,
-    ]);
     // cmd.set_id_maps({1: 1}, {1: 1});
     // TODO chroot
     // TODO user
     // TODO network looks good
     // TODO check file descriptors
-    // TODO ulimit
 
     let mut child = cmd.spawn().expect("failed to spawn");
+    match wait_async(&mut child).await? {
+        ExitStatus::Exited(rc) => Ok(rc.into()),
+        ExitStatus::Signaled(sig, _) => Ok(128 + sig as i32),
+    }
+}
 
-    // sleep(Duration::from_millis(5000)).await;
-
-    let status = wait_async(&mut child).await?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let cmd = "id ; pwd ; ls -l ; ip link ; ls -l /proc/self/fd ; ulimit -a ; exit 2";
+    let status = run_sandboxed(cmd, "./src/").await?;
     println!("the command exited with: {}", status);
-
-    /*
-    let status2 = wait_async(&mut child).await?;
-    println!("the command exited with: {}", status2);
-    // */
 
     Ok(())
 }
