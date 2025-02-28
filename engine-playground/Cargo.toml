@@ -11,4 +11,4 @@ publish = false
 tokio = { version = "1", features = ["full"] }
 # unshare = "0.7.0"
 unshare = { path = "/home/markus/Projekte/repos/unshare" }
-nix = { version = "0.29.0", features = ["default", "resource"] }
+nix = { version = "0.29.0", features = ["default", "resource", "signal"] }

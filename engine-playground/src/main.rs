@@ -2,10 +2,16 @@ mod async_unshare;
 
 use crate::async_unshare::wait_async;
 use nix::sys::resource::{setrlimit, Resource};
-use std::future::Future;
+use std::error::Error;
+use std::time::Duration;
+use tokio::time::timeout;
 use unshare::{ExitStatus, Namespace};
 
-async fn run_sandboxed(s: &str, folder: &str) -> Result<i32, Box<dyn std::error::Error>> {
+async fn run_sandboxed(
+    s: &str,
+    folder: &str,
+    runtime: Duration,
+) -> Result<i32, Box<dyn std::error::Error>> {
     let mut cmd = unshare::Command::new("/usr/bin/sh");
     cmd.arg("-c").arg(s);
 
@@ -29,14 +35,30 @@ async fn run_sandboxed(s: &str, folder: &str) -> Result<i32, Box<dyn std::error:
             Ok(())
         });
     }
+
+    cmd.current_dir(folder);
+    // cmd.pivot_root(folder, folder.to_owned() + "root/", false);
+    // cmd.chroot_dir(folder);
+
     // cmd.set_id_maps({1: 1}, {1: 1});
     // TODO chroot
     // TODO user
     // TODO network looks good
     // TODO check file descriptors
+    // TODO test everything in a docker container
 
     let mut child = cmd.spawn().expect("failed to spawn");
-    match wait_async(&mut child).await? {
+    let wait_result = timeout(runtime, wait_async(&mut child)).await;
+
+    let termination_result = match wait_result {
+        Ok(x) => x,
+        Err(_) => {
+            child.kill()?;
+            wait_async(&mut child).await
+        }
+    };
+
+    match termination_result? {
         ExitStatus::Exited(rc) => Ok(rc.into()),
         ExitStatus::Signaled(sig, _) => Ok(128 + sig as i32),
     }
@@ -44,8 +66,13 @@ async fn run_sandboxed(s: &str, folder: &str) -> Result<i32, Box<dyn std::error:
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let cmd = "id ; pwd ; ls -l ; ip link ; ls -l /proc/self/fd ; ulimit -a ; exit 2";
-    let status = run_sandboxed(cmd, "./src/").await?;
+    let cmd = "id ; pwd ; ls -l ; ip link ; ls -l /proc/self/fd ; ulimit -a ; sleep 5 ; touch test.txt ; exit 2";
+    let status = run_sandboxed(
+        cmd,
+        "/home/markus/Projekte/saarsec/Jitterish/engine-playground/src/",
+        Duration::from_millis(500),
+    )
+    .await?;
     println!("the command exited with: {}", status);
 
     Ok(())
