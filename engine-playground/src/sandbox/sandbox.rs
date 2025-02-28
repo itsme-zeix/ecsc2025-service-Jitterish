@@ -2,7 +2,7 @@ use crate::sandbox::async_unshare::wait_async;
 use nix::mount::{mount, umount2, MntFlags, MsFlags};
 use nix::sys::resource::{setrlimit, Resource};
 use nix::unistd::{chdir, chroot, getgid, getuid, pivot_root, Uid};
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Read};
 use std::path::Path;
 use std::time::Duration;
 use std::{fs, io, path};
@@ -122,13 +122,10 @@ fn sandbox_rlimit() -> nix::Result<()> {
 }
 
 pub async fn run_sandboxed(
-    s: &str,
+    cmd: &mut unshare::Command,
     folder: &str,
     runtime: Duration,
-) -> Result<i32, Box<dyn std::error::Error>> {
-    let mut cmd = unshare::Command::new("/usr/bin/sh");
-    cmd.arg("-c").arg(s);
-
+) -> Result<unshare::Child, Box<dyn std::error::Error>> {
     let my_uid = getuid();
     let my_gid = getgid();
 
@@ -139,8 +136,8 @@ pub async fn run_sandboxed(
         Namespace::Ipc,
         Namespace::Pid,
         Namespace::Net,
-        // Namespace::Uts,
-        // Namespace::Cgroup,
+        Namespace::Uts,
+        Namespace::Cgroup,
     ]);
     cmd.set_id_maps(
         [UidMap {
@@ -175,8 +172,6 @@ pub async fn run_sandboxed(
     }
 
     // TODO check file descriptors
-    // TODO test everything in a docker container
-    // TODO test capabilities
 
     let mut child = cmd.spawn().expect("failed to spawn");
     let wait_result = timeout(runtime, wait_async(&mut child)).await;
@@ -189,10 +184,7 @@ pub async fn run_sandboxed(
         }
     };
 
-    match termination_result? {
-        ExitStatus::Exited(rc) => Ok(rc.into()),
-        ExitStatus::Signaled(sig, _) => Ok(128 + sig as i32),
-    }
+    Ok(child)
 }
 
 #[cfg(test)]
