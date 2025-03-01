@@ -4,11 +4,13 @@ import CodegenContext;
 import JitRunner;
 import Compiler;
 
+typedef std::string string;
 const std::string runtimeLibraryPath = "../cmake-build-debug";
 const std::string runtimeLibraryPath2 = "/app";
 
 void assemble(std::string code, std::string output) {
-    std::ofstream f(output == "-" ? "tmp.s" : output + ".s");
+    auto assembly_file = output + ".s";
+    std::ofstream f(assembly_file);
     f << code;
     f.close();
 
@@ -20,7 +22,7 @@ void assemble(std::string code, std::string output) {
     if (!runtimeLibraryPath2.empty())
         cmd += " -L" + runtimeLibraryPath2 + " -Wl,-rpath," + runtimeLibraryPath2;
     cmd += " -ljit_rt";
-    cmd += " " + output + ".s -o \"" + output + "\"";
+    cmd += " " + assembly_file + " -o \"" + output + "\"";
     // std::cerr << cmd << std::endl;
     int rc = system(cmd.c_str());
     if (rc != 0)
@@ -36,6 +38,11 @@ std::string load_file(const char *filename) {
         oss << ifs.rdbuf();
     }
     return oss.str();
+}
+
+void file_to_stdout(string filename) {
+    std::ifstream ifs(filename);
+    std::cout << ifs.rdbuf();
 }
 
 int demo_main(int argc, const char *argv[]) {
@@ -70,7 +77,13 @@ int real_main(int argc, const char *argv[]) {
 
     auto program = load_file(argv[1]);
     auto assembly = compile_string(program);
-    assemble(assembly, argv[2]);
+    std::string output = argv[2];
+    if (output == "-") {
+        assemble(assembly, "/tmp/tmp.so");
+        file_to_stdout("/tmp/tmp.so");
+    } else {
+        assemble(assembly, output);
+    }
     return 0;
 }
 

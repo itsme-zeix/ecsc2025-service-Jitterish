@@ -51,9 +51,9 @@ pub async fn run_sandboxed<P: AsRef<Path>>(
     cmd.gid(99999);
 
     // Resource limits
-    cmd.set_rlimit(RLIMIT_NOFILE, 10);
+    cmd.set_rlimit(RLIMIT_NOFILE, 32);
     cmd.set_rlimit(RLIMIT_CPU, 1);
-    cmd.set_rlimit(RLIMIT_NPROC, 3);
+    cmd.set_rlimit(RLIMIT_NPROC, 5);
     cmd.set_rlimit(RLIMIT_AS, 64 * 1024 * 1024);
     cmd.set_rlimit(RLIMIT_RSS, 64 * 1024 * 1024);
     cmd.set_rlimit(RLIMIT_NICE, 0);
@@ -65,6 +65,8 @@ pub async fn run_sandboxed<P: AsRef<Path>>(
     cmd.fakeroot_mount("/lib", "/lib", true);
     cmd.fakeroot_mount("/lib64", "/lib64", true);
     cmd.fakeroot_mount("/usr", "/usr", true);
+    cmd.fakeroot_filesystem("tmpfs", "/tmp");
+    cmd.fakeroot_filesystem("proc", "/proc");
     cmd.fakeroot_mount(compiler_path.as_path(), "/app", true);
     if let Some(data_folder) = data_folder {
         cmd.fakeroot_mount(path::absolute(data_folder)?, "/data", true);

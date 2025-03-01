@@ -102,7 +102,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // */
 
     compiler::compile("func jit_entrypoint() { return \"Hello World\"; }", "./data/output.so").await?;
-    compiler::run("./data/output.so", "./data", "jit_entrypoint", "null").await?;
+    // compiler::run("./data/output.so", "./data", "jit_entrypoint", "null").await?;
 
     Ok(())
 }

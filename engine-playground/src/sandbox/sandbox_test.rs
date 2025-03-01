@@ -48,7 +48,8 @@ async fn test_run_ls_1() {
     assert!(output.contains(" bin"));
     assert!(output.contains(" data"));
     assert!(output.contains(" proc"));
-    assert!(!output.contains(" tmp"));
+    assert!(output.contains(" tmp"));
+    assert!(!output.contains(" var"));
     assert!(!output.contains(" boot"));
 }
 
@@ -82,8 +83,8 @@ async fn test_run_ulimit() {
     // println!("{}", output);
     assert!(output.contains("memory(kbytes)       65536"));
     assert!(output.contains("vmemory(kbytes)      65536"));
-    assert!(output.contains("nofiles              10"));
-    assert!(output.contains("process              3"));
+    assert!(output.contains("nofiles              32"));
+    assert!(output.contains("process              5"));
 }
 
 #[tokio::test]
@@ -107,9 +108,9 @@ async fn test_run_mount() {
     println!("{}", output);
     assert!(output.contains("none on / type tmpfs"));
     assert!(output.contains("none on /proc type proc"));
-    assert_eq!(8, output.matches(" type ").count());
-    assert_eq!(7, output.matches("(ro,").count());
-    assert_eq!(1, output.matches("(rw,").count());
+    assert_eq!(10, output.matches(" type ").count());
+    assert_eq!(8, output.matches("(ro,").count());
+    assert_eq!(2, output.matches("(rw,").count());
 }
 
 #[tokio::test]

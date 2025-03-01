@@ -10,7 +10,7 @@ publish = false
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 # unshare = "0.7.0"
-# unshare = { path = "/home/markus/Projekte/repos/unshare" }
-unshare = { git = "https://github.com/MarkusBauer/unshare.git" }
+unshare = { path = "/home/markus/Projekte/repos/unshare" }
+# unshare = { git = "https://github.com/MarkusBauer/unshare.git" }
 nix = { version = "0.29.0", features = ["default", "fs", "mount", "resource", "signal", "user"] }
 lazy_static = "1.5.0"
