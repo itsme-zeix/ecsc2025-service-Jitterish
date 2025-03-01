@@ -5,9 +5,10 @@ import JitRunner;
 import Compiler;
 
 const std::string runtimeLibraryPath = "../cmake-build-debug";
+const std::string runtimeLibraryPath2 = "/app";
 
 void assemble(std::string code, std::string output) {
-    std::ofstream f(output + ".s");
+    std::ofstream f(output == "-" ? "tmp.s" : output + ".s");
     f << code;
     f.close();
 
@@ -16,6 +17,8 @@ void assemble(std::string code, std::string output) {
     cmd += " -fPIC -g -pie -export-dynamic";
     if (!runtimeLibraryPath.empty())
         cmd += " -L" + runtimeLibraryPath + " -Wl,-rpath," + runtimeLibraryPath;
+    if (!runtimeLibraryPath2.empty())
+        cmd += " -L" + runtimeLibraryPath2 + " -Wl,-rpath," + runtimeLibraryPath2;
     cmd += " -ljit_rt";
     cmd += " " + output + ".s -o \"" + output + "\"";
     // std::cerr << cmd << std::endl;
@@ -25,9 +28,13 @@ void assemble(std::string code, std::string output) {
 }
 
 std::string load_file(const char *filename) {
-    std::ifstream ifs(filename);
     std::ostringstream oss;
-    oss << ifs.rdbuf();
+    if (std::string(filename) == "-") {
+        oss << std::cin.rdbuf();
+    } else {
+        std::ifstream ifs(filename);
+        oss << ifs.rdbuf();
+    }
     return oss.str();
 }
 

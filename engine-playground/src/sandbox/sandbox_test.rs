@@ -5,7 +5,7 @@ async fn run_cmd(s: &str) -> Result<(i32, String), Box<dyn Error>> {
     let mut cmd = unshare::Command::new("/bin/sh");
     cmd.arg("-c").arg(s);
     cmd.stdout(unshare::Stdio::piped());
-    let mut child = run_sandboxed(&mut cmd, ".", Duration::from_millis(350)).await?;
+    let mut child = run_sandboxed(&mut cmd, Some("."), Duration::from_millis(350)).await?;
     let result = child.wait()?;
 
     let mut buffer = String::new();

@@ -4,17 +4,20 @@ use nix::libc::{RLIMIT_AS, RLIMIT_CPU, RLIMIT_NICE, RLIMIT_NOFILE, RLIMIT_NPROC,
 use nix::unistd::{getgid, getuid};
 use std::io::Read;
 use std::path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::time::timeout;
 use unshare::{ExitStatus, GidMap, Namespace, UidMap};
 
 lazy_static! {
     static ref sandbox_mutex: tokio::sync::Mutex<i32> = tokio::sync::Mutex::new(0i32);
+    pub static ref compiler_path: PathBuf =
+        path::absolute("../jit-playground/cmake-build-debug/").unwrap();
 }
 
-pub async fn run_sandboxed(
+pub async fn run_sandboxed<P: AsRef<Path>>(
     cmd: &mut unshare::Command,
-    folder: &str,
+    data_folder: Option<P>,
     runtime: Duration,
 ) -> Result<unshare::Child, Box<dyn std::error::Error>> {
     let my_uid = getuid();
@@ -62,8 +65,13 @@ pub async fn run_sandboxed(
     cmd.fakeroot_mount("/lib", "/lib", true);
     cmd.fakeroot_mount("/lib64", "/lib64", true);
     cmd.fakeroot_mount("/usr", "/usr", true);
-    cmd.fakeroot_mount(path::absolute(folder)?, "/data", true);
-    cmd.current_dir("/data");
+    cmd.fakeroot_mount(compiler_path.as_path(), "/app", true);
+    if let Some(data_folder) = data_folder {
+        cmd.fakeroot_mount(path::absolute(data_folder)?, "/data", true);
+        cmd.current_dir("/data");
+    } else {
+        cmd.current_dir("/");
+    }
 
     // TODO file descriptors should be ok
 

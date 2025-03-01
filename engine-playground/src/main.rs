@@ -1,5 +1,6 @@
 mod sandbox;
 
+use crate::sandbox::compiler;
 use crate::sandbox::sandbox::run_sandboxed;
 use std::error::Error;
 use std::time::Duration;
@@ -8,28 +9,23 @@ use unshare::Stdio;
 async fn run_simple() {
     let cmd = "ls /";
     let mut child = run_sandboxed(
-        unshare::Command::new("/usr/bin/sh").arg("-c").arg(cmd).stdout(Stdio::null()),
-        ".",
+        unshare::Command::new("/usr/bin/sh")
+            .arg("-c")
+            .arg(cmd)
+            .stdout(Stdio::null()),
+        Some("."),
         Duration::from_millis(500),
     )
-    .await.unwrap();
-    eprintln!("{} the command exited with: {}", child.pid(), child.wait().unwrap());
+    .await
+    .unwrap();
+    eprintln!(
+        "{} the command exited with: {}",
+        child.pid(),
+        child.wait().unwrap()
+    );
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    // let cmd = "id ; pwd ; ls -l ; ip link ; ls -l /proc/self/fd ; ulimit -a ; sleep 5 ; touch test.txt ; exit 2";
-    //let cmd = "id ; pwd ; ls -l . / ; mount ; ls -l /proc/self/fd ; touch test.txt ; ps -aux ; ip link ; getpcaps $$";
-    /*let cmd = "id";
-    let mut child = run_sandboxed(
-        unshare::Command::new("/usr/bin/sh").arg("-c").arg(cmd),
-        "./src/",
-        Duration::from_millis(500000),
-    )
-    .await?;
-    println!("the command exited with: {}", child.wait()?);
-    // */
-
+async fn run_mass() {
     let mut i = 0;
     loop {
         tokio::join!(
@@ -89,6 +85,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
             break;
         }
     }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    // let cmd = "id ; pwd ; ls -l ; ip link ; ls -l /proc/self/fd ; ulimit -a ; sleep 5 ; touch test.txt ; exit 2";
+    //let cmd = "id ; pwd ; ls -l . / ; mount ; ls -l /proc/self/fd ; touch test.txt ; ps -aux ; ip link ; getpcaps $$";
+    /*let cmd = "id";
+    let mut child = run_sandboxed(
+        unshare::Command::new("/usr/bin/sh").arg("-c").arg(cmd),
+        "./src/",
+        Duration::from_millis(500000),
+    )
+    .await?;
+    println!("the command exited with: {}", child.wait()?);
+    // */
+
+    compiler::compile("func jit_entrypoint() { return \"Hello World\"; }", "./data/output.so").await?;
+    compiler::run("./data/output.so", "./data", "jit_entrypoint", "null").await?;
 
     Ok(())
 }
