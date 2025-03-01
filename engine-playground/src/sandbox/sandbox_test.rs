@@ -80,13 +80,10 @@ async fn test_run_ulimit() {
     let (code, output) = run_cmd("ulimit -aH").await.unwrap();
     assert_eq!(0, code);
     // println!("{}", output);
-    /*
     assert!(output.contains("memory(kbytes)       65536"));
     assert!(output.contains("vmemory(kbytes)      65536"));
     assert!(output.contains("nofiles              10"));
     assert!(output.contains("process              3"));
-    // TODO
-     */
 }
 
 #[tokio::test]
@@ -98,7 +95,6 @@ async fn test_run_sleep() {
 
 #[tokio::test]
 async fn test_run_touch() {
-    // TODO patched
     let (code, output) = run_cmd("touch test.txt").await.unwrap();
     assert_eq!(1, code);
     assert_eq!("", output); // 0-2 + header line
@@ -109,12 +105,11 @@ async fn test_run_mount() {
     let (code, output) = run_cmd("mount").await.unwrap();
     assert_eq!(0, code);
     println!("{}", output);
-    // TODO
-    /*assert!(output.contains("none on / type tmpfs"));
+    assert!(output.contains("none on / type tmpfs"));
     assert!(output.contains("none on /proc type proc"));
-    assert_eq!(9, output.matches(" type ").count());
+    assert_eq!(8, output.matches(" type ").count());
     assert_eq!(7, output.matches("(ro,").count());
-    assert_eq!(2, output.matches("(rw,").count());*/
+    assert_eq!(1, output.matches("(rw,").count());
 }
 
 #[tokio::test]

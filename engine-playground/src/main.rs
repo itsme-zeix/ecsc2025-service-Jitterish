@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // */
 
     let mut i = 0;
-    while true {
+    loop {
         tokio::join!(
             run_simple(),
             run_simple(),
@@ -85,6 +85,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         i += 1;
         println!("completed {}", i);
         // tokio::time::sleep(Duration::from_millis(200)).await;
+        if i > 2000 {
+            break;
+        }
     }
 
     Ok(())
