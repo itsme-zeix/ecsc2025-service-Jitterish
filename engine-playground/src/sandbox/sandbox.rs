@@ -1,111 +1,170 @@
 use crate::sandbox::async_unshare::wait_async;
-use nix::mount::{mount, umount2, MntFlags, MsFlags};
+use lazy_static::lazy_static;
+use nix::libc;
+use nix::libc::{MS_BIND, MS_PRIVATE, MS_RDONLY, MS_REC, MS_REMOUNT};
+use nix::mount::{mount, MsFlags};
 use nix::sys::resource::{setrlimit, Resource};
-use nix::unistd::{chdir, chroot, getgid, getuid, pivot_root, Uid};
-use std::io::{ErrorKind, Read};
-use std::path::Path;
+use nix::unistd::{getgid, getuid, Uid};
+use std::ffi::{c_char, c_int, c_void};
+use std::io::Read;
 use std::time::Duration;
 use std::{fs, io, path};
 use tokio::time::timeout;
 use unshare::{ExitStatus, GidMap, Namespace, UidMap};
 
-fn sandbox_mount(uid: Uid, data_folder: &str) -> Result<(), io::Error> {
-    let destdir = format!("/run/user/{}/sandbox_root", uid);
-    fs::create_dir_all(destdir.as_str()).expect("failed to create sandbox root dir");
+extern "C" {
+    pub fn pivot_root(new_root: *const c_char, put_old: *const c_char) -> c_int;
+}
 
-    // keep all mount changes private
+unsafe fn mount_dir_p1(dst: *const u8, src: *const u8) {
+    libc::mkdir(dst as *const c_char, 0o777);
+    if libc::mount(
+        src as *const c_char,
+        dst as *const c_char,
+        0 as *const c_char,
+        MS_PRIVATE | MS_REC | MS_BIND,
+        0 as *const c_void,
+    ) < 0
+    {
+        panic!("failed to mount directory");
+    }
+}
+
+unsafe fn remount_dir(dir: *const u8) {
+    if libc::mount(
+        dir as *const c_char,
+        dir as *const c_char,
+        0 as *const c_char,
+        MS_REMOUNT | MS_BIND | MS_RDONLY,
+        0 as *const c_void,
+    ) < 0
+    {
+        panic!("failed to remount directory");
+    }
+}
+
+fn mount_device(dst: &str, src: &str) {
+    fs::create_dir_all("/dev/shm/sandbox_root/dev").expect("failed to create dir in sandbox");
+    fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(dst)
+        .unwrap();
     mount::<str, str, str, str>(
-        Some("/"),
-        "/",
+        Some(src),
+        dst,
         None,
-        MsFlags::MS_PRIVATE | MsFlags::MS_REC,
+        MsFlags::MS_PRIVATE | MsFlags::MS_REC | MsFlags::MS_BIND,
         None,
     )
-    .map_err(|e| io::Error::new(ErrorKind::Other, format!("mount #1 {}", e).as_str()))?;
+        .expect("cannot mount device");
+}
 
-    // root filesystem
-    mount::<str, str, str, str>(
-        None,
-        destdir.as_str(),
-        Some("tmpfs"),
-        MsFlags::empty(),
-        None,
-    )
-    .map_err(|e| io::Error::new(ErrorKind::Other, format!("mount #2 {}", e).as_str()))?;
+fn sandbox_mount(uid: Uid, data_folder: *const u8) -> nix::Result<()> {
+    unsafe {
+        // keep all mount changes private
+        libc::mkdir(b"/dev/shm/sandbox_root\0".as_ptr() as *const c_char, 0o777);
+        if libc::mount(
+            b"/\0".as_ptr() as *const c_char,
+            b"/\0".as_ptr() as *const c_char,
+            0 as *const c_char,
+            MS_PRIVATE | MS_REC,
+            0 as *const libc::c_void,
+        ) < 0
+        {
+            panic!("mount 1 failed");
+        }
 
-    // read-only access limited to some folders
-    for d in ["/bin", "/etc", "/lib", "/lib64", "/usr"] {
-        let mountpoint = format!("{}{}", destdir.as_str(), d);
-        fs::create_dir_all(mountpoint.as_str()).expect("failed to create dir in sandbox");
-        mount::<str, str, str, str>(
-            Some(d),
-            mountpoint.as_str(),
-            Some(""),
-            MsFlags::MS_PRIVATE | MsFlags::MS_REC | MsFlags::MS_BIND,
-            Some(""),
-        )?;
-    }
-    // access limited to some devices
-    for f in ["/dev/urandom"] {
-        let mountpoint = format!("{}{}", destdir.as_str(), f);
-        let path = Path::new(mountpoint.as_str());
-        fs::create_dir_all(path.parent().unwrap()).expect("failed to create dir in sandbox");
-        fs::OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(path)
-            .unwrap();
-        mount::<str, str, str, str>(
-            Some(f),
-            mountpoint.as_str(),
-            None,
-            MsFlags::MS_PRIVATE | MsFlags::MS_REC | MsFlags::MS_BIND,
-            None,
-        )?;
-    }
+        // root filesystem
+        if libc::mount(
+            0 as *const c_char,
+            b"/dev/shm/sandbox_root\0".as_ptr() as *const c_char,
+            b"tmpfs\0".as_ptr() as *const c_char,
+            0,
+            0 as *const libc::c_void,
+        ) < 0
+        {
+            panic!("mount 2 failed");
+        }
 
-    // mount new /proc (not in docker)
-    let mountpoint = format!("{}{}", destdir.as_str(), "/proc");
-    fs::create_dir_all(mountpoint.as_str()).expect("failed to create dir in sandbox");
-    let _ = mount::<str, str, str, str>(
-        None,
-        mountpoint.as_str(),
-        Some("proc"),
-        MsFlags::empty(),
-        None,
-    );
+        // read-only access limited to some folders
+        mount_dir_p1(b"/dev/shm/sandbox_root/bin\0".as_ptr(), b"/bin\0".as_ptr());
+        mount_dir_p1(b"/dev/shm/sandbox_root/etc\0".as_ptr(), b"/etc\0".as_ptr());
+        mount_dir_p1(b"/dev/shm/sandbox_root/lib\0".as_ptr(), b"/lib\0".as_ptr());
+        mount_dir_p1(
+            b"/dev/shm/sandbox_root/lib64\0".as_ptr(),
+            b"/lib64\0".as_ptr(),
+        );
+        mount_dir_p1(b"/dev/shm/sandbox_root/usr\0".as_ptr(), b"/usr\0".as_ptr());
 
-    // mount data
-    let mountpoint = format!("{}{}", destdir.as_str(), "/data");
-    fs::create_dir_all(mountpoint.as_str()).expect("failed to create dir in sandbox");
-    mount::<str, str, str, str>(
-        Some(data_folder),
-        mountpoint.as_str(),
-        None,
-        MsFlags::MS_PRIVATE | MsFlags::MS_REC | MsFlags::MS_BIND | MsFlags::MS_RDONLY,
-        None,
-    )?;
+        // access limited to some devices
+        // mount_device("/dev/shm/sandbox_root/dev/urandom", "/dev/urandom");
+        /*for f in ["/dev/urandom"] {
+            let mountpoint = format!("{}{}", destdir, f);
+            let path = Path::new(mountpoint.as_str());
+            fs::create_dir_all(path.parent().unwrap()).expect("failed to create dir in sandbox");
+            fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .open(path)
+                .unwrap();
+            mount::<str, str, str, str>(
+                Some(f),
+                mountpoint.as_str(),
+                None,
+                MsFlags::MS_PRIVATE | MsFlags::MS_REC | MsFlags::MS_BIND,
+                None,
+            )?;
+        }*/
 
-    // chroot jail (try pivot_root first)
-    pivot_root(destdir.as_str(), destdir.as_str())
-        .and_then(|_| umount2("/", MntFlags::MNT_DETACH))
-        .or_else(|_| {
-            // fallback for docker containers with seccomp enabled
-            chdir(destdir.as_str())?;
-            mount::<str, str, str, str>(Some("."), "/", None, MsFlags::MS_MOVE, None)?;
-            chroot(".")
-        })?;
-    chdir("/data")?;
+        // mount new /proc (not in docker)
+        libc::mkdir(
+            b"/dev/shm/sandbox_root/proc\0".as_ptr() as *const c_char,
+            0o777,
+        );
+        libc::mount(
+            0 as *const c_char,
+            b"/dev/shm/sandbox_root/proc\0".as_ptr() as *const c_char,
+            b"proc\0".as_ptr() as *const c_char,
+            0,
+            0 as *const c_void,
+        );
 
-    // make things actually read-only
-    for d in ["/", "/bin", "/etc", "/lib", "/lib64", "/usr", "/data"] {
-        mount::<str, str, str, str>(
-            Some(d),
-            d,
-            None,
-            MsFlags::MS_REMOUNT | MsFlags::MS_BIND | MsFlags::MS_RDONLY,
-            None,
-        )?;
+        // mount data
+        mount_dir_p1(
+            b"/dev/shm/sandbox_root/data\0".as_ptr(),
+            data_folder,
+        );
+
+        // chroot jail (try pivot_root first, use classic chroot if not available)
+        if pivot_root(
+            b"/dev/shm/sandbox_root\0".as_ptr() as *const c_char,
+            b"/dev/shm/sandbox_root\0".as_ptr() as *const c_char,
+        ) < 0
+        {
+            libc::chdir(b"/dev/shm/sandbox_root\0".as_ptr() as *const c_char);
+            libc::mount(
+                b".\0".as_ptr() as *const c_char,
+                b"/\0".as_ptr() as *const c_char,
+                0 as *const c_char,
+                0,
+                0 as *const libc::c_void,
+            );
+            if libc::chroot(b".\0".as_ptr() as *const c_char) < 0 {
+                panic!("chroot failed");
+            }
+        }
+
+        libc::chdir(b"/data\0".as_ptr() as *const c_char);
+
+        // make things actually read-only
+        remount_dir(b"/\0".as_ptr());
+        remount_dir(b"/bin\0".as_ptr());
+        remount_dir(b"/etc\0".as_ptr());
+        remount_dir(b"/lib\0".as_ptr());
+        remount_dir(b"/lib64\0".as_ptr());
+        remount_dir(b"/usr\0".as_ptr());
+        remount_dir(b"/data\0".as_ptr());
     }
 
     Ok(())
@@ -119,6 +178,10 @@ fn sandbox_rlimit() -> nix::Result<()> {
     setrlimit(Resource::RLIMIT_RSS, 64 * 1024 * 1024, 64 * 1024 * 1024)?;
     setrlimit(Resource::RLIMIT_NICE, 0, 0)?;
     Ok(())
+}
+
+lazy_static! {
+    static ref sandbox_mutex: tokio::sync::Mutex<i32> = tokio::sync::Mutex::new(0i32);
 }
 
 pub async fn run_sandboxed(
@@ -145,44 +208,40 @@ pub async fn run_sandboxed(
             outside_uid: my_uid.into(),
             count: 1,
         }]
-        .into(),
+            .into(),
         [GidMap {
             inside_gid: 99999,
             outside_gid: my_gid.into(),
             count: 1,
         }]
-        .into(),
+            .into(),
     );
     cmd.uid(0);
     cmd.gid(99999);
 
-    // Filesystem and resource limits
-    let folder = path::absolute(folder)?;
-    let pre_exec = move || {
-        sandbox_mount(my_uid, folder.to_str().unwrap()).map_err(|e| {
-            eprintln!("sandbox_mount error: {}", e);
-            e
-        })?;
-        sandbox_rlimit()?;
+    // TODO file descriptors should be ok
 
-        Ok(())
-    };
+    // Filesystem and resource limits
+    let abs_folder = path::absolute(folder)?;
     unsafe {
-        cmd.pre_exec(pre_exec);
+        cmd.pre_exec(move || {
+            sandbox_mount(my_uid, abs_folder.to_str().unwrap().as_ptr()).expect("cannot mount things");
+            sandbox_rlimit().expect("cannot rlimit");
+
+            Ok(())
+        });
     }
 
-    // TODO check file descriptors
-
+    let guard = sandbox_mutex.lock().await;
     let mut child = cmd.spawn().expect("failed to spawn");
-    let wait_result = timeout(runtime, wait_async(&mut child)).await;
+    drop(guard);
 
-    let termination_result = match wait_result {
-        Ok(x) => x,
-        Err(_) => {
-            child.kill()?;
-            wait_async(&mut child).await
-        }
-    };
+    let wait_result = timeout(runtime, wait_async(&mut child)).await;
+    if let Err(_) = wait_result {
+        // timeout
+        child.kill()?;
+        wait_async(&mut child).await?;
+    }
 
     Ok(child)
 }
