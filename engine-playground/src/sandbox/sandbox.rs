@@ -2,12 +2,11 @@ use crate::sandbox::async_unshare::wait_async;
 use lazy_static::lazy_static;
 use nix::libc::{RLIMIT_AS, RLIMIT_CPU, RLIMIT_NICE, RLIMIT_NOFILE, RLIMIT_NPROC, RLIMIT_RSS};
 use nix::unistd::{getgid, getuid};
-use std::io::Read;
 use std::path;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::time::timeout;
-use unshare::{ExitStatus, GidMap, Namespace, UidMap};
+use unshare::{GidMap, Namespace, UidMap};
 
 lazy_static! {
     static ref sandbox_mutex: tokio::sync::Mutex<i32> = tokio::sync::Mutex::new(0i32);
@@ -17,6 +16,7 @@ lazy_static! {
 
 pub async fn run_sandboxed<P: AsRef<Path>>(
     cmd: &mut unshare::Command,
+    executable: Option<P>,
     data_folder: Option<P>,
     runtime: Duration,
 ) -> Result<unshare::Child, Box<dyn std::error::Error>> {
@@ -67,12 +67,15 @@ pub async fn run_sandboxed<P: AsRef<Path>>(
     cmd.fakeroot_mount("/usr", "/usr", true);
     cmd.fakeroot_filesystem("tmpfs", "/tmp");
     cmd.fakeroot_filesystem("proc", "/proc");
-    cmd.fakeroot_mount(compiler_path.as_path(), "/app", true);
+    cmd.fakeroot_mount(compiler_path.as_path(), "/app/compiler", true);
     if let Some(data_folder) = data_folder {
         cmd.fakeroot_mount(path::absolute(data_folder)?, "/data", true);
         cmd.current_dir("/data");
     } else {
         cmd.current_dir("/");
+    }
+    if let Some(executable) = executable {
+        cmd.fakeroot_mount_file(path::absolute(executable)?, "/app/executable", true);
     }
 
     // TODO file descriptors should be ok

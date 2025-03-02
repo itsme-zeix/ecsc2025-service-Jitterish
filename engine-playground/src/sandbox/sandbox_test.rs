@@ -1,11 +1,18 @@
 use super::*;
 use std::error::Error;
+use std::io::Read;
+use unshare::ExitStatus;
 
-async fn run_cmd(s: &str) -> Result<(i32, String), Box<dyn Error>> {
+async fn run_cmd_with_params(
+    s: &str,
+    executable: Option<&str>,
+    data_dir: Option<&str>,
+) -> Result<(i32, String), Box<dyn Error>> {
     let mut cmd = unshare::Command::new("/bin/sh");
     cmd.arg("-c").arg(s);
     cmd.stdout(unshare::Stdio::piped());
-    let mut child = run_sandboxed(&mut cmd, Some("."), Duration::from_millis(350)).await?;
+    let mut child =
+        run_sandboxed(&mut cmd, executable, data_dir, Duration::from_millis(350)).await?;
     let result = child.wait()?;
 
     let mut buffer = String::new();
@@ -15,6 +22,10 @@ async fn run_cmd(s: &str) -> Result<(i32, String), Box<dyn Error>> {
         ExitStatus::Exited(rc) => Ok((rc.into(), buffer)),
         ExitStatus::Signaled(sig, _) => Ok((128 + sig as i32, buffer)),
     }
+}
+
+async fn run_cmd(s: &str) -> Result<(i32, String), Box<dyn Error>> {
+    run_cmd_with_params(s, None, Some(".")).await
 }
 
 #[tokio::test]
@@ -49,6 +60,7 @@ async fn test_run_ls_1() {
     assert!(output.contains(" data"));
     assert!(output.contains(" proc"));
     assert!(output.contains(" tmp"));
+    assert!(!output.contains(" srv"));
     assert!(!output.contains(" var"));
     assert!(!output.contains(" boot"));
 }
@@ -125,4 +137,14 @@ async fn test_run_getpcaps() {
     let (code, output) = run_cmd("getpcaps $$").await.unwrap();
     assert_eq!(0, code);
     assert_eq!("1: =ep\n", output); // 0-2 + header line
+}
+
+#[tokio::test]
+async fn test_run_executable() {
+    let (code, output) = run_cmd_with_params("/app/executable", Some("/usr/bin/id"), None).await.unwrap();
+    assert_eq!(0, code);
+    assert_eq!(
+        "uid=0(root) gid=99999 Gruppen=99999,65534(nogroup)\n",
+        output
+    );
 }

@@ -1,13 +1,13 @@
-use crate::sandbox::sandbox::{compiler_path, run_sandboxed};
+use crate::sandbox::sandbox::run_sandboxed;
 use nix::sys::memfd::{memfd_create, MemFdCreateFlag};
+use nix::unistd::{lseek, write, Whence};
 use std::error::Error;
-use std::ffi::{CStr, CString};
-use std::fs::File;
+use std::ffi::CString;
+use std::fs::OpenOptions;
 use std::os::fd::{AsFd, AsRawFd};
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::time::Duration;
-use nix::unistd::{lseek, write, Whence};
-use unshare::Stdio::Fd;
 use unshare::{Command, ExitStatus, Stdio};
 
 fn check_exit_status(status: ExitStatus) -> Result<(), Box<dyn Error>> {
@@ -19,7 +19,7 @@ fn check_exit_status(status: ExitStatus) -> Result<(), Box<dyn Error>> {
 }
 
 pub async fn compile<P: AsRef<Path>>(code: &str, output: P) -> Result<(), Box<dyn Error>> {
-    let mut cmd = Command::new("/app/jit_playground");
+    let mut cmd = Command::new("/app/compiler/jit_playground");
     cmd.arg("-").arg("-");
 
     // program code to stdin
@@ -32,9 +32,9 @@ pub async fn compile<P: AsRef<Path>>(code: &str, output: P) -> Result<(), Box<dy
     cmd.stdin(Stdio::from_file(memfd));
 
     // output file to stdout
-    cmd.stdout(Stdio::from_file(File::create(output)?));
+    cmd.stdout(Stdio::from_file(OpenOptions::new().mode(0o755).create(true).write(true).open(output)?));
 
-    let mut child = run_sandboxed::<&str>(&mut cmd, None, Duration::from_millis(1000)).await?;
+    let mut child = run_sandboxed::<&str>(&mut cmd, None, None, Duration::from_millis(1000)).await?;
     check_exit_status(child.wait()?)
 }
 
@@ -46,13 +46,16 @@ pub async fn run<P: AsRef<Path>>(
 ) -> Result<(), Box<dyn Error>> {
     // TODO output file descriptor / connection etc
 
-    let mut cmd = Command::new(binary.as_ref().as_os_str());
+    let mut cmd = Command::new("/app/executable");
     cmd.arg(query).arg(param);
-
-    // stdin
     cmd.stdin(Stdio::null());
-    // TODO stdout
 
-    let mut child = run_sandboxed(&mut cmd, Some(directory), Duration::from_millis(250)).await?;
+    let mut child = run_sandboxed(
+        &mut cmd,
+        Some(binary),
+        Some(directory),
+        Duration::from_millis(250),
+    )
+    .await?;
     check_exit_status(child.wait()?)
 }

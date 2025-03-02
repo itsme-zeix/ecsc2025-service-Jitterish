@@ -13,6 +13,7 @@ async fn run_simple() {
             .arg("-c")
             .arg(cmd)
             .stdout(Stdio::null()),
+        None,
         Some("."),
         Duration::from_millis(500),
     )
@@ -102,7 +103,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // */
 
     compiler::compile("func jit_entrypoint() { return \"Hello World\"; }", "./data/output.so").await?;
-    // compiler::run("./data/output.so", "./data", "jit_entrypoint", "null").await?;
+    compiler::run("./data/output.so", "./data", "jit_entrypoint", "null").await?;
 
     Ok(())
 }

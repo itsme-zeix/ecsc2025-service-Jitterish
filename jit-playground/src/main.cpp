@@ -1,14 +1,18 @@
 #include <iostream>
+#include <filesystem>
 
 import CodegenContext;
 import JitRunner;
 import Compiler;
 
-typedef std::string string;
-const std::string runtimeLibraryPath = "../cmake-build-debug";
-const std::string runtimeLibraryPath2 = "/app";
+
+std::string runtime_library_path() {
+    return std::filesystem::absolute(program_invocation_name).parent_path().string();
+}
 
 void assemble(std::string code, std::string output) {
+    auto runtime_path = runtime_library_path();
+
     auto assembly_file = output + ".s";
     std::ofstream f(assembly_file);
     f << code;
@@ -17,10 +21,7 @@ void assemble(std::string code, std::string output) {
     // or: clang-18 -fuse-ld=lld
     std::string cmd = "gcc";
     cmd += " -fPIC -g -pie -export-dynamic";
-    if (!runtimeLibraryPath.empty())
-        cmd += " -L" + runtimeLibraryPath + " -Wl,-rpath," + runtimeLibraryPath;
-    if (!runtimeLibraryPath2.empty())
-        cmd += " -L" + runtimeLibraryPath2 + " -Wl,-rpath," + runtimeLibraryPath2;
+    cmd += " -L" + runtime_path + " -Wl,-rpath," + runtime_path;
     cmd += " -ljit_rt";
     cmd += " " + assembly_file + " -o \"" + output + "\"";
     // std::cerr << cmd << std::endl;
@@ -40,7 +41,7 @@ std::string load_file(const char *filename) {
     return oss.str();
 }
 
-void file_to_stdout(string filename) {
+void file_to_stdout(std::string filename) {
     std::ifstream ifs(filename);
     std::cout << ifs.rdbuf();
 }
