@@ -6,6 +6,25 @@ use std::error::Error;
 use std::time::Duration;
 use unshare::Stdio;
 
+use tokio::net::{TcpListener, TcpStream};
+use tokio::io::AsyncWriteExt;
+
+async fn frontend_connection(mut socket: TcpStream) -> std::io::Result<()>{
+    println!("Writing to socket");
+    socket.write_all("Hello\n".as_bytes()).await?;
+    //println!("Write result: {:?}", res);
+    Ok(())
+}
+
+async fn frontend_listener() -> std::io::Result<()>{
+    let listener = TcpListener::bind("127.0.0.1:9999").await?;
+
+    loop {
+        let (mut socket, _addr) = listener.accept().await?;
+        tokio::spawn(frontend_connection(socket));
+    }
+}
+
 async fn run_simple() {
     let cmd = "ls /";
     let mut child = run_sandboxed(
@@ -101,7 +120,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .await?;
     println!("the command exited with: {}", child.wait()?);
     // */
-
+    frontend_listener().await?;
     compiler::compile("func jit_entrypoint() { return \"Hello World\"; }", "./data/output.so").await?;
     compiler::run("./data/output.so", "./data", "jit_entrypoint", "null").await?;
 
