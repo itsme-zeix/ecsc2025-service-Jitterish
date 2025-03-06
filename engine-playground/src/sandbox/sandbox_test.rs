@@ -12,7 +12,7 @@ async fn run_cmd_with_params(
     cmd.arg("-c").arg(s);
     cmd.stdout(unshare::Stdio::piped());
     let mut child =
-        run_sandboxed(&mut cmd, executable, data_dir, Duration::from_millis(350)).await?;
+        run_sandboxed(&mut cmd, executable, data_dir, Duration::from_millis(350), 64).await?;
     let result = child.wait()?;
 
     let mut buffer = String::new();

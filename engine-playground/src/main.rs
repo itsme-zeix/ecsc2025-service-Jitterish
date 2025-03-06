@@ -17,7 +17,7 @@ async fn frontend_connection(mut socket: TcpStream) -> std::io::Result<()>{
 }
 
 async fn frontend_listener() -> std::io::Result<()>{
-    let listener = TcpListener::bind("127.0.0.1:9999").await?;
+    let listener = TcpListener::bind("0.0.0.0:9999").await?;
 
     loop {
         let (mut socket, _addr) = listener.accept().await?;
@@ -35,6 +35,7 @@ async fn run_simple() {
         None,
         Some("."),
         Duration::from_millis(500),
+        64,
     )
     .await
     .unwrap();
@@ -121,8 +122,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("the command exited with: {}", child.wait()?);
     // */
     frontend_listener().await?;
-    compiler::compile("func jit_entrypoint() { return \"Hello World\"; }", "./data/output.so").await?;
-    compiler::run("./data/output.so", "./data", "jit_entrypoint", "null").await?;
+    // compiler::compile("func jit_entrypoint() { return \"Hello World\"; }", "./data/output.so").await?;
+    // compiler::run("./data/output.so", "./data", "jit_entrypoint", "null").await?;
 
     Ok(())
 }

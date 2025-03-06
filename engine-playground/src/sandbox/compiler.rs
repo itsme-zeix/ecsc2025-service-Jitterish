@@ -34,7 +34,7 @@ pub async fn compile<P: AsRef<Path>>(code: &str, output: P) -> Result<(), Box<dy
     // output file to stdout
     cmd.stdout(Stdio::from_file(OpenOptions::new().mode(0o755).create(true).write(true).open(output)?));
 
-    let mut child = run_sandboxed::<&str>(&mut cmd, None, None, Duration::from_millis(1000)).await?;
+    let mut child = run_sandboxed::<&str>(&mut cmd, None, None, Duration::from_millis(1000), 384).await?;
     check_exit_status(child.wait()?)
 }
 
@@ -55,6 +55,7 @@ pub async fn run<P: AsRef<Path>>(
         Some(binary),
         Some(directory),
         Duration::from_millis(250),
+        32,
     )
     .await?;
     check_exit_status(child.wait()?)

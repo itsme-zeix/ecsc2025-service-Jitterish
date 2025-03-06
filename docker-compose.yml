@@ -1,0 +1,13 @@
+services:
+  # TODO Still WIP, just here to prove that things will run in docker just fine.
+  engine:
+    build: .
+    volumes:
+      - ./data:/app/engine/data
+    ports:
+      - "9999:9999"
+    # restart: unless-stopped
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor=unconfined

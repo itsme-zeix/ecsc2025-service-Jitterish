@@ -1,0 +1,5 @@
+cmake-build-*
+target
+/engine-playground/target
+.idea
+data
