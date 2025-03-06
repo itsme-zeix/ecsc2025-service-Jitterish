@@ -19,15 +19,15 @@ void assemble(std::string code, std::string output) {
     f.close();
 
     // or: clang-18 -fuse-ld=lld
-    std::string cmd = "gcc";
-    cmd += " -fPIC -g -pie -export-dynamic";
+    std::string cmd = "cc";
+    cmd += " -fPIC -g -pie -Wl,-export-dynamic";
     cmd += " -L" + runtime_path + " -Wl,-rpath," + runtime_path;
     cmd += " -ljit_rt";
     cmd += " " + assembly_file + " -o \"" + output + "\"";
     // std::cerr << cmd << std::endl;
     int rc = system(cmd.c_str());
     if (rc != 0)
-        throw std::runtime_error("gcc failed");
+        throw std::runtime_error("cc failed");
 }
 
 std::string load_file(const char *filename) {
