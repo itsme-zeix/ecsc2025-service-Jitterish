@@ -50,5 +50,6 @@ COPY --from=builder-cpp /output/* /app/compiler/
 COPY --from=builder-rust /output/* /app/engine/
 
 WORKDIR /app/engine
+STOPSIGNAL SIGINT
 
 CMD ["/app/engine/engine-playground"]

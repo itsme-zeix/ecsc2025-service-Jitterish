@@ -8,102 +8,29 @@ use unshare::Stdio;
 
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::AsyncWriteExt;
+use tokio::{select, signal};
+use tokio::signal::unix::SignalKind;
+use tokio_util::sync::CancellationToken;
 
 async fn frontend_connection(mut socket: TcpStream) -> std::io::Result<()>{
     println!("Writing to socket");
     socket.write_all("Hello\n".as_bytes()).await?;
     //println!("Write result: {:?}", res);
+    socket.shutdown().await?;
     Ok(())
 }
 
-async fn frontend_listener() -> std::io::Result<()>{
+async fn frontend_listener(cancel: CancellationToken) -> std::io::Result<()>{
     let listener = TcpListener::bind("0.0.0.0:9999").await?;
 
     loop {
-        let (mut socket, _addr) = listener.accept().await?;
-        tokio::spawn(frontend_connection(socket));
-    }
-}
-
-async fn run_simple() {
-    let cmd = "ls /";
-    let mut child = run_sandboxed(
-        unshare::Command::new("/usr/bin/sh")
-            .arg("-c")
-            .arg(cmd)
-            .stdout(Stdio::null()),
-        None,
-        Some("."),
-        Duration::from_millis(500),
-        64,
-    )
-    .await
-    .unwrap();
-    eprintln!(
-        "{} the command exited with: {}",
-        child.pid(),
-        child.wait().unwrap()
-    );
-}
-
-async fn run_mass() {
-    let mut i = 0;
-    loop {
-        tokio::join!(
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-            run_simple(),
-        );
-        i += 1;
-        println!("completed {}", i);
-        // tokio::time::sleep(Duration::from_millis(200)).await;
-        if i > 2000 {
-            break;
+        select! {
+            Ok((mut socket, _addr)) = listener.accept() => {
+                tokio::spawn(frontend_connection(socket));
+            }
+            _ = cancel.cancelled() => {
+                return Ok(());
+            }
         }
     }
 }
@@ -121,7 +48,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .await?;
     println!("the command exited with: {}", child.wait()?);
     // */
-    frontend_listener().await?;
+
+    let token = CancellationToken::new();
+    let handle = tokio::spawn(frontend_listener(token.clone()));
+    signal::ctrl_c().await?;
+    eprintln!("Shutting down...");
+    token.cancel();
+    handle.await?.expect("TODO");
+    eprintln!("Server terminated.");
+
     // compiler::compile("func jit_entrypoint() { return \"Hello World\"; }", "./data/output.so").await?;
     // compiler::run("./data/output.so", "./data", "jit_entrypoint", "null").await?;
 
