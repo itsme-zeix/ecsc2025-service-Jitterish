@@ -3,6 +3,7 @@
    <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width" />
+      <script type="text/javascript" src="static/js/test.js"></script>
       <title>Rocket: Session Example</title>
    </head>
    <body>
@@ -11,7 +12,8 @@
       <form action="/session/logout" method="post" accept-charset="utf-8">
          <input type="submit" name="logout" id="logout" value="logout" />
       </form>
-
+      <br>
+     <button onclick="submitToDb()">db</button> 
       <a href="/">Home</a>
    </body>
 </html>

@@ -4,6 +4,10 @@ use rocket::response::{Redirect, Flash};
 use rocket::http::{CookieJar, Status};
 use rocket::form::Form;
 
+use crate::dbconnector::connect_to_backend;
+
+use std::error::Error;
+
 use rocket_dyn_templates::{Template, context};
 
 #[derive(FromForm)]
@@ -57,6 +61,12 @@ fn no_auth_index() -> Redirect {
 }
 
 // if we are registered (that is, we have a user), redirect to index instead
+#[get("/db")]
+async fn db(_user: User) {
+    connect_to_backend().await;
+}
+
+// if we are registered (that is, we have a user), redirect to index instead
 #[get("/register")]
 fn register(_user: User) -> Redirect {
     Redirect::to(uri!(index))
@@ -102,5 +112,5 @@ fn logout(jar: &CookieJar<'_>) -> Flash<Redirect> {
 }
 
 pub fn routes() -> Vec<rocket::Route> {
-    routes![index, no_auth_index, login, login_page, post_login, logout, register, register_page, post_register]
+    routes![index, no_auth_index, login, login_page, post_login, logout, register, register_page, post_register, db]
 }

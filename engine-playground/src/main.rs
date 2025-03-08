@@ -4,16 +4,26 @@ use crate::sandbox::compiler;
 use crate::sandbox::sandbox::run_sandboxed;
 use std::error::Error;
 use std::time::Duration;
+use std::str;
 use unshare::Stdio;
 
 use tokio::net::{TcpListener, TcpStream};
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWriteExt,AsyncReadExt};
 use tokio::{select, signal};
 use tokio::signal::unix::SignalKind;
 use tokio_util::sync::CancellationToken;
 
 async fn frontend_connection(mut socket: TcpStream) -> std::io::Result<()>{
     println!("Writing to socket");
+    let mut buf = vec![0; 1024];
+    let n = socket
+        .read(&mut buf)
+        .await?;
+    let s = match str::from_utf8(buf.as_slice()) {
+        Ok(v) => v,
+        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+    };
+    println!("result: {}", s);
     socket.write_all("Hello\n".as_bytes()).await?;
     //println!("Write result: {:?}", res);
     socket.shutdown().await?;
