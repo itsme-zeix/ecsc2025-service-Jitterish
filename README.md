@@ -219,7 +219,7 @@ Please note that there are cross-dependencies between the components. E.g., the 
     init: {
         'themeCSS': 'rect[id^=mkb_].task { fill: #c1e0ea; } rect[id^=singlechar_].task { fill: #fffe95; } rect[id^=both_].task { fill: #c1df89; } rect[class*=active] { stroke-width: 3; } rect[class*=milestone] { fill: #f99e8a; } rect[class*=done] { stroke: #888 !important; } text[class*=doneText] { fill: #888 !important; } text[class*=activeText] { animation: blinker 1s linear infinite; font-weight: bold } @keyframes blinker { 50% { opacity: 0.2; } } text[class*=critText]:not([class*=milestoneText], [class*=doneText]) { fill: #fff !important; } text { fill: #222 !important; } .titleText { font-size: 1.5em; }',
         'gantt': {
-            'leftPadding': 100,
+            'leftPadding': 200,
             'rightPadding': 100
         },
         'theme': 'neutral'
@@ -233,25 +233,25 @@ gantt
     weekday monday
     todayMarker on
     section WP 1 JIT
-        WP 1.1 JIT Prototype                        :active, mkb_wp11, after start, 7d
-        WP 1.2 JIT Vulnerabilities                  :active, mkb_wp12, after mkb_wp11, 14d
+        WP 1.1 JIT Prototype                        :active, mkb_wp11, after start, 21d
+        WP 1.2 JIT Vulnerabilities                  :mkb_wp12, after mkb_wp11, 14d
         Fixing JIT                                  :crit, after ctftest, until end
     section WP 2 Database Engine
-        WP 2.1 Database Prototype                   :singlechar_wp21, after mkb_wp11, 14d
-        WP 2.2 Database Isolation                   :active, singlechar_wp22, after singlechar_wp21, 14d
-        WP 2.3 Database Vulnerability               :singlechar_wp23, after both_wp31, 21d
+        WP 2.1 Database Prototype                   :mkb_wp21, after mkb_wp11, 14d
+        WP 2.2 Database Isolation                   :mkb_wp22, after mkb_wp21, 14d
+        WP 2.3 Database Vulnerability               :mkb_wp23, after singlechar_wp31, 14d
         Fixing WP 2                                 :crit, after ctftest, until end
     section WP 3 Frontend
-        WP 3.1 Frontend Prototype                   :active, both_wp31, after mkb_wp13 singlechar_wp22, 14d
-        WP 3.2 Web Flagstore                        :both_wp32, after singlechar_wp14, 28d
+        WP 3.1 Frontend Prototype                   :active, singlechar_wp31, after start, 14d
+        WP 3.2 Web Flagstore                        :singlechar_wp32, after singlechar_wp14, 28d
         Fixing WP 3                                 :crit, after ctftest, until end
     section WP 4 Checker
-        WP 4.1 User Registration                    :both_wp41, after mkb_wp13 singlechar_wp22, 14d
-        WP 4.2 Database Noise                       :both_wp42, after mkb_wp13 singlechar_wp22, 14d
-        WP 4.3 Flagstore 1 retrieval                :both_wp43, after mkb_wp13 singlechar_wp22, 14d
-        WP 4.4 Flagstore 2 retrieval                :both_wp44, after mkb_wp13 singlechar_wp22, 14d
-        WP 4.5 Flagstore 3 retrieval                :both_wp45, after mkb_wp13 singlechar_wp22, 14d
-        WP 4.6 Exploits                             :both_wp46, after mkb_wp13 singlechar_wp22, 14d
+        WP 4.1 User Registration                    :both_wp41, after mkb_wp13 mkb_wp22, 14d
+        WP 4.2 Database Noise                       :both_wp42, after both_wp41, 14d
+        WP 4.3 Flagstore 1 retrieval                :both_wp43, after both_wp42, 14d
+        WP 4.4 Flagstore 2 retrieval                :both_wp44, after both_wp42, 14d
+        WP 4.5 Flagstore 3 retrieval                :both_wp45, after both_wp42, 14d
+        WP 4.6 Exploits                             :both_wp46, after both_wp45, 14d
     section Milestones
         Start                                       :milestone, crit, start, 2025-02-21, 0d
         CTF Integration Test                        :milestone, crit, ctftest, 2025-08-01, 0d
