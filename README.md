@@ -221,7 +221,7 @@ Please note that there are cross-dependencies between the components. E.g., the 
 ```mermaid
 %%{
     init: {
-        'themeCSS': 'rect[id^=mkb_].task { fill: #c1e0ea; } rect[id^=singlechar_].task { fill: #fffe95; } rect[id^=both_].task { fill: #c1df89; } rect[class*=active] { stroke-width: 3; } rect[class*=milestone] { fill: #f99e8a; } rect[class*=done] { stroke: #888 !important; } text[class*=doneText] { fill: #888 !important; } text[class*=activeText] { animation: blinker 1s linear infinite; font-weight: bold } @keyframes blinker { 50% { opacity: 0.2; } } text[class*=critText]:not([class*=milestoneText], [class*=doneText]) { fill: #fff !important; } text { fill: #222 !important; } .titleText { font-size: 1.5em; }',
+        'themeCSS': 'rect[id^=mkb_].task { fill: #c1e0ea; } rect[id^=singlechar_].task { fill: #fffe95; } rect[id^=both_].task { fill: #c1df89; } rect[class*=active] { stroke-width: 3; } rect[class*=milestone][class*=crit] { fill: #f99e8a; } rect[class*=done] { stroke: #888 !important; } text[class*=doneText] { fill: #888 !important; } text[class*=activeText] { animation: blinker 1s linear infinite; font-weight: bold } @keyframes blinker { 50% { opacity: 0.2; } } text[class*=critText]:not([class*=milestoneText], [class*=doneText]) { fill: #fff !important; } text { fill: #222 !important; } .titleText { font-size: 1.5em; }',
         'gantt': {
             'leftPadding': 200,
             'rightPadding': 100
