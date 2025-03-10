@@ -141,68 +141,68 @@ TBD.
 Work Packages
 -------------
 
-### WP 1 JIT
+### WP 1: JIT
 
-#### WP 1.1 JIT Prototype
+#### WP 1.1: JIT Prototype
 
 Implement JIT as described above, including tests. 
 
-#### WP 1.2 JIT Vulnerabilities
+#### WP 1.2: JIT Vulnerabilities
 
 Atleast two vulnerabilities for flag store 1
 
-### WP 2 Database Engine
+### WP 2: Database Engine
 
-#### WP 2.1 Database Prototype
+#### WP 2.1: Database Prototype
 
 Implement database engine as described above.
 
-#### WP 2.2 Database Isolation
+#### WP 2.2: Database Isolation
 
 Sandboxing for isolation of the RCEs (flag store 1 vulns).
 
-#### WP 2.3 Database Vulnerability
+#### WP 2.3: Database Vulnerability
 
 Implement flag store 2 vulnerability.
 
-### WP 3 Web Frontend
+### WP 3: Web Frontend
 
-#### WP 3.1 Frontend Prototype
+#### WP 3.1: Frontend Prototype
 
 Implement a frontend as described above.
 Features of that frontend scale on the amount of code already written - if the service is going too large, we'll cut short here.
 
-#### WP 3.2 Web Flagstore
+#### WP 3.2: Web Flagstore
 
 Implementation of flag store 3 and vulnerability.
 
-#### WP 3.3 Web Styling
+#### WP 3.3: Web Styling
 
 Make frontend look sleek and fit well into CTF theme.
 
-### WP 4 Checker
+### WP 4: Checker
 
-#### WP 4.1 User Registration
+#### WP 4.1: User Registration
 
 User registration test using the frontend
 
-#### WP 4.2 Database Noise
+#### WP 4.2: Database Noise
 
 Queries against the database which dont involve flag.
 
-#### WP 4.3 Flagstore 1 retrieval
+#### WP 4.3: Flagstore 1 retrieval
 
 Implement flag put / get methods for flagstore 1.
 
-#### WP 4.4 Flagstore 2 retrieval
+#### WP 4.4: Flagstore 2 retrieval
 
 Implement flag put / get methods for flagstore 2.
 
-#### WP 4.5 Flagstore 3 retrieval
+#### WP 4.5: Flagstore 3 retrieval
 
 Implement flag put / get methods for flagstore 3.
 
-#### WP 4.6 Exploits
+#### WP 4.6: Exploits
 
 Implement exploits for intended vulns.
 
@@ -236,29 +236,29 @@ gantt
     tickInterval 1week
     weekday monday
     todayMarker on
-    section WP 1 JIT
+    section WP 1: JIT
         WP 1.1 JIT Prototype                        :active, mkb_wp11, after start, 35d
         WP 1.2 JIT Vulnerabilities                  :mkb_wp12, after mkb_wp11, 14d
         Fixing JIT                                  :crit, after ctftest, until end
-    section WP 2 Database Engine
+    section WP 2: Database Engine
         WP 2.1 Database Prototype                   :mkb_wp21, after mkb_wp11, 14d
         WP 2.2 Database Isolation                   :mkb_wp22, after mkb_wp21, 14d
         WP 2.3 Database Vulnerability               :mkb_wp23, after mkb_wp22, 14d
         Fixing Database Engine                      :crit, after ctftest, until end
-    section WP 3 Frontend
+    section WP 3: Frontend
         WP 3.1 Frontend Prototype                   :active, singlechar_wp31, after start, 35d
         WP 3.2 Web Flagstore                        :singlechar_wp32, after singlechar_wp31, 28d
         WP 3.3 Backend integration                  :singlechar_wp33, after singlechar_wp32 mkb_wp21 mkb_wp11, 21d
         WP 3.3 Frontend Styling                     :singlechar_wp34, after singlechar_wp33, 14d
         Fixing Frontend                             :crit, after ctftest, until end
-    section WP 4 Checker
+    section WP 4: Checker
         WP 4.1 User Registration                    :both_wp41, after mkb_wp13 mkb_wp22, 14d
         WP 4.2 Database Noise                       :both_wp42, after both_wp41, 14d
         WP 4.3 Flagstore 1 retrieval                :both_wp43, after both_wp42, 14d
         WP 4.4 Flagstore 2 retrieval                :both_wp44, after both_wp42, 14d
         WP 4.5 Flagstore 3 retrieval                :both_wp45, after both_wp42, 14d
         WP 4.6 Exploits                             :both_wp46, after both_wp45, 14d
-        Fixing Checke                               :crit, after ctftest, until end
+        Fixing Checker                              :crit, after ctftest, until end
     section Milestones
         Start                                       :milestone, crit, start, 2025-02-21, 0d
         CTF Integration Test                        :milestone, crit, ctftest, 2025-08-01, 0d
