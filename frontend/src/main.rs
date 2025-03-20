@@ -2,23 +2,26 @@
 
 #[cfg(test)] mod tests;
 
-mod session;
 mod dbconnector;
+mod session; 
 
-use rocket::response::content::RawHtml;
-use rocket::fs::FileServer;
+
+use std::path::Path;
+
+use rocket::fs::{FileServer, NamedFile};
 use rocket_dyn_templates::Template;
 
 #[get("/")]
-fn index() -> RawHtml<&'static str> {
-    RawHtml(r#"<a href="session">Use Sessions</a>."#)
+async fn index() -> Option<NamedFile>{
+    let path = Path::new("static/index.html");
+    NamedFile::open(path).await.ok()
 }
 
 #[launch]
 fn rocket() -> _ {
     rocket::build()
         .attach(Template::fairing())
-        .mount("/static", FileServer::from("static"))
+        .mount("/static", FileServer::from("static/"))
         .mount("/", routes![index])
         .mount("/session", session::routes())
 }
