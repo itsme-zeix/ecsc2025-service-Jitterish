@@ -9,17 +9,17 @@ use super::{Login, User};
 
 
 #[get("/login")]
-pub fn login(_user: User) -> Redirect {
+pub(super) fn login(_user: User) -> Redirect {
     Redirect::to(uri!("/session/profile"))
 }
 
 #[get("/login", rank = 2)]
-pub fn login_page(flash: Option<FlashMessage<'_>>) -> Template {
+pub(super) fn login_page(flash: Option<FlashMessage<'_>>) -> Template {
     Template::render("login", &flash)
 }
 
 #[post("/login", data = "<login>")]
-pub fn post_login(jar: &CookieJar<'_>, login: Form<Login<'_>>) -> Result<Redirect, Flash<Redirect>> {
+pub(super) fn post_login(jar: &CookieJar<'_>, login: Form<Login<'_>>) -> Result<Redirect, Flash<Redirect>> {
     if login.username == "Sergio" && login.password == "password" {
         jar.add_private(("user_id", "1"));
         Ok(Redirect::to(uri!(crate::session::profile::index)))

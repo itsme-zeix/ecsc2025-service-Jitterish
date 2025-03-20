@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
-# [dependencies]
+[dependencies]
+serde = "1.0.219"
+serde_json = "1.0.140"
 # rocket = "0.5.1"
 
 [dependencies.rocket]

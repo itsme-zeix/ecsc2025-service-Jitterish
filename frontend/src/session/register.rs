@@ -9,7 +9,7 @@ use super::{Register, User};
 
 // if we are registered (that is, we have a user), redirect to index instead
 #[get("/register")]
-pub fn register(_user: User) -> Redirect {
+pub(super) fn register(_user: User) -> Redirect {
     Redirect::to(uri!("/session/index"))
 }
 
@@ -20,8 +20,10 @@ pub fn register_page(flash: Option<FlashMessage<'_>>) -> Template {
 }
 
 #[post("/register", data = "<register>")]
-pub fn post_register(jar: &CookieJar<'_>, register: Form<Register<'_>>) -> Result<Redirect, Flash<Redirect>> {
-    println!("Registered successfully as {} {} with account type {}!", register.firstname, register.lastname, register.accounttype);
+pub(super) fn post_register(jar: &CookieJar<'_>, register: Form<Register<'_>>) -> Result<Redirect, Flash<Redirect>> {
+    let s = serde_json::to_string(&register.into_inner()).expect("Could not serialize user!");
+    // println!("Registered successfully as {} {} with account type {}!", register.firstname, register.lastname, register.accounttype);
+    println!("Serialized user: {:?}", s);
     jar.add_private(("user_id", "1"));
     Ok(Redirect::to(uri!("/session/")))
     //Err(Flash::error(Redirect::to(uri!(login_page)), "Invalid username/password."))

@@ -1,4 +1,5 @@
 use rocket::{http::Status, outcome::IntoOutcome, request::{self, FromRequest}, Request};
+use serde::{Deserialize, Serialize};
 
 
 pub mod login;
@@ -7,7 +8,7 @@ pub mod profile;
 pub mod db;
 pub mod logout;
 
-#[derive(FromForm)]
+#[derive(FromForm, Serialize, Deserialize)]
 struct Register<'r> {
     username: &'r str,
     password: &'r str,
@@ -17,7 +18,7 @@ struct Register<'r> {
     accounttype: &'r str,
 }
 
-#[derive(FromForm)]
+#[derive(FromForm, Serialize, Deserialize)]
 struct Login<'r> {
     username: &'r str,
     password: &'r str

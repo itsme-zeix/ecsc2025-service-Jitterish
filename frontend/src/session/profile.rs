@@ -7,13 +7,13 @@ use super::User;
 
 
 #[get("/")]
-pub fn index(user: User) -> Template {
+pub(super) fn index(user: User) -> Template {
     Template::render("session", context! {
         user_id: user.0,
     })
 }
 
 #[get("/", rank = 2)]
-pub fn no_auth_index() -> Redirect {
+pub(super) fn no_auth_index() -> Redirect {
     Redirect::to(uri!("/session/login"))
 }
