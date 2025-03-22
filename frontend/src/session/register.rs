@@ -1,11 +1,10 @@
+use interface::frontend::{Register, User};
 use rocket::request::FlashMessage;
 use rocket::response::{Redirect, Flash};
 use rocket::http::CookieJar;
 use rocket::form::Form;
 
 use rocket_dyn_templates::Template;
-
-use super::{Register, User};
 
 // if we are registered (that is, we have a user), redirect to index instead
 #[get("/register")]

@@ -1,6 +1,6 @@
-use crate::dbconnector::connect_to_backend;
+use interface::frontend::User;
 
-use super::User;
+use crate::dbconnector::connect_to_backend;
 
 #[get("/db")]
 pub(super) async fn db(_user: User) {

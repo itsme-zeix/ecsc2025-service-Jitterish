@@ -1,9 +1,8 @@
 
+use interface::frontend::User;
 use rocket::response::Redirect;
 
 use rocket_dyn_templates::{Template, context};
-
-use super::User;
 
 
 #[get("/")]
