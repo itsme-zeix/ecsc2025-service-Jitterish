@@ -8,9 +8,12 @@ publish = false
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+interface = { version = "0.1.0", path = "../interface" }
 tokio = { version = "1", features = ["full"] }
 # unshare = { path = "/home/markus/Projekte/repos/unshare" }
 unshare = { git = "https://github.com/MarkusBauer/unshare.git" }
 nix = { version = "0.29.0", features = ["default", "fs", "mount", "resource", "signal", "user"] }
 lazy_static = "1.5.0"
 tokio-util = "0.7.13"
+serde_json = "1.0.140"
+serde = { version = "1.0.219", features = ["derive"] }

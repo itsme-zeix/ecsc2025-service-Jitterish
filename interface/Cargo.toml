@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 serde = "1.0.219"
+serde_json = { version = "1.0.140", features = ["raw_value"] }
 
 [dependencies.rocket]
 version = "0.5.1"
