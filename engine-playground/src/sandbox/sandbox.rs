@@ -18,7 +18,7 @@ lazy_static! {
 }
 
 pub async fn run_sandboxed<P: AsRef<Path>>(
-    cmd: &mut unshare::Command,
+    mut cmd: unshare::Command,
     executable: Option<P>,
     data_folder: Option<P>,
     runtime: Duration,

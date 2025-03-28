@@ -2,8 +2,9 @@ mod db;
 mod sandbox;
 
 use std::error::Error;
-
-use interface::database::{Collection, Command};
+use std::os::fd::AsFd;
+use crate::db::execute_query;
+use interface::database::{Collection, Command, Query};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::{select, signal};
@@ -38,7 +39,11 @@ async fn connection(socket: TcpStream) -> std::io::Result<()> {
     }
 }
 
-async fn command(stream: &mut BufReader<TcpStream>, current_database: &mut String, command: Command<'_>) -> std::io::Result<()> {
+async fn command(
+    stream: &mut BufReader<TcpStream>,
+    current_database: &mut String,
+    command: Command<'_>,
+) -> std::io::Result<()> {
     match command {
         Command::Select { database } => {
             current_database.clear();
@@ -58,17 +63,20 @@ async fn command(stream: &mut BufReader<TcpStream>, current_database: &mut Strin
             db::append(current_database.as_str(), collection, &data)?;
         }
 
-        Command::Prepare { .. } => {
-            // TODO
+        Command::Prepare { code } => {
+            let code_ref = db::prepare_query(code).await?;
+            let result = &Query {
+                code_ref: code_ref.as_ref(),
+            };
+            write_json(stream, result).await?;
         }
 
-        Command::Execute { .. } => {
-            // TODO
+        Command::Execute { code_ref, query, param } => {
+            execute_query(current_database, code_ref, query, &param, stream.get_ref().as_fd()).await?;
         }
     }
     Ok(())
 }
-
 
 async fn server(cancel: CancellationToken) -> std::io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:9999").await?;
@@ -94,10 +102,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     token.cancel();
     handle.await?.expect("TODO");
     eprintln!("Server terminated.");
-
-    // compiler::compile("func jit_entrypoint() { return \"Hello World\"; }", "./data/output.so").await?;
-    // compiler::run("./data/output.so", "./data", "jit_entrypoint", "null").await?;
-
     Ok(())
 }
 

@@ -26,3 +26,8 @@ pub enum Command<'r> {
 pub struct Collection<'r> {
     pub name: &'r str,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct Query<'r> {
+    pub code_ref: &'r str,
+}

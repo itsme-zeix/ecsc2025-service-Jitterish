@@ -24,5 +24,6 @@ int main(int argc, const char* argv[]) {
     }
     auto result = callJitFunction(f, param);
     printValue(result);
+    std::cout << std::endl;
     return 0;
 }

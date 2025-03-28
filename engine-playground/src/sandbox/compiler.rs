@@ -4,7 +4,7 @@ use nix::unistd::{lseek, write, Whence};
 use std::error::Error;
 use std::ffi::CString;
 use std::fs::OpenOptions;
-use std::os::fd::{AsFd, AsRawFd};
+use std::os::fd::{AsFd, AsRawFd, BorrowedFd};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::time::Duration;
@@ -34,8 +34,9 @@ pub async fn compile<P: AsRef<Path>>(code: &str, output: P) -> Result<(), Box<dy
     // output file to stdout
     cmd.stdout(Stdio::from_file(OpenOptions::new().mode(0o755).create(true).write(true).open(output)?));
 
-    let mut child = run_sandboxed::<&str>(&mut cmd, None, None, Duration::from_millis(1000), 384).await?;
+    let mut child = run_sandboxed::<&str>(cmd, None, None, Duration::from_millis(1000), 384).await?;
     check_exit_status(child.wait()?)
+    // TODO delete file on error!
 }
 
 pub async fn run<P: AsRef<Path>>(
@@ -43,15 +44,17 @@ pub async fn run<P: AsRef<Path>>(
     directory: P,
     query: &str,
     param: &str,
+    output: BorrowedFd<'_>,
 ) -> Result<(), Box<dyn Error>> {
     // TODO output file descriptor / connection etc
 
     let mut cmd = Command::new("/app/executable");
     cmd.arg(query).arg(param);
     cmd.stdin(Stdio::null());
+    cmd.stdout(Stdio::dup_file(&output)?);
 
     let mut child = run_sandboxed(
-        &mut cmd,
+        cmd,
         Some(binary),
         Some(directory),
         Duration::from_millis(250),
