@@ -1,10 +1,10 @@
 mod db;
 mod sandbox;
 
+use crate::db::execute_query;
+use interface::database::{CodeRef, Collection, Command};
 use std::error::Error;
 use std::os::fd::AsFd;
-use crate::db::execute_query;
-use interface::database::{Collection, Command, Query};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::{select, signal};
@@ -27,14 +27,12 @@ async fn connection(socket: TcpStream) -> std::io::Result<()> {
             return Ok(());
         }
 
-        let cmd: serde_json::Result<Command> = serde_json::from_str(line.as_str());
-        match command(&mut stream, &mut current_database, cmd?).await {
-            Ok(()) => {
-                stream.write_all("OK\n".as_bytes()).await?;
-            }
-            Err(e) => {
-                stream.write_all(format!("ERROR {}\n", e).as_bytes()).await?;
-            }
+        match serde_json::from_str(line.as_str()) {
+            Ok(cmd) => match command(&mut stream, &mut current_database, cmd).await {
+                Ok(()) => stream.write_all("OK\n".as_bytes()).await?,
+                Err(e) => stream.write_all(format!("Failed command: {}\n", e).as_bytes()).await?,
+            },
+            Err(e) => stream.write_all(format!("Invalid command: {}\n", e).as_bytes()).await?,
         }
     }
 }
@@ -52,9 +50,7 @@ async fn command(
 
         Command::List => {
             for collection in db::list_collections(current_database)? {
-                let result = &Collection {
-                    name: collection.as_str(),
-                };
+                let result = &Collection { name: collection };
                 write_json(stream, result).await?;
             }
         }
@@ -64,10 +60,8 @@ async fn command(
         }
 
         Command::Prepare { code } => {
-            let code_ref = db::prepare_query(code).await?;
-            let result = &Query {
-                code_ref: code_ref.as_ref(),
-            };
+            let code_ref = db::prepare_query(&code).await?;
+            let result = &CodeRef { code_ref };
             write_json(stream, result).await?;
         }
 

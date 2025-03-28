@@ -11,7 +11,7 @@ pub struct Register<'r> {
     accounttype: &'r str,
 }
 
-#[derive(FromForm, Serialize, Deserialize)]
+#[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
 pub struct Login<'r> {
     username: &'r str,
     password: &'r str

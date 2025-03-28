@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::value::Value;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 pub enum Command<'r> {
     Select {
@@ -13,7 +13,7 @@ pub enum Command<'r> {
         data: Value,  // TODO bug line-based property with RawValue?
     },
     Prepare {
-        code: &'r str,
+        code: String,
     },
     Execute {
         code_ref: &'r str,
@@ -22,12 +22,12 @@ pub enum Command<'r> {
     },
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Collection<'r> {
-    pub name: &'r str,
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Collection {
+    pub name: String,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Query<'r> {
-    pub code_ref: &'r str,
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CodeRef {
+    pub code_ref: String,
 }
