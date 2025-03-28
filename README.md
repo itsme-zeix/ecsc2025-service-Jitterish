@@ -237,27 +237,26 @@ gantt
     weekday monday
     todayMarker on
     section WP 1: JIT
-        WP 1.1 JIT Prototype                        :active, mkb_wp11, after start, 35d
-        WP 1.2 JIT Vulnerabilities                  :mkb_wp12, after mkb_wp11, 14d
+        WP 1.1 JIT Prototype                        :mkb_wp11, after start, 35d
+        WP 1.2 JIT Features                         :mkb_wp12, after mkb_wp11, 90d
+        WP 1.3 JIT Vulnerabilities                  :mkb_wp13, after mkb_wp11, 90d
         Fixing JIT                                  :crit, after ctftest, until end
     section WP 2: Database Engine
-        WP 2.1 Database Prototype                   :mkb_wp21, after mkb_wp11, 14d
-        WP 2.2 Database Isolation                   :mkb_wp22, after mkb_wp21, 14d
-        WP 2.3 Database Vulnerability               :mkb_wp23, after mkb_wp22, 14d
+        WP 2.1 Database                             :mkb_wp21, after mkb_wp11, 90d
+        WP 2.2 Database Isolation                   :mkb_wp22, after mkb_wp11, 30d
+        WP 2.3 Database Vulnerability               :mkb_wp23, after mkb_wp11, 90d
         Fixing Database Engine                      :crit, after ctftest, until end
     section WP 3: Frontend
-        WP 3.1 Frontend Prototype                   :active, singlechar_wp31, after start, 35d
-        WP 3.2 Web Flagstore                        :singlechar_wp32, after singlechar_wp31, 28d
-        WP 3.3 Backend integration                  :singlechar_wp33, after singlechar_wp32 mkb_wp21 mkb_wp11, 21d
-        WP 3.3 Frontend Styling                     :singlechar_wp34, after singlechar_wp33, 14d
+        WP 3.1 Frontend Prototype                   :singlechar_wp31, after start, 65d
+        WP 3.2 Backend integration                  :singlechar_wp33, after singlechar_wp31 mkb_wp11, 30d
+        WP 3.3 Web Flagstore                        :singlechar_wp32, after singlechar_wp31, 60d
+        WP 3.4 Frontend Styling                     :singlechar_wp34, after singlechar_wp33, 14d
         Fixing Frontend                             :crit, after ctftest, until end
-    section WP 4: Checker
-        WP 4.1 User Registration                    :both_wp41, after mkb_wp13 mkb_wp22, 14d
-        WP 4.2 Database Noise                       :both_wp42, after both_wp41, 14d
-        WP 4.3 Flagstore 1 retrieval                :both_wp43, after both_wp42, 14d
-        WP 4.4 Flagstore 2 retrieval                :both_wp44, after both_wp42, 14d
-        WP 4.5 Flagstore 3 retrieval                :both_wp45, after both_wp42, 14d
-        WP 4.6 Exploits                             :both_wp46, after both_wp45, 14d
+    section WP 4: Checker & Setup
+        WP 4.1 Dockerize                            :both_wp40, after mkb_wp11 mkb_wp22 singlechar_wp31, 30d
+        WP 4.1 Service Interaction                  :both_wp41, after mkb_wp13 mkb_wp22 both_wp40, 14d
+        WP 4.2 Code Generation                      :both_wp42, after both_wp41, 14d
+        WP 4.3 Exploits                             :both_wp43, after mkb_wp13 mkb_wp23, 14d
         Fixing Checker                              :crit, after ctftest, until end
     section Milestones
         Start                                       :milestone, crit, start, 2025-02-21, 0d
