@@ -5,8 +5,6 @@ main: func* query* EOF;
 
 primary_expr
     : '(' expr ')'  # RawPrimaryExpr
-    | op=('!' | '-' | 'len') expr  # UnaryOp
-    | left=primary_expr '[' rght=expr ']'  # PropertyGet
     | NAME  # Named
     | INT  # ConstantInt
     | ('null' | 'true' | 'false' | STRING_LITERAL)  # ConstantExpr
@@ -20,12 +18,14 @@ assignable_expr  // left side of an assignment
     | left=primary_expr '[' '+' ']'  # AssignAppend
     ;
 
-expr: left=expr op=('*' | '/') rght=expr  # BinaryOp
+expr: left=expr '[' rght=expr ']'  # PropertyGet
+    | callee=NAME '(' (expr (',' expr)* ','?)? ')'  # CallExpr
+    | op=('!' | '-' | 'len' | 'defined') expr  # UnaryOp
+    | left=expr op=('*' | '/') rght=expr  # BinaryOp
     | left=expr op=('+' | '-') rght=expr  # BinaryOp
     | left=expr op=('==' | '!=' | '<' | '>' | '<=' | '>=') rght=expr  # BinaryOp
     | left=expr op=('||' | '&&' | '?:') rght=expr  # BinaryOp
     | left=assignable_expr '=' rght=expr  # Assignment
-    | callee=NAME '(' (expr (',' expr)* ','?)? ')'  # CallExpr
     | primary_expr  # RawExpr
     ;
 

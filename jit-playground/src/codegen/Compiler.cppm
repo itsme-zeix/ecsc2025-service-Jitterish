@@ -205,6 +205,8 @@ public:
             return codegen.callRuntime("jit_rt_sub", codegen.constantValue(Value {ValueType::INT, 0}), expr);
         } else if (op == "len") {
             return codegen.callRuntime("jit_rt_len", expr);
+        } else if (op == "defined") {
+            return codegen.callRuntime("jit_rt_defined", expr);
         }
         throw std::runtime_error("unknown operator: " + op);
     }
