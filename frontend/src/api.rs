@@ -5,6 +5,7 @@ use rocket::serde::{Deserialize, Serialize};
 use rocket::State;
 use serde_json::value::RawValue;
 use serde_json::Value;
+use std::panic::resume_unwind;
 
 #[derive(Serialize, Deserialize)]
 struct KvEntry<'r> {
@@ -49,15 +50,36 @@ async fn api_token(queries: &State<Queries>, key: &str, token: &str) -> std::io:
     let mut db = DbConnection::open("kv").await?;
 
     let result: bool = db
-        .execute_func(&queries.api, "is_authorized", &json!({"key": key, "user": "notroot", "token": ""}))
+        .execute_func(
+            &queries.api,
+            "is_authorized",
+            &json!({"key": key, "user": "notroot", "token": ""}),
+        )
         .await?;
-    println!("authorize result = {:?}", result);
 
-    db.append("kv", KvToken { key, token }).await?;
+    if result {
+        db.append("kv", KvToken { key, token }).await?;
+    }
 
-    Ok(Json(json!({"ok": true})))
+    Ok(Json(json!({"ok": result})))
+}
+
+#[get("/<what>/<key>?<token>")]
+async fn api_get(queries: &State<Queries>, what: &str, key: Option<&str>, token: Option<&str>) -> std::io::Result<Json<Value>> {
+    // TODO select database, check permissions
+
+    let mut db = DbConnection::open("kv").await?;
+
+    let result: Value = db
+        .execute_func(
+            &queries.api,
+            &format!("get_{}", what),
+            &json!({"key": key, "user": "root", "token": token}),
+        )
+        .await?;
+    Ok(Json(result))
 }
 
 pub fn routes() -> Vec<rocket::Route> {
-    routes![api_create, api_token]
+    routes![api_create, api_token, api_get]
 }
