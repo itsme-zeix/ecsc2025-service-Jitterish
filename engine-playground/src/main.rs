@@ -3,14 +3,16 @@ mod sandbox;
 
 use crate::db::execute_query;
 use interface::database::{CodeRef, Collection, Command};
+use serde::Serialize;
 use std::error::Error;
+use std::io::ErrorKind;
 use std::os::fd::AsFd;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::{select, signal};
 use tokio_util::sync::CancellationToken;
 
-async fn write_json<T: serde::Serialize>(stream: &mut BufReader<TcpStream>, data: &T) -> std::io::Result<()> {
+async fn write_json<T: Serialize>(stream: &mut BufReader<TcpStream>, data: &T) -> std::io::Result<()> {
     let data = serde_json::to_vec(data)?;
     stream.write_all(data.as_slice()).await?;
     stream.write_all(b"\n").await
@@ -18,21 +20,28 @@ async fn write_json<T: serde::Serialize>(stream: &mut BufReader<TcpStream>, data
 
 async fn connection(socket: TcpStream) -> std::io::Result<()> {
     let mut stream = BufReader::new(socket);
-
+    let mut buffer = String::new();
     let mut current_database = "none".to_string();
 
     loop {
-        let mut line = String::new();
-        if stream.read_line(&mut line).await? <= 0 {
+        if stream.read_line(&mut buffer).await? <= 0 {
             return Ok(());
         }
 
-        match serde_json::from_str(line.as_str()) {
-            Ok(cmd) => match command(&mut stream, &mut current_database, cmd).await {
-                Ok(()) => stream.write_all("OK\n".as_bytes()).await?,
-                Err(e) => stream.write_all(format!("Failed command: {}\n", e).as_bytes()).await?,
-            },
-            Err(e) => stream.write_all(format!("Invalid command: {}\n", e).as_bytes()).await?,
+        match serde_json::from_str::<Command>(buffer.as_str()) {
+            Ok(cmd) => {
+                match command(&mut stream, &mut current_database, cmd).await {
+                    Ok(()) => stream.write_all("OK\n".as_bytes()).await?,
+                    Err(e) => stream.write_all(format!("Failed command: {}\n", e).as_bytes()).await?,
+                }
+                buffer.clear();
+            }
+            Err(e) => {
+                if !e.is_eof() {
+                    stream.write_all(format!("Invalid command: {}\n", e).as_bytes()).await?;
+                    return Err(std::io::Error::new(ErrorKind::Other, e));
+                }
+            }
         }
     }
 }

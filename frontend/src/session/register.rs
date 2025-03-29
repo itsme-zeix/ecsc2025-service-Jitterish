@@ -1,6 +1,5 @@
 use crate::dbconnector::DbConnection;
 use crate::models::UserModel;
-use interface::database::CodeRef;
 use interface::frontend::{Register, User};
 use rocket::form::Form;
 use rocket::http::CookieJar;
@@ -10,6 +9,7 @@ use rocket::State;
 use rocket_dyn_templates::Template;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use crate::Queries;
 
 // if we are registered (that is, we have a user), redirect to index instead
 #[get("/register")]
@@ -25,7 +25,7 @@ pub fn register_page(flash: Option<FlashMessage<'_>>) -> Template {
 
 #[post("/register", data = "<register>")]
 pub(super) async fn post_register(
-    queries: &State<CodeRef>,
+    queries: &State<Queries>,
     jar: &CookieJar<'_>,
     register: Form<Register<'_>>,
 ) -> Result<Redirect, Flash<Redirect>> {
@@ -43,7 +43,7 @@ pub(super) async fn post_register(
         .await
         .expect("no idea how error handling works in rocket");
     let existing_users: Vec<Value> = db
-        .execute_simple(queries, "user_by_username", register.username)
+        .execute_simple(&queries.user, "user_by_username", &register.username)
         .await
         .expect("...");
     if !existing_users.is_empty() {

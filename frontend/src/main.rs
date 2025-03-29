@@ -7,7 +7,6 @@ mod session;
 mod models;
 
 use std::path::Path;
-use rocket::form::validate::contains;
 use rocket::fs::{FileServer, NamedFile};
 use rocket_dyn_templates::Template;
 use interface::database::CodeRef;
@@ -19,14 +18,20 @@ async fn index() -> Option<NamedFile>{
     NamedFile::open(path).await.ok()
 }
 
-async fn prepare_queries() -> CodeRef {
+#[derive(Debug)]
+pub struct Queries {
+    pub user: CodeRef,
+    pub api: CodeRef,
+}
+
+async fn prepare_queries() -> Queries {
     // TODO we might want to put this in a separate file
-    let code = "\
+    let code_user = r#"
 func test() { return [1+2, 2+3]; }
 
 func count(data, acc) { return (acc ?: 0) + 1; }
 
-func is_username(entry, username) { return entry[\"username\"] == username; }
+func is_username(entry, username) { return entry["username"] == username; }
 
 query user_by_username on users
 filter is_username
@@ -34,17 +39,24 @@ limit 1;
 
 query user_count on users reduce count;
 
-    ";
+    "#;
+
+    let code_api = r#"
+    "#;
+
     let mut conn = DbConnection::open("_").await.expect("Connection to database failed");
-    conn.prepare(code).await.expect("Could not prepare queries")
+    Queries {
+        user: conn.prepare(code_user).await.expect("Could not prepare queries"),
+        api: conn.prepare(code_api).await.expect("Could not prepare queries"),
+    }
 }
 
 #[launch]
 async fn rocket() -> _ {
-    let code_ref = prepare_queries().await;
-    println!("Query ref: {:?}", &code_ref);
+    let queries = prepare_queries().await;
+    println!("Query refs: {:?}", &queries);
     rocket::build()
-        .manage(code_ref)
+        .manage(queries)
         .attach(Template::fairing())
         .mount("/static", FileServer::from("static/"))
         .mount("/", routes![index])

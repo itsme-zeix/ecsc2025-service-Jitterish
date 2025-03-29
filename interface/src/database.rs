@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use serde_json::value::Value;
+use serde_json::value::RawValue;
 
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(tag = "type")]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Command<'r> {
     Select {
         database: &'r str,
@@ -10,7 +9,7 @@ pub enum Command<'r> {
     List,
     Append {
         collection: &'r str,
-        data: Value,  // TODO bug line-based property with RawValue?
+        data: Box<RawValue>,
     },
     Prepare {
         code: String,
@@ -18,7 +17,7 @@ pub enum Command<'r> {
     Execute {
         code_ref: &'r str,
         query: &'r str,
-        param: Value,
+        param: Box<RawValue>,
     },
 }
 

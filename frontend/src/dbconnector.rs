@@ -61,7 +61,7 @@ impl DbConnection {
     }
 
     pub async fn append<T: Serialize>(self: &mut DbConnection, collection: &str, value: T) -> std::io::Result<()> {
-        let data = serde_json::to_value(&value)?;
+        let data = serde_json::value::to_raw_value(&value)?;
         self.send(&Command::Append { collection, data }).await?;
         self.recv::<Value>().await.map(|_| ())
     }
@@ -77,9 +77,9 @@ impl DbConnection {
         self: &mut DbConnection,
         code_ref: &CodeRef,
         query: &str,
-        param: TS,
+        param: &TS,
     ) -> std::io::Result<Vec<TD>> {
-        let param = serde_json::to_value(param)?;
+        let param = serde_json::value::to_raw_value(param)?;
         self.send(&Command::Execute {
             code_ref: code_ref.code_ref.as_str(),
             query,
@@ -94,7 +94,7 @@ impl DbConnection {
         self: &mut DbConnection,
         code_ref: &CodeRef,
         query: &str,
-        param: TS,
+        param: &TS,
     ) -> std::io::Result<Vec<TD>> {
         let result: Vec<Vec<TD>> = self.execute(code_ref, query, param).await?;
         Ok(one(&result)?.clone())

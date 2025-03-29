@@ -1,13 +1,13 @@
 use crate::sandbox::compiler;
 use lazy_static::lazy_static;
 use serde::Serialize;
-use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs::{create_dir_all, read_dir, OpenOptions};
 use std::io::ErrorKind::InvalidInput;
 use std::io::Write;
 use std::os::fd::BorrowedFd;
 use std::path::{absolute, Path, PathBuf};
+use serde_json::value::RawValue;
 
 lazy_static! {
     static ref base_data: PathBuf = absolute(Path::new("./data")).unwrap();
@@ -66,7 +66,7 @@ pub async fn prepare_query(code: &str) -> std::io::Result<String> {
     Ok(code_ref)
 }
 
-pub async fn execute_query(database: &str, code_ref: &str, query: &str, param: &Value, output: BorrowedFd<'_>) -> std::io::Result<()> {
+pub async fn execute_query(database: &str, code_ref: &str, query: &str, param: &RawValue, output: BorrowedFd<'_>) -> std::io::Result<()> {
     let obj = query_object(code_ref);
     let dir = dir(database);
     create_dir_all(&dir)?;
