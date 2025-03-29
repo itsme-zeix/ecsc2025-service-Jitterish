@@ -1,10 +1,15 @@
+use crate::dbconnector::DbConnection;
+use crate::models::UserModel;
+use interface::database::CodeRef;
 use interface::frontend::{Register, User};
-use rocket::request::FlashMessage;
-use rocket::response::{Redirect, Flash};
-use rocket::http::CookieJar;
 use rocket::form::Form;
-
+use rocket::http::CookieJar;
+use rocket::request::FlashMessage;
+use rocket::response::{Flash, Redirect};
+use rocket::State;
 use rocket_dyn_templates::Template;
+use serde_json::Value;
+use sha2::{Digest, Sha256};
 
 // if we are registered (that is, we have a user), redirect to index instead
 #[get("/register")]
@@ -19,7 +24,33 @@ pub fn register_page(flash: Option<FlashMessage<'_>>) -> Template {
 }
 
 #[post("/register", data = "<register>")]
-pub(super) fn post_register(jar: &CookieJar<'_>, register: Form<Register<'_>>) -> Result<Redirect, Flash<Redirect>> {
+pub(super) async fn post_register(
+    queries: &State<CodeRef>,
+    jar: &CookieJar<'_>,
+    register: Form<Register<'_>>,
+) -> Result<Redirect, Flash<Redirect>> {
+    // TODO validate input
+
+    let user = UserModel {
+        username: register.username.to_owned(),
+        password_hash: hex::encode(Sha256::digest(register.password.as_bytes())),
+        allow_public_queries: false,
+        allow_prepared_query: None,
+        allow_public_append: false,
+    };
+
+    let mut db = DbConnection::open("_")
+        .await
+        .expect("no idea how error handling works in rocket");
+    let existing_users: Vec<Value> = db
+        .execute_simple(queries, "user_by_username", register.username)
+        .await
+        .expect("...");
+    if !existing_users.is_empty() {
+        return Err(Flash::error(Redirect::to(uri!(register_page)), "Username already taken."));
+    }
+    db.append("users", user).await.expect("...");
+
     let s = serde_json::to_string(&register.into_inner()).expect("Could not serialize user!");
     // println!("Registered successfully as {} {} with account type {}!", register.firstname, register.lastname, register.accounttype);
     println!("Serialized user: {:?}", s);

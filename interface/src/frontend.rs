@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(FromForm, Serialize, Deserialize)]
 pub struct Register<'r> {
-    username: &'r str,
-    password: &'r str,
+    pub username: &'r str,
+    pub password: &'r str,
     firstname: &'r str,
     lastname: &'r str,
     income: u32,
