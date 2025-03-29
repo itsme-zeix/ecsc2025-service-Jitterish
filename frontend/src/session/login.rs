@@ -30,7 +30,7 @@ pub(super) async fn post_login(
         .await
         .expect("no idea how error handling works in rocket");
     let existing_users: Vec<UserModel> = db
-        .execute_simple(&queries.user, "user_by_username", &login.username())
+        .execute_query(&queries.user, "user_by_username", &login.username())
         .await
         .expect("...");
     let user = one(&existing_users).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Invalid username"))?;

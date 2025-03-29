@@ -42,7 +42,7 @@ pub(super) async fn post_register(
         .await
         .expect("no idea how error handling works in rocket");
     let existing_users: Vec<Value> = db
-        .execute_simple(&queries.user, "user_by_username", &register.username)
+        .execute_query(&queries.user, "user_by_username", &register.username)
         .await
         .expect("...");
     if !existing_users.is_empty() {

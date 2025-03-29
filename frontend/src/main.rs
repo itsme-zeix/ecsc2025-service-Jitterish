@@ -60,8 +60,8 @@ func by_key(entry, params) {
     return entry["key"] == params["key"];
 }
 
-func select_key(acc, entry, params) {
-    if acc == undefined acc = {};
+func select_key(entry, acc, params) {
+    if !defined acc acc = {};
     if entry["value"] acc["value"] = entry["value"];
     if entry["owner"] == params["user"] acc["auth"] = true;
     if entry["token"] == params["token"] acc["auth"] = true;

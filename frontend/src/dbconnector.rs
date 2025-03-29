@@ -89,14 +89,25 @@ impl DbConnection {
         self.recv::<TD>().await
     }
 
-    /// Return the return value of a function/query execution only (ignoring println)
-    pub async fn execute_simple<TS: Serialize, TD: DeserializeOwned + Clone>(
+    /// Return the return value of a query execution only (ignoring println)
+    pub async fn execute_query<TS: Serialize, TD: DeserializeOwned + Clone>(
         self: &mut DbConnection,
         code_ref: &CodeRef,
         query: &str,
         param: &TS,
     ) -> std::io::Result<Vec<TD>> {
         let result: Vec<Vec<TD>> = self.execute(code_ref, query, param).await?;
+        Ok(one(&result)?.clone())
+    }
+
+    /// Return the return value of a function execution only (ignoring println)
+    pub async fn execute_func<TS: Serialize, TD: DeserializeOwned + Clone>(
+        self: &mut DbConnection,
+        code_ref: &CodeRef,
+        query: &str,
+        param: &TS,
+    ) -> std::io::Result<TD> {
+        let result: Vec<TD> = self.execute(code_ref, query, param).await?;
         Ok(one(&result)?.clone())
     }
 }

@@ -42,7 +42,7 @@ async fn test_database_connection() {
     println!("Query Result only: {:?}", result2);
 
     let tmp: Vec<UserModel> = conn
-        .execute_simple(&coderef, "first_entry", json!("null"))
+        .execute_query(&coderef, "first_entry", json!("null"))
         .await
         .expect("execute 2");
     let result3: &UserModel = one(&tmp).expect("");
