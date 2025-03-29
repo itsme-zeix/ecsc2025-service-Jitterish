@@ -10,10 +10,11 @@ serde = "1.0.219"
 serde_json = { version = "1.0.140", features = ["raw_value"] }
 hex = "0.4.3"
 sha2 = "0.10.8"
+uuid = {version = "1.16.0", features = ["v4"]}
 
 [dependencies.rocket]
 version = "0.5.1"
-features = ["secrets"]
+features = ["secrets", "json"]
 
 [dependencies.rocket_dyn_templates]
 # path = "../../contrib/dyn_templates"

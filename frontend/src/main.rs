@@ -4,6 +4,7 @@
 
 mod dbconnector;
 mod session;
+mod api;
 mod models;
 
 use std::path::Path;
@@ -41,7 +42,48 @@ query user_count on users reduce count;
 
     "#;
 
+    // Write your API in database language!
     let code_api = r#"
+// params: {"key": "...", "user": "...", "token": "..."|null}
+func get_value(params) {
+    result = value(params);
+    if result["auth"] return result["value"];
+    return null;
+}
+
+// params: {"key": "...", "user": "...", "token": "..."|null}
+func is_authorized(params) {  // = can add token?
+    return !!value(params)["auth"];
+}
+
+func by_key(entry, params) {
+    return entry["key"] == params["key"];
+}
+
+func select_key(acc, entry, params) {
+    if acc == undefined acc = {};
+    if entry["value"] acc["value"] = entry["value"];
+    if entry["owner"] == params["user"] acc["auth"] = true;
+    if entry["token"] == params["token"] acc["auth"] = true;
+    return acc;
+}
+
+func has_value(entry) {
+    return !!entry["value"];
+}
+
+func extract_key(entry) {
+    return entry["key"];
+}
+
+query value on kv
+filter by_key
+reduce select_key;
+
+query get_keys on kv
+filter has_value
+map extract_key;
+
     "#;
 
     let mut conn = DbConnection::open("_").await.expect("Connection to database failed");
@@ -61,4 +103,5 @@ async fn rocket() -> _ {
         .mount("/static", FileServer::from("static/"))
         .mount("/", routes![index])
         .mount("/session", session::routes())
+        .mount("/api", api::routes())
 }

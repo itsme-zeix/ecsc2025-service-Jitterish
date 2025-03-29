@@ -35,8 +35,7 @@ pub(super) async fn post_register(
         username: register.username.to_owned(),
         password_hash: hex::encode(Sha256::digest(register.password.as_bytes())),
         allow_public_queries: false,
-        allow_prepared_query: None,
-        allow_public_append: false,
+        allow_public_kv: false,
     };
 
     let mut db = DbConnection::open("_")
