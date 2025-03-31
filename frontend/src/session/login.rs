@@ -28,11 +28,11 @@ pub(super) async fn post_login(
 ) -> Result<Redirect, Flash<Redirect>> {
     let mut db = DbConnection::open("_")
         .await
-        .expect("no idea how error handling works in rocket");
+        .expect("db offline");
     let existing_users: Vec<UserModel> = db
         .execute_query(&queries.user, "user_by_username", &login.username())
         .await
-        .expect("...");
+        .expect("query error");
     let user = one(&existing_users).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Invalid username"))?;
     if hex::encode(Sha256::digest(login.password().as_bytes())) != user.password_hash {
         return Err(Flash::error(Redirect::to(uri!(login_page)), "Invalid password"));

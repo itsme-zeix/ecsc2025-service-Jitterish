@@ -35,25 +35,21 @@ pub(super) async fn post_register(
         username: register.username.to_owned(),
         password_hash: hex::encode(Sha256::digest(register.password.as_bytes())),
         allow_public_queries: false,
-        allow_public_kv: false,
+        allow_public_kv: true,
     };
 
     let mut db = DbConnection::open("_")
         .await
-        .expect("no idea how error handling works in rocket");
+        .expect("db offline");
     let existing_users: Vec<Value> = db
         .execute_query(&queries.user, "user_by_username", &register.username)
         .await
-        .expect("...");
+        .expect("query error");
     if !existing_users.is_empty() {
         return Err(Flash::error(Redirect::to(uri!(register_page)), "Username already taken."));
     }
-    db.append("users", user).await.expect("...");
+    db.append("users", user).await.map_err(|e| Flash::error(Redirect::to(uri!(register_page)), "Append failed"))?;
 
-    let s = serde_json::to_string(&register.into_inner()).expect("Could not serialize user!");
-    // println!("Registered successfully as {} {} with account type {}!", register.firstname, register.lastname, register.accounttype);
-    println!("Serialized user: {:?}", s);
-    jar.add_private(("user_id", "1"));
+    jar.add_private(("user_id", "1"));  // TODO
     Ok(Redirect::to(uri!("/session/")))
-    //Err(Flash::error(Redirect::to(uri!(login_page)), "Invalid username/password."))
 }
