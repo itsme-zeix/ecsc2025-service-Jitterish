@@ -3,7 +3,7 @@ use nix::sys::memfd::{memfd_create, MemFdCreateFlag};
 use nix::unistd::{lseek, write, Whence};
 use std::error::Error;
 use std::ffi::CString;
-use std::fs::OpenOptions;
+use std::fs::{remove_file, OpenOptions};
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
@@ -23,20 +23,20 @@ pub async fn compile<P: AsRef<Path>>(code: &str, output: P) -> Result<(), Box<dy
     cmd.arg("-").arg("-");
 
     // program code to stdin
-    let memfd = memfd_create(
-        CString::new(b"code").unwrap().as_c_str(),
-        MemFdCreateFlag::MFD_CLOEXEC,
-    )?;
+    let memfd = memfd_create(CString::new(b"code").unwrap().as_c_str(), MemFdCreateFlag::MFD_CLOEXEC)?;
     write(memfd.as_fd(), &code.as_bytes())?;
     lseek(memfd.as_raw_fd(), 0, Whence::SeekSet)?;
     cmd.stdin(Stdio::from_file(memfd));
 
     // output file to stdout
-    cmd.stdout(Stdio::from_file(OpenOptions::new().mode(0o755).create(true).write(true).open(output)?));
+    cmd.stdout(Stdio::from_file(
+        OpenOptions::new().mode(0o755).create(true).write(true).open(&output)?,
+    ));
 
     let mut child = run_sandboxed::<&str>(cmd, None, None, Duration::from_millis(1000), 384).await?;
-    check_exit_status(child.wait()?)
-    // TODO delete file on error!
+    check_exit_status(child.wait()?).inspect_err(|_| {
+        let _ = remove_file(output);
+    })
 }
 
 pub async fn run<P: AsRef<Path>>(
@@ -46,20 +46,11 @@ pub async fn run<P: AsRef<Path>>(
     param: &str,
     output: BorrowedFd<'_>,
 ) -> Result<(), Box<dyn Error>> {
-    // TODO output file descriptor / connection etc
-
     let mut cmd = Command::new("/app/executable");
     cmd.arg(query).arg(param);
     cmd.stdin(Stdio::null());
     cmd.stdout(Stdio::dup_file(&output)?);
 
-    let mut child = run_sandboxed(
-        cmd,
-        Some(binary),
-        Some(directory),
-        Duration::from_millis(250),
-        32,
-    )
-    .await?;
+    let mut child = run_sandboxed(cmd, Some(binary), Some(directory), Duration::from_millis(250), 32).await?;
     check_exit_status(child.wait()?)
 }

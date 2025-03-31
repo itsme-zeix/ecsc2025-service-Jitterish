@@ -103,7 +103,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     signal::ctrl_c().await?;
     eprintln!("Shutting down...");
     token.cancel();
-    handle.await?.expect("TODO");
+    handle.await?.expect("Error waiting for termination signal");
     eprintln!("Server terminated.");
     Ok(())
 }
