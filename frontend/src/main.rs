@@ -1,20 +1,28 @@
-#[macro_use] extern crate rocket;
+#[macro_use]
+extern crate rocket;
 
-#[cfg(test)] mod tests;
+#[cfg(test)]
+mod tests;
 
-mod dbconnector;
-mod session;
 mod api;
+mod dbconnector;
 mod models;
+mod session;
 
-use std::path::Path;
+use crate::dbconnector::DbConnection;
+use base64::prelude::BASE64_STANDARD;
+use base64::Engine;
+use interface::database::CodeRef;
 use rocket::fs::{FileServer, NamedFile};
 use rocket_dyn_templates::Template;
-use interface::database::CodeRef;
-use crate::dbconnector::DbConnection;
+use std::error::Error;
+use std::fs;
+use std::fs::create_dir_all;
+use std::path::Path;
+use std::process::Command;
 
 #[get("/")]
-async fn index() -> Option<NamedFile>{
+async fn index() -> Option<NamedFile> {
     let path = Path::new("static/index.html");
     NamedFile::open(path).await.ok()
 }
@@ -93,11 +101,27 @@ map extract_key;
     }
 }
 
+fn get_secret_key() -> Result<String, Box<dyn Error>> {
+    let secret_file = Path::new("data/secret.txt");
+    if secret_file.exists() {
+        Ok(fs::read_to_string(secret_file)?)
+    } else {
+        let mut buf = [0u8; 32];
+        getrandom::fill(&mut buf).expect("getrandom failed");
+        let key = BASE64_STANDARD.encode(buf);
+        create_dir_all("data")?;
+        fs::write(secret_file, &key)?;
+        Ok(key)
+    }
+}
+
 #[launch]
 async fn rocket() -> _ {
     let queries = prepare_queries().await;
+    let secret_key = get_secret_key().expect("failed to get secret key");
     println!("Query refs: {:?}", &queries);
     rocket::build()
+        .configure(rocket::Config::figment().merge(("secret_key", secret_key)))
         .manage(queries)
         .attach(Template::fairing())
         .mount("/static", FileServer::from("static/"))
