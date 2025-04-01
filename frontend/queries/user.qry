@@ -1,0 +1,11 @@
+func test() { return [1+2, 2+3]; }
+
+func count(data, acc) { return (acc ?: 0) + 1; }
+
+func is_username(entry, username) { return entry["username"] == username; }
+
+query user_by_username on users
+filter is_username
+limit 1;
+
+query user_count on users reduce count;
