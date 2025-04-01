@@ -1,6 +1,6 @@
 use crate::dbconnector::{one, DbConnection};
 use crate::models::UserModel;
-use interface::frontend::{Login, User};
+use interface::frontend::{Login, UserSession};
 use rocket::form::Form;
 use rocket::http::CookieJar;
 use rocket::request::FlashMessage;
@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use crate::Queries;
 
 #[get("/login")]
-pub(super) fn login(_user: User) -> Redirect {
+pub(super) fn login(_user: UserSession) -> Redirect {
     Redirect::to(uri!("/session/profile"))
 }
 
@@ -38,6 +38,6 @@ pub(super) async fn post_login(
         return Err(Flash::error(Redirect::to(uri!(login_page)), "Invalid password"));
     }
 
-    jar.add_private(("user_id", "1"));
+    jar.add_private(("username", user.username.to_owned()));
     Ok(Redirect::to(uri!(crate::session::profile::index)))
 }

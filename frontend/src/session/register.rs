@@ -1,6 +1,6 @@
 use crate::dbconnector::DbConnection;
 use crate::models::UserModel;
-use interface::frontend::{Register, User};
+use interface::frontend::{Register, UserSession};
 use rocket::form::Form;
 use rocket::http::CookieJar;
 use rocket::request::FlashMessage;
@@ -13,7 +13,7 @@ use crate::Queries;
 
 // if we are registered (that is, we have a user), redirect to index instead
 #[get("/register")]
-pub(super) fn register(_user: User) -> Redirect {
+pub(super) fn register(_user: UserSession) -> Redirect {
     Redirect::to(uri!("/session/index"))
 }
 
@@ -48,8 +48,9 @@ pub(super) async fn post_register(
     if !existing_users.is_empty() {
         return Err(Flash::error(Redirect::to(uri!(register_page)), "Username already taken."));
     }
-    db.append("users", user).await.map_err(|e| Flash::error(Redirect::to(uri!(register_page)), "Append failed"))?;
+    db.append("users", user).await
+        .map_err(|e| Flash::error(Redirect::to(uri!(register_page)), format!("Append failed: {}", e)))?;
 
-    jar.add_private(("user_id", "1"));  // TODO
+    jar.add_private(("username", register.username.to_owned()));
     Ok(Redirect::to(uri!("/session/")))
 }

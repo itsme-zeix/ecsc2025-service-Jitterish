@@ -1,14 +1,14 @@
 
-use interface::frontend::User;
+use interface::frontend::UserSession;
 use rocket::response::Redirect;
 
 use rocket_dyn_templates::{Template, context};
 
 
 #[get("/")]
-pub(super) fn index(user: User) -> Template {
+pub(super) fn index(user: UserSession) -> Template {
     Template::render("session", context! {
-        user_id: user.0,
+        username: user.username,
     })
 }
 
