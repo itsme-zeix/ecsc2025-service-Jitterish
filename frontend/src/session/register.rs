@@ -14,16 +14,16 @@ use crate::Queries;
 // if we are registered (that is, we have a user), redirect to index instead
 #[get("/register")]
 pub(super) fn register(_user: UserSession) -> Redirect {
-    Redirect::to(uri!("/session/index"))
+    Redirect::to(uri!(crate::session::profile::index))
 }
 
 // we are not registered here
-#[get("/register", rank = 2)]
+#[get("/session/register", rank = 2)]
 pub fn register_page(flash: Option<FlashMessage<'_>>) -> Template {
     Template::render("register", &flash)
 }
 
-#[post("/register", data = "<register>")]
+#[post("/session/register", data = "<register>")]
 pub(super) async fn post_register(
     queries: &State<Queries>,
     jar: &CookieJar<'_>,
@@ -52,5 +52,5 @@ pub(super) async fn post_register(
         .map_err(|e| Flash::error(Redirect::to(uri!(register_page)), format!("Append failed: {}", e)))?;
 
     jar.add_private(("username", register.username.to_owned()));
-    Ok(Redirect::to(uri!("/session/")))
+    Ok(Redirect::to(uri!(crate::session::profile::index)))
 }

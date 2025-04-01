@@ -68,6 +68,6 @@ async fn rocket() -> _ {
         .attach(Template::fairing())
         .mount("/static", FileServer::from("static/"))
         .mount("/", routes![index])
-        .mount("/session", session::routes())
+        .mount("/", session::routes())
         .mount("/api", api::routes())
 }

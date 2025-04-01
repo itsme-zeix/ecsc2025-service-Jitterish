@@ -10,17 +10,17 @@ use rocket_dyn_templates::Template;
 use sha2::{Digest, Sha256};
 use crate::Queries;
 
-#[get("/login")]
+#[get("/session/login")]
 pub(super) fn login(_user: UserSession) -> Redirect {
-    Redirect::to(uri!("/session/profile"))
+    Redirect::to(uri!(crate::session::profile::index))
 }
 
-#[get("/login", rank = 2)]
+#[get("/session/login", rank = 2)]
 pub(super) fn login_page(flash: Option<FlashMessage<'_>>) -> Template {
     Template::render("login", &flash)
 }
 
-#[post("/login", data = "<login>")]
+#[post("/session/login", data = "<login>")]
 pub(super) async fn post_login(
     queries: &State<Queries>,
     jar: &CookieJar<'_>,
