@@ -1,5 +1,7 @@
 cmake-build-*
 target
-/engine-playground/target
+*/target
 .idea
 data
+*/data
+.cargo

@@ -1,3 +1,4 @@
+use std::env;
 use interface::database::{CodeRef, Collection, Command};
 use rocket::tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use rocket::tokio::net::TcpStream;
@@ -17,8 +18,9 @@ pub fn one<T>(vec: &Vec<T>) -> std::io::Result<&T> {
 
 impl DbConnection {
     pub async fn open(database: &str) -> std::io::Result<DbConnection> {
+        let addr = env::var("DB").unwrap_or("127.0.0.1:9999".to_owned());
         let mut conn = DbConnection {
-            stream: BufReader::new(TcpStream::connect("127.0.0.1:9999").await?),
+            stream: BufReader::new(TcpStream::connect(addr).await?),
         };
         conn.send(&Command::Select { database }).await?;
         conn.recv::<Value>().await?;

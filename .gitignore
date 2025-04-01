@@ -13,3 +13,7 @@ Cargo.lock
 
 # PyCharm
 /.idea
+
+# data
+data/
+data-frontend/

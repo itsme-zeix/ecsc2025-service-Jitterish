@@ -31,12 +31,14 @@ RUN --mount=type=cache,id=cache-cpp,target=/build,sharing=locked \
 # 2. Build Rust
 # TODO switch to trixie as soon as images are available
 FROM rust:bookworm AS builder-rust
-COPY engine-playground /src
-RUN --mount=type=cache,id=cache-rust,target=/src/target,sharing=locked \
+COPY engine-playground /src/engine
+COPY interface /src/interface
+RUN --mount=type=cache,id=cache-rust-engine,target=/src/engine/target,sharing=locked \
+    --mount=type=cache,id=cache-rust-interface,target=/src/interface/target,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
     mkdir -p /output && \
-    cd /src && \
+    cd /src/engine && \
     cargo build --release && \
     cp target/release/engine-playground /output/
 

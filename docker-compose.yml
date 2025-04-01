@@ -1,13 +1,32 @@
 services:
   # TODO Still WIP, just here to prove that things will run in docker just fine.
   engine:
-    build: .
+    build:
+      context: .
+      dockerfile: engine.Dockerfile
     volumes:
-      - ./data:/app/engine/data
+      - ./data/engine-data:/app/engine/data
+      - ./data/engine-queries:/app/engine/queries
     ports:
-      - "9999:9999"
+      - "9999:9999"  # TODO for debug only
     # restart: unless-stopped
     cap_add:
       - SYS_ADMIN
     security_opt:
       - apparmor=unconfined
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    volumes:
+      - ./data/frontend:/app/frontend/data
+    ports:
+      - "8000:8000"
+    environment:
+      DB: "engine:9999"
+    depends_on:
+      engine:
+        condition: service_started
+    # restart: unless-stopped
+
