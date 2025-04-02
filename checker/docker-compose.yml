@@ -1,0 +1,30 @@
+services:
+  #jitterish-checker:
+  #  container_name: jitterish-checker
+  #  build: .
+  #  ports:
+  #    - "1813:1813"
+  #  environment:
+  #    - MONGO_ENABLED=1
+  #    - MONGO_HOST=jitterish-mongo
+  #    - MONGO_PORT=27017
+  #    - MONGO_USER=jitterish_checker
+  #    - MONGO_PASSWORD=jitterish_checker
+  #  depends_on:
+  #    - jitterish-mongo
+
+  jitterish-mongo:
+    container_name: jitterish-mongo
+    image: mongo
+    command: mongod --port 27017
+    volumes:
+      - ./data:/data/db
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: jitterish_checker
+      MONGO_INITDB_ROOT_PASSWORD: jitterish_checker
+
+networks:
+  default:
+    name: jitterish-checker

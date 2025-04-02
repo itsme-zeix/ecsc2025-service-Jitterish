@@ -12,7 +12,7 @@ use sha2::{Digest, Sha256};
 use crate::Queries;
 
 // if we are registered (that is, we have a user), redirect to index instead
-#[get("/register")]
+#[get("/session/register")]
 pub(super) fn register(_user: UserSession) -> Redirect {
     Redirect::to(uri!(crate::session::profile::index))
 }
