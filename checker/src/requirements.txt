@@ -1,0 +1,3 @@
+enochecker3>=0.10.0
+gunicorn
+uvicorn-worker

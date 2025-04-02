@@ -1,6 +1,8 @@
 # testing
 venv/
 .venv/
+__pycache__
+*.pyc
 
 # rust build artifacts
 target/

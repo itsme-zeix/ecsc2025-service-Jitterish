@@ -163,5 +163,6 @@ async def demo() -> None:
 
 
 if __name__ == "__main__":
+    # production: gunicorn -c gunicorn.conf.py "checker:app()"
     # checker.run(port=8001)
     asyncio.run(demo())
