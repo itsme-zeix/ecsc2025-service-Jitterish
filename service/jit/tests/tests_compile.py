@@ -9,7 +9,7 @@ from typing import Any
 def find_compiler() -> Path:
     for p in ('cmake-build-debug', 'build', ''):
         candidate = ROOT / p / 'jit'
-        if (candidate / 'jit').exists():
+        if candidate.exists():
             print(f'Compiler: {candidate}')
             return candidate
     raise Exception('Compiler not found, please build it first!')
@@ -65,6 +65,8 @@ class ExpressionsTestCase(CompileTestCase):
         self.assertEqual('[1,2,3]', self.run_expr('[len {"a":0}, len [1,2], len "abc"]'))
         self.assertEqual('[11,1]', self.run_expr('[ [5,11,3][1], {"a":1,"b":2}["a"] ]'))
         self.assertEqual('[true,false,true,true,false,true,true,false]', self.run_expr('[1==1,1!=1,1!=2, 1<2, 1>2, 1<=2, 1<=1, 1>=2]'))
+        self.assertEqual('true', self.run_expr('defined 1'))
+        self.assertEqual('false', self.run_expr('defined {}["a"]'))
 
 
 class StatementsTestCase(CompileTestCase):

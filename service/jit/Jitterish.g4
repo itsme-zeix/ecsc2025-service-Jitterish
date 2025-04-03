@@ -12,21 +12,25 @@ primary_expr
     | '{' (STRING_LITERAL ':' expr ','?)* '}'  # ObjectExpr
     ;
 
-assignable_expr  // left side of an assignment
-    : NAME  # AssignToNamed
-    | left=primary_expr '[' right=expr ']'  # AssignToProperty
-    | left=primary_expr '[' '+' ']'  # AssignAppend
-    ;
-
-expr: left=expr '[' rght=expr ']'  # PropertyGet
+unary_expr
+    : left=unary_expr '[' rght=expr ']'  # PropertyGet
     | callee=NAME '(' (expr (',' expr)* ','?)? ')'  # CallExpr
     | op=('!' | '-' | 'len' | 'defined') expr  # UnaryOp
+    | primary_expr  # RawExpr
+    ;
+
+assignable_expr  // left side of an assignment
+    : NAME  # AssignToNamed
+    | left=unary_expr '[' right=expr ']'  # AssignToProperty
+    | left=unary_expr '[' '+' ']'  # AssignAppend
+    ;
+
+expr: unary_expr  # UnaryExpr
     | left=expr op=('*' | '/') rght=expr  # BinaryOp
     | left=expr op=('+' | '-') rght=expr  # BinaryOp
     | left=expr op=('==' | '!=' | '<' | '>' | '<=' | '>=') rght=expr  # BinaryOp
     | left=expr op=('||' | '&&' | '?:') rght=expr  # BinaryOp
     | left=assignable_expr '=' rght=expr  # Assignment
-    | primary_expr  # RawExpr
     ;
 
 stmt: expr ';'  # ExprStmt

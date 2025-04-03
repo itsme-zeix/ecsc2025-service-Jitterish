@@ -28,7 +28,7 @@ API_FUNCTION Value jit_rt_array_new();
 API_FUNCTION Value jit_rt_append(Value v1, Value v2);
 API_FUNCTION Value jit_rt_len(Value v);
 API_FUNCTION Value jit_rt_defined(Value v);
-API_FUNCTION bool jit_rt_bool(Value v);
+API_FUNCTION int jit_rt_bool(Value v);
 API_FUNCTION Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, JitFunction reduce, size_t limit, Value param);
 }
 
@@ -234,7 +234,8 @@ Value jit_rt_defined(Value v) {
     return {ValueType::BOOL, !v.is(ValueType::UNDEFINED)};
 }
 
-bool jit_rt_bool(Value v) {
+int jit_rt_bool(Value v) {
+    // fprintf(stdout, "[debug] jit_rt_bool 0x%lx => %d\n", v.raw(), v.is_true());
     return v.is_true();
 }
 
