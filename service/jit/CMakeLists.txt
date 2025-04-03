@@ -57,13 +57,14 @@ add_library(jit_rt SHARED
 		src/rtlib/jit_runtime.cpp
 		src/rtlib/jit_values.h
 		src/rtlib/storage.h
+		src/rtlib/storage.cpp
 		src/rtlib/jit_main.cpp
 		src/rtlib/jit_runtime.h
+		src/rtlib/storage.cpp
 )
 
 add_executable(jit
 		src/main.cpp
-		src/rtlib/jit_values.h
 		src/rtlib/jit_values.h
 		${ANTLR_GENERATED_SOURCES}
 )
