@@ -4,7 +4,7 @@ use nix::libc::{RLIMIT_AS, RLIMIT_CPU, RLIMIT_NICE, RLIMIT_NOFILE, RLIMIT_NPROC,
 use nix::unistd::{getgid, getuid};
 use std::env::current_exe;
 use std::ffi::OsStr;
-use std::path;
+use std::{env, path};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
@@ -14,6 +14,10 @@ use unshare::{GidMap, Namespace, UidMap};
 const COMPILER_PATH_CANDIDATES: [&str; 4] = ["/app/compiler", "../jit/cmake-build-debug", "../jit/build", "../jit"];
 
 fn find_compiler() -> PathBuf {
+    if let Ok(custom_path) = env::var("COMPILER_PATH") {
+        return path::absolute(custom_path).unwrap();
+    }
+
     let mut basepath = path::absolute(current_exe().unwrap()).unwrap().parent().unwrap().to_owned();
     if basepath.parent().and_then(|p| p.file_name()).and_then(OsStr::to_str) == Some("target") {
         basepath.pop();

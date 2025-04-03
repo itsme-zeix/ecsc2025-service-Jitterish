@@ -5,8 +5,18 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
+
+def find_compiler() -> Path:
+    for p in ('cmake-build-debug', 'build', ''):
+        candidate = ROOT / p / 'jit'
+        if (candidate / 'jit').exists():
+            print(f'Compiler: {candidate}')
+            return candidate
+    raise Exception('Compiler not found, please build it first!')
+
+
 ROOT: Path = Path(__file__).absolute().parent.parent
-COMPILER: Path = ROOT / 'cmake-build-debug' / 'jit_playground'
+COMPILER: Path = find_compiler()
 DEMO_DIR: Path = ROOT / 'demo'
 
 

@@ -1,9 +1,11 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.28)
 project(jit)
 cmake_policy(SET CMP0135 NEW)
 
 set(CMAKE_CXX_STANDARD 23)
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
+# We suggest to build this project with clang, not g++, because it has better module support.
 
 # JSON library
 include(FetchContent)
@@ -50,16 +52,6 @@ add_custom_command(OUTPUT ${ANTLR_GENERATED_SOURCES}
 		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
 		DEPENDS ${PROJECT_SOURCE_DIR}/Jitterish.g4
 )
-
-
-#include_directories(
-#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src
-#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/misc
-#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/atn
-#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/dfa
-#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/tree
-#		${PROJECT_SOURCE_DIR}/lib/antlr/runtime/src/support
-#)
 
 add_library(jit_rt SHARED
 		src/rtlib/jit_runtime.cpp

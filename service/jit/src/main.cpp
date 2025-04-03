@@ -7,6 +7,7 @@ import Compiler;
 
 
 std::string runtime_library_path() {
+    // libjit_rt is in the same directory as the compiler binary
     return std::filesystem::absolute(program_invocation_name).parent_path().string();
 }
 

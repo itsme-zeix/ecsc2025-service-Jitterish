@@ -19,7 +19,7 @@ fn check_exit_status(status: ExitStatus) -> Result<(), Box<dyn Error>> {
 }
 
 pub async fn compile<P: AsRef<Path>>(code: &str, output: P) -> Result<(), Box<dyn Error>> {
-    let mut cmd = Command::new("/app/compiler/jit_playground");
+    let mut cmd = Command::new("/app/compiler/jit");
     cmd.arg("-").arg("-");
 
     // program code to stdin
