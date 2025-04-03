@@ -6,33 +6,33 @@
 # TODO switch to trixie as soon as images are available
 FROM rust:bookworm AS builder-rust
 COPY interface /src/interface
-COPY frontend/Cargo.* /src/frontend/
-COPY frontend/src /src/frontend/src
+COPY website/Cargo.* /src/website/
+COPY website/src /src/website/src
 
-RUN --mount=type=cache,id=cache-rust-frontend,target=/src/frontend/target,sharing=locked \
+RUN --mount=type=cache,id=cache-rust-website,target=/src/website/target,sharing=locked \
     --mount=type=cache,id=cache-rust-interface,target=/src/interface/target,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
     mkdir output && \
-    cd /src/frontend && \
+    cd /src/website && \
     cargo build --release && \
-    cp target/release/frontend /output/
+    cp target/release/website /output/
 
 
 # 2. Build runtime container
 # TODO switch to trixie as soon as images are available
 FROM debian:trixie AS runtime
 
-COPY --from=builder-rust /output/frontend /app/frontend/
-COPY frontend/queries /app/frontend/queries
-COPY frontend/references /app/frontend/references
-COPY frontend/static /app/frontend/static
-COPY frontend/templates /app/frontend/templates
-COPY frontend/Rocket.toml /app/frontend/
+COPY --from=builder-rust /output/website /app/website/
+COPY website/queries /app/website/queries
+COPY website/references /app/website/references
+COPY website/static /app/website/static
+COPY website/templates /app/website/templates
+COPY website/Rocket.toml /app/website/
 
-WORKDIR /app/frontend
+WORKDIR /app/website
 
 ENV ROCKET_ADDRESS=0.0.0.0
 ENV ROCKET_PORT=8000
 
-CMD ["/app/frontend/frontend"]
+CMD ["/app/website/website"]

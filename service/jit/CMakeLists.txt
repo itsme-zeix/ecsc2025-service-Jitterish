@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
-project(jit_playground)
+project(jit)
 cmake_policy(SET CMP0135 NEW)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -69,14 +69,14 @@ add_library(jit_rt SHARED
 		src/rtlib/jit_runtime.h
 )
 
-add_executable(jit_playground
+add_executable(jit
 		src/main.cpp
 		src/rtlib/jit_values.h
 		src/rtlib/jit_values.h
 		${ANTLR_GENERATED_SOURCES}
 )
 
-target_sources(jit_playground
+target_sources(jit
 		PUBLIC
 		FILE_SET CXX_MODULES FILES
 		src/codegen/CodegenContext.cppm
@@ -87,5 +87,5 @@ target_sources(jit_playground
 target_link_libraries(jit_rt PRIVATE nlohmann_json::nlohmann_json)
 target_compile_options(jit_rt PRIVATE -Wno-return-type-c-linkage)
 
-add_dependencies(jit_playground GenerateParser)
-target_link_libraries(jit_playground antlr4_static jit_rt nlohmann_json::nlohmann_json "-Wl,-rpath,/app/compiler" "-Wl,-rpath,.")
+add_dependencies(jit GenerateParser)
+target_link_libraries(jit antlr4_static jit_rt nlohmann_json::nlohmann_json "-Wl,-rpath,/app/compiler" "-Wl,-rpath,.")

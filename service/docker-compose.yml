@@ -1,12 +1,12 @@
 services:
   # TODO Still WIP, just here to prove that things will run in docker just fine.
-  engine:
+  dbengine:
     build:
       context: .
-      dockerfile: engine.Dockerfile
+      dockerfile: dbengine.Dockerfile
     volumes:
-      - ./data/engine-data:/app/engine/data
-      - ./data/engine-queries:/app/engine/queries
+      - ./data/db-engine-data:/app/dbengine/data
+      - ./data/db-engine-queries:/app/dbengine/queries
     ports:
       - "9999:9999"  # TODO for debug only
     # restart: unless-stopped
@@ -15,16 +15,16 @@ services:
     security_opt:
       - apparmor=unconfined
 
-  frontend:
+  website:
     build:
       context: .
-      dockerfile: frontend.Dockerfile
+      dockerfile: website.Dockerfile
     volumes:
-      - ./data/frontend:/app/frontend/data
+      - ./data/website:/app/website/data
     ports:
       - "8000:8000"
     environment:
-      DB: "engine:9999"
+      DB: "dbengine:9999"
     depends_on:
       engine:
         condition: service_started
