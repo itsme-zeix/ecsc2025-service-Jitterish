@@ -2,17 +2,41 @@ use crate::sandbox::async_unshare::wait_async;
 use lazy_static::lazy_static;
 use nix::libc::{RLIMIT_AS, RLIMIT_CPU, RLIMIT_NICE, RLIMIT_NOFILE, RLIMIT_NPROC, RLIMIT_RSS};
 use nix::unistd::{getgid, getuid};
+use std::env::current_exe;
+use std::ffi::OsStr;
 use std::path;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::time::Duration;
 use tokio::time::timeout;
 use unshare::{GidMap, Namespace, UidMap};
+
+const COMPILER_PATH_CANDIDATES: [&str; 4] = ["/app/compiler", "../jit/cmake-build-debug", "../jit/build", "../jit"];
+
+fn find_compiler() -> PathBuf {
+    let mut basepath = path::absolute(current_exe().unwrap()).unwrap().parent().unwrap().to_owned();
+    if basepath.parent().and_then(|p| p.file_name()).and_then(OsStr::to_str) == Some("target") {
+        basepath.pop();
+        basepath.pop();
+    }
+    for p in COMPILER_PATH_CANDIDATES {
+        let path = if p.starts_with("/") {
+            PathBuf::from_str(p).unwrap()
+        } else {
+            basepath.join(p)
+        };
+        if path.join("jit").exists() {
+            return path;
+        }
+    }
+    panic!("Could not find jit compiler");
+}
 
 lazy_static! {
     static ref sandbox_mutex: tokio::sync::Mutex<i32> = tokio::sync::Mutex::new(0i32);
     // pub static ref compiler_path: PathBuf = path::absolute("/home/simeon/Documents/CTF/ecsc2025-service-Jitterish/jit-playground/build/").unwrap();
     // pub static ref compiler_path: PathBuf = path::absolute("../jit-playground/cmake-build-debug/").unwrap();
-    pub static ref compiler_path: PathBuf = path::absolute("/app/compiler/").unwrap();
+    pub static ref compiler_path: PathBuf = find_compiler();
 }
 
 pub async fn run_sandboxed<P: AsRef<Path>>(
@@ -20,7 +44,7 @@ pub async fn run_sandboxed<P: AsRef<Path>>(
     executable: Option<P>,
     data_folder: Option<P>,
     runtime: Duration,
-    memory: u64,  // in megabytes
+    memory: u64, // in megabytes
 ) -> Result<unshare::Child, Box<dyn std::error::Error>> {
     let my_uid = getuid();
     let my_gid = getgid();
