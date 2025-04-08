@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width"/>
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/static/tmp.css">
+</head>
+<body>
+
+{{#if message}}
+    <p class="alert {{#if kind}}alert-{{kind}}{{/if}}">{{#if kind}}{{kind}}: {{/if}}{{ message }}</p>
+{{/if}}
+
+{{> page}}
+
+</body>
+</html>

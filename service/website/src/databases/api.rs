@@ -42,7 +42,7 @@ struct KvToken<'r> {
 }
 
 #[post("/<user>/create", format = "json", data = "<value>")]
-async fn api_create(
+pub async fn api_create(
     queries: &State<Queries>,
     session: Option<UserSession>,
     user: &str,
@@ -67,7 +67,7 @@ async fn api_create(
 }
 
 #[post("/<user>/grant/<key>/<token>")]
-async fn api_token(
+pub async fn api_token(
     queries: &State<Queries>,
     session: Option<UserSession>,
     user: &str,
@@ -94,7 +94,7 @@ async fn api_token(
 }
 
 #[get("/<user>/<what>/<key>?<token>")]
-async fn api_get(
+pub async fn api_get(
     queries: &State<Queries>,
     session: Option<UserSession>,
     user: &str,
@@ -114,8 +114,4 @@ async fn api_get(
         )
         .await?;
     Ok(Json(result))
-}
-
-pub fn routes() -> Vec<rocket::Route> {
-    routes![api_create, api_token, api_get]
 }

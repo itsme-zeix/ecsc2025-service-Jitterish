@@ -1,47 +1,34 @@
-<!DOCTYPE html>
-<html>
-   <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width" />
-      <title>Rocket: Sessions</title>
-   </head>
-   <body>
-      <h1>Rocket Session: Please Register</h1>
+{{#*inline "page"}}
+    <h1>Please Register</h1>
 
-      {{#if message}}
-         <p>{{#if kind}}{{kind}}: {{/if}}{{ message }}</p>
-      {{/if}}
+    <form action="/session/register" method="post" accept-charset="utf-8">
+        <label for="username">username</label>
+        <input type="text" name="username" id="username" value=""/>
 
-      <form action="/session/register" method="post" accept-charset="utf-8">
-         <label for="username">username</label>
-         <input type="text" name="username" id="username" value="" />
+        <br>
+        <label for="password">password</label>
+        <input type="password" name="password" id="password" value=""/>
 
-         <br>
-         <label for="password">password</label>
-         <input type="password" name="password" id="password" value="" />
+        <br>
+        <label for="firstname">First name</label>
+        <input type="text" name="firstname" id="firstname" value=""/>
 
-         <br>
-         <label for="firstname">First name</label>
-         <input type="text" name="firstname" id="firstname" value="" />
+        <br>
+        <label for="lastname">Last name</label>
+        <input type="text" name="lastname" id="lastname" value=""/>
 
-         <br>
-         <label for="lastname">Last name</label>
-         <input type="text" name="lastname" id="lastname" value="" />
-
-         <br>
-         <label for="income">Your income (must be > 9000) </label>
-         <input type="number" name="income" id="income" value="" />
-         <br>
+        <br>
+        <label for="income">Your income (must be > 9000) </label>
+        <input type="number" name="income" id="income" value=""/>
+        <br>
 
          <input type="radio" id="personal" name="accounttype" value="personal">
          <label for="personal">personal</label><br>
          <input type="radio" id="business" name="accounttype" value="business">
          <label for="business">business</label><br>
 
-         <br>  
-         <p><input type="submit" value="register"></p>
-      </form>
-
-      <a href="/">Home</a>
-   </body>
-</html>
+        <br>
+        <p><input type="submit" value="register"></p>
+    </form>
+{{/inline}}
+{{> default title="Register"}}

@@ -4,7 +4,7 @@ extern crate rocket;
 #[cfg(test)]
 mod tests;
 
-mod api;
+mod databases;
 mod dbconnector;
 mod models;
 mod session;
@@ -13,7 +13,8 @@ use crate::dbconnector::DbConnection;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use interface::database::CodeRef;
-use rocket::fs::{FileServer, NamedFile};
+use rocket::fs::FileServer;
+use rocket::request::FlashMessage;
 use rocket_dyn_templates::Template;
 use std::error::Error;
 use std::fs;
@@ -21,9 +22,8 @@ use std::fs::create_dir_all;
 use std::path::Path;
 
 #[get("/")]
-async fn index() -> Option<NamedFile> {
-    let path = Path::new("static/index.html");
-    NamedFile::open(path).await.ok()
+fn index(flash: Option<FlashMessage<'_>>) -> Template {
+    Template::render("login", &flash)
 }
 
 #[derive(Debug)]
@@ -69,5 +69,5 @@ async fn rocket() -> _ {
         .mount("/static", FileServer::from("static/"))
         .mount("/", routes![index])
         .mount("/", session::routes())
-        .mount("/api", api::routes())
+        .mount("/api", databases::routes())
 }
