@@ -16,7 +16,7 @@ pub async fn get_user(queries: &Queries, name: &str) -> std::io::Result<Option<U
     Ok(users.into_iter().nth(0))
 }
 
-async fn check_api_user(queries: &Queries, name: &str) -> std::io::Result<()> {
+async fn check_kv_user(queries: &Queries, name: &str) -> std::io::Result<()> {
     let allowed = get_user(queries, name)
         .await?
         .map(|user| user.allow_public_kv)
@@ -41,14 +41,14 @@ struct KvToken<'r> {
     token: &'r str,
 }
 
-#[post("/<user>/create", format = "json", data = "<value>")]
+#[post("/api/<user>/create", format = "json", data = "<value>")]
 pub async fn api_create(
     queries: &State<Queries>,
     session: Option<UserSession>,
     user: &str,
     value: Json<Box<RawValue>>,
 ) -> std::io::Result<Json<Value>> {
-    check_api_user(queries, user).await?;
+    check_kv_user(queries, user).await?;
 
     let mut db = DbConnection::open(user).await?;
 
@@ -66,7 +66,7 @@ pub async fn api_create(
     Ok(Json(json!({"key": key})))
 }
 
-#[post("/<user>/grant/<key>/<token>")]
+#[post("/api/<user>/grant/<key>/<token>")]
 pub async fn api_token(
     queries: &State<Queries>,
     session: Option<UserSession>,
@@ -74,7 +74,7 @@ pub async fn api_token(
     key: &str,
     token: &str,
 ) -> std::io::Result<Json<Value>> {
-    check_api_user(queries, user).await?;
+    check_kv_user(queries, user).await?;
 
     let mut db = DbConnection::open(user).await?;
 
@@ -93,7 +93,7 @@ pub async fn api_token(
     Ok(Json(json!({"ok": result})))
 }
 
-#[get("/<user>/<what>/<key>?<token>")]
+#[get("/api/<user>/<what>/<key>?<token>")]
 pub async fn api_get(
     queries: &State<Queries>,
     session: Option<UserSession>,
@@ -102,7 +102,7 @@ pub async fn api_get(
     key: Option<&str>,
     token: Option<&str>,
 ) -> std::io::Result<Json<Value>> {
-    check_api_user(queries, user).await?;
+    check_kv_user(queries, user).await?;
 
     let mut db = DbConnection::open(user).await?;
 

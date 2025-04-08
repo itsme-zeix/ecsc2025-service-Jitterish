@@ -41,3 +41,10 @@ impl<'r> FromRequest<'r> for UserSession {
             .or_forward(Status::Unauthorized)
     }
 }
+
+#[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
+pub struct QueryForm<'r> {
+    pub query: &'r str,
+    pub query_name: &'r str,
+    pub params: &'r str,
+}

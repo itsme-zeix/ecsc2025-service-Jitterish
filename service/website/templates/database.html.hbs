@@ -1,0 +1,39 @@
+{{#*inline "page"}}
+    <h1>Database {{database}}</h1>
+
+    <code>TODO everything here might need additional UI-level checks (what is permitted etc)</code>
+    <p>This database contains public relations, which you can query.</p>
+
+    {{#if err}}
+        <div class="alert alert-error">{{err}}</div>
+    {{/if}}
+    {{#if msgs}}
+        <div class="alert alert-info">
+            <small class="title">query output</small>
+            {{#each msgs}}
+                <p>{{this}}</p>
+            {{/each}}
+        </div>
+    {{/if}}
+
+    <form action="/database/{{database}}/query" method="post" accept-charset="utf-8">
+        <label for="query">query</label>
+        <textarea name="query" id="query">{{form.query}}</textarea>
+        <label for="query_name">query_name</label>
+        <input type="text" name="query_name" id="query_name" value="{{form.query_name}}">
+        <label for="params">params</label>
+        <input type="text" name="params" id="params" value="{{form.params}}">
+        <p><input type="submit" value="run query"></p>
+    </form>
+
+
+    <form action="/database/{{database}}/append" method="post" accept-charset="utf-8">
+        <label for="collection">collection</label>
+        <input type="text" name="collection" id="collection" value="TODO turn into select">
+        <label for="entry">entry</label>
+        <textarea name="entry" id="entry">{}</textarea>
+        <p><input type="submit" value="append"></p>
+    </form>
+
+{{/inline}}
+{{> default title="Database"}}

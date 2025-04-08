@@ -6,3 +6,15 @@
 .alert-error {
     background-color: #f67;
 }
+.alert > p {
+    margin: auto;
+}
+.alert > .title {
+    display: block;
+    width: auto;
+    margin-top: -.75rem;
+    margin-left: -.25rem;
+    padding: .25rem;
+    line-height: 1rem;
+    background-color: #ddd;
+}
