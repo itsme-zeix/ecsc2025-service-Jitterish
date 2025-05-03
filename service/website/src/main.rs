@@ -13,8 +13,10 @@ use crate::dbconnector::DbConnection;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use interface::database::CodeRef;
+use interface::frontend::UserSession;
 use rocket::fs::FileServer;
 use rocket::request::FlashMessage;
+use rocket::response::Redirect;
 use rocket_dyn_templates::Template;
 use std::error::Error;
 use std::fs;
@@ -22,6 +24,11 @@ use std::fs::create_dir_all;
 use std::path::Path;
 
 #[get("/")]
+fn index_logged_in(_user: UserSession) -> Redirect {
+    Redirect::to(uri!(crate::session::profile::index))
+}
+
+#[get("/", rank = 2)]
 fn index(flash: Option<FlashMessage<'_>>) -> Template {
     Template::render("login", &flash)
 }
@@ -67,7 +74,7 @@ async fn rocket() -> _ {
         .manage(queries)
         .attach(Template::fairing())
         .mount("/static", FileServer::from("static/"))
-        .mount("/", routes![index])
+        .mount("/", routes![index, index_logged_in])
         .mount("/", session::routes())
         .mount("/", databases::routes())
 }

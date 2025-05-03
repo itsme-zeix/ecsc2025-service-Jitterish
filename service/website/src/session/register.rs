@@ -1,6 +1,6 @@
 use crate::dbconnector::DbConnection;
 use crate::models::UserModel;
-use interface::frontend::{Register, UserSession};
+use interface::frontend::{Query, Register, UserSession};
 use rocket::form::Form;
 use rocket::http::CookieJar;
 use rocket::request::FlashMessage;
@@ -23,6 +23,17 @@ pub fn register_page(flash: Option<FlashMessage<'_>>) -> Template {
     Template::render("register", &flash)
 }
 
+
+#[post("/session/query", data = "<query>")]
+pub fn query_user(_user: UserSession, query: Form<Query<'_>>) -> Redirect {
+    println!("{:?}", query);
+    // TODO: query db and handle the errors accordingly
+    Redirect::to(uri!(crate::session::profile::index))
+}
+
+// do the registration
+// this means creating a user in the web interface that has all required 
+// attributes for creating a user in the actual db
 #[post("/session/register", data = "<register>")]
 pub(super) async fn post_register(
     queries: &State<Queries>,
@@ -30,11 +41,14 @@ pub(super) async fn post_register(
     register: Form<Register<'_>>,
 ) -> Result<Redirect, Flash<Redirect>> {
     // TODO validate input
-
+    let mut is_public = true;
+    if register.accounttype == "business" {
+        is_public = false;
+    }
     let user = UserModel {
         username: register.username.to_owned(),
         password_hash: hex::encode(Sha256::digest(register.password.as_bytes())),
-        allow_public_queries: false,
+        allow_public_queries: is_public,
         allow_public_kv: true,
     };
 

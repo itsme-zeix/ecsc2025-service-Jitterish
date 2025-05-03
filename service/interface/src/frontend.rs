@@ -1,14 +1,20 @@
 use rocket::{http::Status, outcome::IntoOutcome, request::{self, FromRequest}, FromForm, Request};
 use serde::{Deserialize, Serialize};
 
+
+#[derive(FromForm, Serialize, Deserialize, Debug)]
+pub struct Query<'r> {
+    pub target: &'r str,
+    pub query_str: &'r str,
+}
+
 #[derive(FromForm, Serialize, Deserialize)]
 pub struct Register<'r> {
     pub username: &'r str,
     pub password: &'r str,
     firstname: &'r str,
     lastname: &'r str,
-    income: u32,
-    accounttype: &'r str,
+    pub accounttype: &'r str,
 }
 
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
@@ -40,6 +46,23 @@ impl<'r> FromRequest<'r> for UserSession {
             .map(|cookie| UserSession { username: cookie.value().to_owned() })
             .or_forward(Status::Unauthorized)
     }
+}
+
+#[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
+pub struct DbForm<'r> {
+    pub db: &'r str,
+}
+
+#[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
+pub struct AppendForm<'r> {
+    pub collection: &'r str,
+    pub data: &'r str,
+}
+
+#[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
+pub struct SimpleQueryForm<'r> {
+    pub query: &'r str,
+    pub params: &'r str,
 }
 
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
