@@ -72,6 +72,16 @@ input:focus, textarea:focus, select:focus {
   }
 }
 
+input[type="submit"], button, .btn {
+  &[data-augmented-ui] {
+    border-radius: 0;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    @include aug.corner-clip(tl);
+    @include aug.corner-clip(br);
+  }
+}
+
 .btn-secondary {
   background-color: vars.$secondary;
   border-color: vars.$secondary;

@@ -26,7 +26,7 @@
             </select>
             <label for="params">params</label>
             <input type="text" name="params" id="params" value="{}">
-            <p><input type="submit" value="run query"></p>
+            <p><input data-augmented-ui type="submit" value="run query"></p>
         </form>
         <br>
         <form action="/database/{{database}}/customquery" method="post" accept-charset="utf-8">
@@ -36,7 +36,7 @@
             <input type="text" name="query_name" id="query_name" value="{{form.query_name}}">
             <label for="params">params</label>
             <input type="text" name="params" id="params" value="{{form.params}}">
-            <p><input type="submit" value="run custom query"></p>
+            <p><input data-augmented-ui type="submit" value="run custom query"></p>
         </form>
     </div>
 
@@ -49,7 +49,7 @@
             <input type="text" name="collection" id="collection" value="TODO turn into select">
             <label for="entry">entry</label>
             <textarea name="data" id="entry">{}</textarea>
-            <p><input type="submit" value="append"></p>
+            <p><input data-augmented-ui type="submit" value="append"></p>
         </form>
     </div>
 
@@ -58,7 +58,7 @@
         <form action="/database/{{database}}/list" method="post">
             <label for="database">database</label>
             <input type="text" name="db" id="database" value="">
-            <p><input type="submit" value="list"></p>
+            <p><input data-augmented-ui type="submit" value="list"></p>
         </form>
     </div>
 
@@ -66,7 +66,7 @@
 
     <h2>Back to profile</h2>
     <br>
-    <a class="btn" href="/session/profile">Profile</a>
+    <a data-augmented-ui class="btn" href="/session/profile">Profile</a>
 
 {{/inline}}
 {{> default title="Database"}}

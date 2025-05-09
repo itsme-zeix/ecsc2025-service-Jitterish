@@ -31,6 +31,12 @@ $element-clip-size: 12px;
   --aug-clip-#{$where}1: initial;
 }
 
+@mixin corner-clip($where) {
+  --aug-clip-#{$where}1: initial;
+  --aug-#{$where}: #{$element-clip-size};
+  --aug-#{$where}1: var(--aug-#{$where});
+}
+
 @mixin mid-insert-1($where) {
   --aug-#{$where}1-alt-join-out: initial;
   --aug-#{$where}2-alt-join-in: initial;
