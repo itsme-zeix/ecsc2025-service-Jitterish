@@ -6,7 +6,7 @@ $element-clip-size: 12px;
   --aug-inlay: initial;
   --aug-border: initial;
   --aug-border-bg: #{vars.$border-color};
-  --aug-inlay-bg: linear-gradient(90deg, rgba(43, 237, 237, .15), rgba(43, 237, 237, .05));
+  --aug-inlay-bg: linear-gradient(90deg, #{rgba(vars.$primary, .15)}, #{rgba(vars.$primary, .05)});
 }
 
 @mixin corner1($where) {

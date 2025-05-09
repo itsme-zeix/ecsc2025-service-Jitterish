@@ -2,7 +2,7 @@
   "name": "jitterish-frontend",
   "version": "0.0.1",
   "scripts": {
-    "build": "webpack",
+    "build": "webpack --mode production",
     "watch": "webpack -w",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -4,59 +4,66 @@
     <code>TODO everything here might need additional UI-level checks (what is permitted etc)</code>
     <p>This database contains public relations, which you can query.</p>
 
-    {{#if err}}
-        <div data-augmented-ui class="alert alert-error">{{err}}</div>
-    {{/if}}
-    {{#if msgs}}
-        <div data-augmented-ui class="alert alert-info">
-            <small class="title">query output</small>
-            {{#each msgs}}
-                <p>{{this}}</p>
-            {{/each}}
-        </div>
-    {{/if}}
-    <h2>Read database</h2>
-    <p>You can read all public databases.</p>
-    <form action="/database/{{database}}/query" method="post" accept-charset="utf-8">
-        <select name="query" id="query">
-            {{#each queries}}
-                <option value="{{this}}">{{this}}</option>
-            {{/each}}
-        </select>
-        <label for="params">params</label>
-        <input type="text" name="params" id="params" value="{}">
-        <p><input type="submit" value="run query"></p>
-    </form>
+    <div data-augmented-ui class="content-card-1">
+        <h3 class="title">Read database</h3>
+        {{#if err}}
+            <div data-augmented-ui class="alert alert-error">{{err}}</div>
+        {{/if}}
+        {{#if msgs}}
+            <div data-augmented-ui class="alert alert-info">
+                <small class="title">query output</small>
+                {{#each msgs}}
+                    <p>{{this}}</p>
+                {{/each}}
+            </div>
+        {{/if}}
+        <p>You can read all public databases.</p>
+        <form action="/database/{{database}}/query" method="post" accept-charset="utf-8">
+            <select name="query" id="query">
+                {{#each queries}}
+                    <option value="{{this}}">{{this}}</option>
+                {{/each}}
+            </select>
+            <label for="params">params</label>
+            <input type="text" name="params" id="params" value="{}">
+            <p><input type="submit" value="run query"></p>
+        </form>
+        <br>
+        <form action="/database/{{database}}/customquery" method="post" accept-charset="utf-8">
+            <label for="query">query</label>
+            <textarea name="query" id="query">{{form.query}}</textarea>
+            <label for="query_name">query_name</label>
+            <input type="text" name="query_name" id="query_name" value="{{form.query_name}}">
+            <label for="params">params</label>
+            <input type="text" name="params" id="params" value="{{form.params}}">
+            <p><input type="submit" value="run custom query"></p>
+        </form>
+    </div>
+
+
+    <div data-augmented-ui class="content-card-2">
+        <h2 class="title">Write database</h2>
+        <p>You can only write your own database.</p>
+        <form action="/database/{{database}}/append" method="post" accept-charset="utf-8">
+            <label for="collection">collection</label>
+            <input type="text" name="collection" id="collection" value="TODO turn into select">
+            <label for="entry">entry</label>
+            <textarea name="data" id="entry">{}</textarea>
+            <p><input type="submit" value="append"></p>
+        </form>
+    </div>
+
+    <div data-augmented-ui class="content-card-1">
+        <h2 class="title">List collections</h2>
+        <form action="/database/{{database}}/list" method="post">
+            <label for="database">database</label>
+            <input type="text" name="db" id="database" value="">
+            <p><input type="submit" value="list"></p>
+        </form>
+    </div>
+
     <br>
-    <form action="/database/{{database}}/customquery" method="post" accept-charset="utf-8">
-        <label for="query">query</label>
-        <textarea name="query" id="query">{{form.query}}</textarea>
-        <label for="query_name">query_name</label>
-        <input type="text" name="query_name" id="query_name" value="{{form.query_name}}">
-        <label for="params">params</label>
-        <input type="text" name="params" id="params" value="{{form.params}}">
-        <p><input type="submit" value="run custom query"></p>
-    </form>
 
-
-    <h2>Write database</h2>
-    <p>You can only write your own database.</p>
-    <form action="/database/{{database}}/append" method="post" accept-charset="utf-8">
-        <label for="collection">collection</label>
-        <input type="text" name="collection" id="collection" value="TODO turn into select">
-        <label for="entry">entry</label>
-        <textarea name="data" id="entry">{}</textarea>
-        <p><input type="submit" value="append"></p>
-    </form>
-
-    <h2>List collections</h2>
-    <form action="/database/{{database}}/list" method="post">
-        <label for="database">database</label>
-        <input type="text" name="db" id="database" value="">
-        <p><input type="submit" value="list"></p>
-    </form>
-    <br>
-    
     <h2>Back to profile</h2>
     <br>
     <a class="btn" href="/session/profile">Profile</a>
