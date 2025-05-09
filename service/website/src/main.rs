@@ -17,7 +17,7 @@ use interface::frontend::UserSession;
 use rocket::fs::FileServer;
 use rocket::request::FlashMessage;
 use rocket::response::Redirect;
-use rocket_dyn_templates::Template;
+use rocket_dyn_templates::{context, Template};
 use std::error::Error;
 use std::fs;
 use std::fs::create_dir_all;
@@ -30,7 +30,10 @@ fn index_logged_in(_user: UserSession) -> Redirect {
 
 #[get("/", rank = 2)]
 fn index(flash: Option<FlashMessage<'_>>) -> Template {
-    Template::render("login", &flash)
+    Template::render("login", context! {
+        page: "login",
+        flash: flash
+    })
 }
 
 #[derive(Debug)]

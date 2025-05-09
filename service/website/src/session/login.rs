@@ -6,7 +6,7 @@ use rocket::http::CookieJar;
 use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
 use rocket::State;
-use rocket_dyn_templates::Template;
+use rocket_dyn_templates::{context, Template};
 use sha2::{Digest, Sha256};
 use crate::Queries;
 
@@ -17,7 +17,10 @@ pub(super) fn login(_user: UserSession) -> Redirect {
 
 #[get("/session/login", rank = 2)]
 pub(super) fn login_page(flash: Option<FlashMessage<'_>>) -> Template {
-    Template::render("login", &flash)
+    Template::render("login", context! {
+        page: "login",
+        flash: &flash,
+    })
 }
 
 #[post("/session/login", data = "<login>")]

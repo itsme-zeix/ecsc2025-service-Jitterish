@@ -42,7 +42,7 @@
 
 
     <div data-augmented-ui class="content-card-2">
-        <h2 class="title">Write database</h2>
+        <h3 class="title">Write database</h3>
         <p>You can only write your own database.</p>
         <form action="/database/{{database}}/append" method="post" accept-charset="utf-8">
             <label for="collection">collection</label>
@@ -54,7 +54,7 @@
     </div>
 
     <div data-augmented-ui class="content-card-1">
-        <h2 class="title">List collections</h2>
+        <h3 class="title">List collections</h3>
         <form action="/database/{{database}}/list" method="post">
             <label for="database">database</label>
             <input type="text" name="db" id="database" value="">
@@ -62,11 +62,7 @@
         </form>
     </div>
 
-    <br>
-
-    <h2>Back to profile</h2>
-    <br>
-    <a data-augmented-ui class="btn" href="/session/profile">Profile</a>
 
 {{/inline}}
 {{> default title="Database"}}
+{{> default page="database"}}

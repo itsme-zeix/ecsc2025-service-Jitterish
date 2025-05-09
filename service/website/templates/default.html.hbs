@@ -8,18 +8,31 @@
 </head>
 <body>
 
+<pre>
+    Page: &quot;{{page}}&quot;
+    Username: &quot;{{username}}&quot;
+</pre>
+
 <header data-augmented-ui class="main-menu">
     <ul class="menu">
-        <li class="active"><a href="/">Home</a></li>
-        <li><a href="/session/login">Login</a></li>
-        <li><a href="/session/register">Register</a></li>
-        <li><a href="/session/profile">Profile</a></li>
-        <li><a href="/database/{{username}}">My Database</a></li>
+        <li {{#unless page }}class="active"{{/unless}}><a href="/">Home</a></li>
+        {{#if username}}
+            <li {{#if (eq page "profile") }}class="active"{{/if}}><a href="/session/profile">Profile</a></li>
+            <li {{#if (eq page "database") }}class="active"{{/if}}><a href="/database/{{username}}">My Database</a></li>
+        {{else}}
+            <li {{#if (eq page "login") }}class="active"{{/if}}><a href="/session/login">Login</a></li>
+            <li {{#if (eq page "register") }}class="active"{{/if}}><a href="/session/register">Register</a></li>
+        {{/if}}
     </ul>
 </header>
 
 {{#if message}}
     <p data-augmented-ui class="alert {{#if kind}}alert-{{kind}}{{/if}}">{{#if kind}}{{kind}}: {{/if}}{{ message }}</p>
+{{/if}}
+{{#if flash}}
+    {{#with flash}}
+        <p data-augmented-ui class="alert {{#if kind}}alert-{{kind}}{{/if}}">{{#if kind}}{{kind}}: {{/if}}{{ message }}</p>
+    {{/with}}
 {{/if}}
 
 {{> page}}

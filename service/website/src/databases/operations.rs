@@ -29,6 +29,8 @@ pub async fn database_page(
         "database",
         context! {
             flash: flash,
+            username: user.username,
+            page: "database",
             database: database,
             form: QueryForm{
                 query: "query q on XXX;",
@@ -70,6 +72,8 @@ pub async fn database_list(
         "database",
         context! {
             flash: flash,
+            username: user.username,
+            page: "database",
             database: database,
             queries: ["test", "a","b","c"],
             err: err,
@@ -106,6 +110,8 @@ pub async fn database_query(
         "database",
         context! {
             flash: flash,
+            username: user.username,
+            page: "database",
             database: database,
             queries: ["test", "a","b","c"],
             form: form.into_inner(),
@@ -154,6 +160,8 @@ pub async fn database_append(
         "database",
         context! {
             flash: flash,
+            username: user.username,
+            page: "database",
             database: database,
             queries: ["test", "a","b","c"],
             form: form.into_inner(),
@@ -209,6 +217,8 @@ pub async fn database_query_custom(
     Ok(Template::render(
         "database",
         context! {
+            page: "database",
+            username: user.username,
             flash: flash,
             database: database,
             queries: ["test", "a","b","c"],
