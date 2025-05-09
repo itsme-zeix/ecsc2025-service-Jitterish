@@ -1,16 +1,48 @@
+@use "sass:color";
+@use "vars";
+@use "aug";
 @import "simpledotcss/simple.min.css";
 @import "augmented-ui/augmented-ui.min.css";
 
 :root {
+  --sans-font: Titillium Web, "Segoe UI Web (West European)", Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif;
+
   color-scheme: dark;
   --bg: #212121;
   --accent-bg: #2b2b2b;
   --text: #dcdcdc;
-  --text-light: #ababab;
-  --accent: #ffb300;
-  --accent-hover: #ffe099;
+  --text-light: #{vars.$text-light}; // #ababab;
+  --accent: #{vars.$primary}; // #ffb300;
+  --accent-hover: #{color.adjust(vars.$primary, $lightness:20%)}; // #ffe099;
   --accent-text: var(--bg);
   --code: #f06292;
   --preformatted: #ccc;
   --disabled: #111;
+}
+
+
+h1 {
+  color: vars.$primary;
+  font-weight: 400;
+  text-shadow: 0 0 .4rem color.adjust(vars.$primary, $lightness: -10%);
+
+  text-align: center;
+}
+
+input:focus {
+  outline: 2px solid rgba(vars.$primary, .5);
+  outline-offset: 1px;
+}
+
+
+.main-card {
+  @include aug.aug;
+  @include aug.corner1(tl);
+  @include aug.corner1(bl);
+  @include aug.corner2(tr);
+  @include aug.corner2(br);
+
+  padding: 1rem 2rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
 }

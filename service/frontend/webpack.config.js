@@ -3,6 +3,7 @@ const path = require('path');
 
 module.exports = {
     // entry: "./index.js",
+    cache: false,
     entry: "./scss/main.scss",
     mode: "development",
     output: {
