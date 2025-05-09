@@ -1,12 +1,16 @@
 {{#*inline "page"}}
     <h1>Your Account</h1>
-    <p>Logged in with user &quot;{{ username }}&quot;.</p>
 
-    <br>
-    <button onclick="location.href='/database/{{username}}'">Manage db</button>
+    <div data-augmented-ui="" class="main-card">
+        <p>Logged in with user &quot;{{ username }}&quot;.</p>
 
-    <form action="/session/logout" method="post" accept-charset="utf-8">
-        <input type="submit" name="logout" id="logout" value="logout"/>
-    </form>
+        <br>
+        <a href="/database/{{username}}" class="btn">Manage db</a>
+        <a class="btn btn-secondary">Test</a>
+
+        <form action="/session/logout" method="post" accept-charset="utf-8">
+            <input type="submit" name="logout" id="logout" value="logout"/>
+        </form>
+    </div>
 {{/inline}}
 {{> default title="Your Account"}}

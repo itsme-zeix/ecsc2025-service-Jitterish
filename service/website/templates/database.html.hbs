@@ -16,8 +16,7 @@
         </div>
     {{/if}}
     <h2>Read database</h2>
-    You can read all public databases.
-    <br>
+    <p>You can read all public databases.</p>
     <form action="/database/{{database}}/query" method="post" accept-charset="utf-8">
         <select name="query" id="query">
             {{#each queries}}
@@ -41,7 +40,7 @@
 
 
     <h2>Write database</h2>
-    You can only write your own database.
+    <p>You can only write your own database.</p>
     <form action="/database/{{database}}/append" method="post" accept-charset="utf-8">
         <label for="collection">collection</label>
         <input type="text" name="collection" id="collection" value="TODO turn into select">
@@ -60,7 +59,7 @@
     
     <h2>Back to profile</h2>
     <br>
-    <button onclick="location.href='/session/profile'">Profile</button>
+    <a class="btn" href="/session/profile">Profile</a>
 
 {{/inline}}
 {{> default title="Database"}}

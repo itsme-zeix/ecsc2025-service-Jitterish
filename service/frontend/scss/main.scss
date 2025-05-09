@@ -13,13 +13,17 @@
   --text: #dcdcdc;
   --text-light: #{vars.$text-light}; // #ababab;
   --accent: #{vars.$primary}; // #ffb300;
-  --accent-hover: #{color.adjust(vars.$primary, $lightness:20%)}; // #ffe099;
+  --accent-hover: #{vars.$primary-hover}; // #ffe099;
   --accent-text: var(--bg);
   --code: #f06292;
   --preformatted: #ccc;
   --disabled: #111;
 }
 
+p {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
 
 h1 {
   color: vars.$primary;
@@ -29,9 +33,52 @@ h1 {
   text-align: center;
 }
 
-input:focus {
+input:focus, textarea:focus, select:focus {
   outline: 2px solid rgba(vars.$primary, .5);
   outline-offset: 1px;
+}
+
+
+.btn {
+  background-color: var(--accent);
+  border-radius: var(--standard-border-radius);
+  border: var(--border-width) solid var(--accent);
+  box-shadow: none;
+  color: var(--accent-text);
+  display: inline-block;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: normal;
+  margin-bottom: .5rem;
+  max-width: 100%;
+  padding: .5rem;
+  text-decoration: none;
+  text-align: center;
+
+  &:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+    cursor: pointer;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+}
+
+.btn-secondary {
+  background-color: vars.$secondary;
+  border-color: vars.$secondary;
+
+  &:hover {
+    background-color: vars.$secondary-hover;
+    border-color: vars.$secondary-hover;
+  }
+
+  &:focus-visible {
+    outline-color: vars.$secondary;
+  }
 }
 
 
@@ -42,7 +89,7 @@ input:focus {
   @include aug.corner2(tr);
   @include aug.corner2(br);
 
-  padding: 1rem 2rem;
+  padding: 2rem;
   margin-top: 1rem;
   margin-bottom: 1rem;
 }
