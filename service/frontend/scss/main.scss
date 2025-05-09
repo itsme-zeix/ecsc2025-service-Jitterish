@@ -27,6 +27,16 @@
   --border: #{vars.$border-soft};
 }
 
+body {
+  background-image: radial-gradient(
+    circle at center,
+    var(--accent-bg) 0.15rem,
+    transparent 0
+  );
+  background-size: 10rem 10rem;
+  background-repeat: round;
+}
+
 p {
   margin-top: 0;
   margin-bottom: 1rem;
