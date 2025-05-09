@@ -10,7 +10,7 @@
 
 <header data-augmented-ui class="main-menu">
     <ul class="menu">
-        <li {{#unless pagename }}class="active"{{/unless}}><a href="/">Home</a></li>
+        <li {{#if (eq pagename "home") }}class="active"{{/if}}><a href="/">Home</a></li>
         {{#if username}}
             <li {{#if (eq pagename "profile") }}class="active"{{/if}}><a href="/session/profile">Profile</a></li>
             <li {{#if (eq pagename "database") }}class="active"{{/if}}><a href="/database/{{username}}">My Database</a></li>

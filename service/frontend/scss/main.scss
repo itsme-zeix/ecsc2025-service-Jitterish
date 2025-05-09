@@ -1,4 +1,5 @@
 @use "sass:color";
+@use "utils";
 @use "vars";
 @use "aug";
 @import "simpledotcss/simple.min.css";
@@ -26,17 +27,57 @@ p {
   margin-bottom: 1rem;
 }
 
+.lead {
+  font-size: 1.5rem;
+  font-variant: small-caps;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.spacer-2 {
+  margin: 2rem;
+}
+
+.quote-block {
+  margin: 2rem 0;
+
+  blockquote {
+    margin: 0 2rem;
+  }
+
+  .quote-author {
+    text-align: center;
+    font-size: 1rem;
+  }
+}
+
 h1 {
   color: vars.$primary;
   font-weight: 400;
+  font-variant: small-caps;
   text-shadow: 0 0 .4rem color.adjust(vars.$primary, $lightness: -10%);
 
   text-align: center;
+
+  .subtitle {
+    display: block;
+    margin-top: .5rem;
+    font-size: 1.5rem;
+    font-weight: 300;
+    color: color.adjust(vars.$primary, $lightness: -10%);
+    text-shadow: none;
+
+    @include utils.marker-start();
+    @include utils.marker-end();
+  }
 }
 
 h2 {
   color: vars.$secondary;
   font-weight: 300;
+  font-variant: small-caps;
 }
 
 input:focus, textarea:focus, select:focus {
@@ -71,10 +112,15 @@ input:focus, textarea:focus, select:focus {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
+
+  &.btn-lg {
+    padding: 1rem;
+  }
 }
 
 input[type="submit"], button, .btn {
   &[data-augmented-ui] {
+    font-variant: small-caps;
     border-radius: 0;
     padding-left: 2rem;
     padding-right: 2rem;
@@ -128,11 +174,9 @@ input[type="submit"], button, .btn {
     color: vars.$secondary;
     text-shadow: 0 0 2px #{rgba(vars.$secondary, .5)};
     font-weight: 400;
+    font-variant: small-caps;
 
-    &::before {
-      content: "〉〉 ";
-      vertical-align: 0.15rem;
-    }
+    @include utils.marker-start();
   }
 }
 
@@ -188,13 +232,12 @@ input[type="submit"], button, .btn {
 
     border-bottom-width: 1px;
     border-bottom-style: solid;
-    border-image:
-      linear-gradient(
-        to right,
-        #{rgba(vars.$secondary, .1)},
-        #{rgba(vars.$secondary, 1)},
-        #{rgba(vars.$secondary, .1)},
-      ) 100% 1;
+    border-image: linear-gradient(
+                    to right,
+                    #{rgba(vars.$secondary, .1)},
+                    #{rgba(vars.$secondary, 1)},
+                    #{rgba(vars.$secondary, .1)},
+    ) 100% 1;
   }
 }
 
@@ -204,6 +247,7 @@ header.main-menu {
   margin-bottom: 2rem;
 
   font-size: 1rem;
+  font-variant: small-caps;
 
   --aug-inlay: initial;
   --aug-inlay-bg: linear-gradient(0deg, #{rgba(vars.$primary, .15)}, #{rgba(vars.$primary, .05)});
@@ -255,6 +299,19 @@ ul.menu {
           border-bottom-color: vars.$secondary;
         }
       }
+    }
+  }
+}
+
+.logo-container {
+  display: flex;
+  flex-direction: row;
+
+  .thumb {
+    padding: .5rem;
+
+    img {
+      max-width: 100%;
     }
   }
 }

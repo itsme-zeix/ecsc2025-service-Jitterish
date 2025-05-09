@@ -24,13 +24,16 @@ use std::fs::create_dir_all;
 use std::path::Path;
 
 #[get("/")]
-fn index_logged_in(_user: UserSession) -> Redirect {
-    Redirect::to(uri!(crate::session::profile::index))
+fn index_logged_in(flash: Option<FlashMessage<'_>>, user: UserSession) -> Template {
+    Template::render("index", context! {
+        flash: flash,
+        username: user.username,
+    })
 }
 
 #[get("/", rank = 2)]
 fn index(flash: Option<FlashMessage<'_>>) -> Template {
-    Template::render("login", context! {
+    Template::render("index", context! {
         flash: flash
     })
 }
