@@ -9,7 +9,6 @@ use rocket_dyn_templates::{Template, context};
 pub(super) fn index(user: UserSession) -> Template {
     Template::render("session", context! {
         username: user.username,
-        page: "profile",
     })
 }
 

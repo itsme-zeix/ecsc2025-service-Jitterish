@@ -31,7 +31,6 @@ fn index_logged_in(_user: UserSession) -> Redirect {
 #[get("/", rank = 2)]
 fn index(flash: Option<FlashMessage<'_>>) -> Template {
     Template::render("login", context! {
-        page: "login",
         flash: flash
     })
 }

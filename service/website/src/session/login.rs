@@ -18,7 +18,6 @@ pub(super) fn login(_user: UserSession) -> Redirect {
 #[get("/session/login", rank = 2)]
 pub(super) fn login_page(flash: Option<FlashMessage<'_>>) -> Template {
     Template::render("login", context! {
-        page: "login",
         flash: &flash,
     })
 }

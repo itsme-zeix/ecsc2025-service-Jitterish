@@ -24,24 +24,21 @@ pub async fn database_page(
         return Err(std::io::Error::new(ErrorKind::NotFound, "Not authorized"));
     }
 
-    // TODO does flash work here?
     Ok(Template::render(
         "database",
         context! {
             flash: flash,
             username: user.username,
-            page: "database",
             database: database,
             form: QueryForm{
                 query: "query q on XXX;",
                 query_name: "q",
                 params: "{}",
             },
-                queries: ["test", "test2", "a","b","c"],
+            queries: ["test", "test2", "a","b","c"],
         },
     ))
 }
-
 
 //endpoint to list all collections in a database
 #[post("/database/<database>/list", data = "<db>")]
@@ -61,7 +58,7 @@ pub async fn database_list(
             for e in &collections {
                 msgs.push(serde_json::to_string(&e)?)
             }
-        },
+        }
         Err(e) => {
             err = Some(format!("{}", e));
         }
@@ -73,7 +70,6 @@ pub async fn database_list(
         context! {
             flash: flash,
             username: user.username,
-            page: "database",
             database: database,
             queries: ["test", "a","b","c"],
             err: err,
@@ -111,7 +107,6 @@ pub async fn database_query(
         context! {
             flash: flash,
             username: user.username,
-            page: "database",
             database: database,
             queries: ["test", "a","b","c"],
             form: form.into_inner(),
@@ -121,7 +116,6 @@ pub async fn database_query(
     ))
 }
 
-
 #[post("/database/<database>/append", data = "<form>")]
 pub async fn database_append(
     queries: &State<Queries>,
@@ -130,7 +124,6 @@ pub async fn database_append(
     user: UserSession,
     form: Form<AppendForm<'_>>,
 ) -> std::io::Result<Template> {
-    // TODO does flash work here?
     let mut err: Option<String> = None;
     let mut msgs: Vec<String> = Vec::new();
     let mut conn = DbConnection::open(database).await.expect("db offline");
@@ -142,26 +135,23 @@ pub async fn database_append(
 
     let parsed = serde_json::from_str::<Value>(form.data);
     match parsed {
-        Ok(parsed_data) => {
-            match conn.append(form.collection, parsed_data).await {
-                Ok(_) => {
-                    msgs.push(format!("{} successfully appended.", form.data));
-                },
-                Err(e) => {
-                    err = Some(format!("{}", e));
-                }
+        Ok(parsed_data) => match conn.append(form.collection, parsed_data).await {
+            Ok(_) => {
+                msgs.push(format!("{} successfully appended.", form.data));
+            }
+            Err(e) => {
+                err = Some(format!("{}", e));
             }
         },
         Err(e) => {
             err = Some(format!("Incorrect json supplied: {}", e));
-        },
+        }
     }
     Ok(Template::render(
         "database",
         context! {
             flash: flash,
             username: user.username,
-            page: "database",
             database: database,
             queries: ["test", "a","b","c"],
             form: form.into_inner(),
@@ -213,11 +203,9 @@ pub async fn database_query_custom(
         }
     }
 
-    // TODO does flash work here?
     Ok(Template::render(
         "database",
         context! {
-            page: "database",
             username: user.username,
             flash: flash,
             database: database,
