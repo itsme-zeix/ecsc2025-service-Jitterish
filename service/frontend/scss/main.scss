@@ -180,7 +180,80 @@ input[type="submit"], button, .btn {
 
   > .title {
     display: block;
-    margin-top: -.9rem;
+    margin-top: -.75rem;
+    margin-bottom: .5rem;
+    padding: .25rem;
     text-align: center;
+
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-image:
+      linear-gradient(
+        to right,
+        #{rgba(vars.$secondary, .1)},
+        #{rgba(vars.$secondary, 1)},
+        #{rgba(vars.$secondary, .1)},
+      ) 100% 1;
+  }
+}
+
+header.main-menu {
+  border: 0;
+  padding: 1rem;
+  margin-bottom: 2rem;
+
+  font-size: 1rem;
+
+  --aug-inlay: initial;
+  --aug-inlay-bg: linear-gradient(0deg, #{rgba(vars.$primary, .15)}, #{rgba(vars.$primary, .05)});
+  @include aug.corner-clip(bl, $size: 2rem);
+  @include aug.corner-clip(br, $size: 2rem);
+
+  ul.menu {
+    margin-top: 0;
+  }
+}
+
+ul.menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+
+  li {
+    margin: .2rem .1rem;
+    padding: 0;
+    min-width: 8rem;
+    display: block;
+    text-align: center;
+
+    a {
+      padding: 0 1rem;
+      width: 100%;
+      display: block;
+
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+
+      &:focus, &:hover {
+        color: #{color.adjust(vars.$primary, $lightness: 20%)};
+        border-bottom-color: vars.$primary;
+      }
+    }
+
+    &.active {
+      a {
+        color: vars.$secondary;
+        border-bottom-color: vars.$secondary;
+
+        &:focus, &:hover {
+          color: #{color.adjust(vars.$secondary, $lightness: 20%)};
+          border-bottom-color: vars.$secondary;
+        }
+      }
+    }
   }
 }

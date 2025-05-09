@@ -8,6 +8,16 @@
 </head>
 <body>
 
+<header data-augmented-ui class="main-menu">
+    <ul class="menu">
+        <li class="active"><a href="/">Home</a></li>
+        <li><a href="/session/login">Login</a></li>
+        <li><a href="/session/register">Register</a></li>
+        <li><a href="/session/profile">Profile</a></li>
+        <li><a href="/database/{{username}}">My Database</a></li>
+    </ul>
+</header>
+
 {{#if message}}
     <p data-augmented-ui class="alert {{#if kind}}alert-{{kind}}{{/if}}">{{#if kind}}{{kind}}: {{/if}}{{ message }}</p>
 {{/if}}

@@ -31,9 +31,9 @@ $element-clip-size: 12px;
   --aug-clip-#{$where}1: initial;
 }
 
-@mixin corner-clip($where) {
+@mixin corner-clip($where, $size: $element-clip-size) {
   --aug-clip-#{$where}1: initial;
-  --aug-#{$where}: #{$element-clip-size};
+  --aug-#{$where}: #{$size};
   --aug-#{$where}1: var(--aug-#{$where});
 }
 
