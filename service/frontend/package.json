@@ -2,8 +2,6 @@
   "name": "jitterish-frontend",
   "version": "0.0.1",
   "scripts": {
-    "sass-dev": "sass --watch --update --style=expanded scss/main.scss:../website/static/css",
-    "sass-prod": "sass --no-source-map --style=compressed scss/main.scss:../website/static/css",
     "build": "webpack",
     "watch": "webpack -w",
     "test": "echo \"Error: no test specified\" && exit 1"
