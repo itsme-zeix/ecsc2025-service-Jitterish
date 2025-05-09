@@ -33,6 +33,11 @@ h1 {
   text-align: center;
 }
 
+h2 {
+  color: vars.$secondary;
+  font-weight: 300;
+}
+
 input:focus, textarea:focus, select:focus {
   outline: 2px solid rgba(vars.$primary, .5);
   outline-offset: 1px;
@@ -92,4 +97,38 @@ input:focus, textarea:focus, select:focus {
   padding: 2rem;
   margin-top: 1rem;
   margin-bottom: 1rem;
+}
+
+
+.alert {
+  @include aug.aug();
+  @include aug.mid-insert-1(l);
+  @include aug.mid-insert-2(r);
+
+  --aug-border-all: 3px;
+
+  padding: 1rem 2rem;
+  margin: .5rem 0rem;
+
+
+  &.alert-error {
+    --aug-border-bg: #{vars.$error};
+    --aug-inlay-bg: linear-gradient(90deg, #{rgba(vars.$error, .25)}, #{rgba(vars.$error, .20)});
+  }
+
+  &.alert-success {
+    --aug-border-bg: #{vars.$success};
+    --aug-inlay-bg: linear-gradient(90deg, #{rgba(vars.$success, .20)}, #{rgba(vars.$success, .15)});
+  }
+
+  &.alert-info {
+    --aug-border-bg: #{vars.$secondary};
+    --aug-inlay-bg: linear-gradient(90deg, #{rgba(vars.$secondary, .25)}, #{rgba(vars.$secondary, .20)});
+  }
+
+  > .title {
+    display: block;
+    margin-top: -.9rem;
+    text-align: center;
+  }
 }

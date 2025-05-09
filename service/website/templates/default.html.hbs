@@ -5,12 +5,11 @@
     <meta name="viewport" content="width=device-width"/>
     <title>{{ title }}</title>
     <link rel="stylesheet" href="/static/main.css">
-    <link rel="stylesheet" href="/static/tmp.css">
 </head>
 <body>
 
 {{#if message}}
-    <p class="alert {{#if kind}}alert-{{kind}}{{/if}}">{{#if kind}}{{kind}}: {{/if}}{{ message }}</p>
+    <p data-augmented-ui class="alert {{#if kind}}alert-{{kind}}{{/if}}">{{#if kind}}{{kind}}: {{/if}}{{ message }}</p>
 {{/if}}
 
 {{> page}}

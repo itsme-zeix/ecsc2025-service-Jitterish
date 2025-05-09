@@ -5,5 +5,8 @@ $secondary: #f2f279;
 $primary-hover: color.adjust($primary, $lightness:20%);
 $secondary-hover: color.adjust($secondary, $lightness:15%);
 
+$error: #ff3333; // hsl(0deg 100%60%);
+$success: #00ff80;
+
 $text-light: #b5c2c2;
 $border-color: #11d6d6;
