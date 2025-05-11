@@ -1,8 +1,9 @@
 use crate::sandbox::compiler;
 use lazy_static::lazy_static;
 use serde::Serialize;
+use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::fs::{create_dir_all, read_dir, OpenOptions};
+use std::fs::{self, create_dir_all, read_dir, OpenOptions};
 use std::io::ErrorKind::InvalidInput;
 use std::io::Write;
 use std::os::fd::BorrowedFd;
@@ -20,6 +21,27 @@ pub fn dir(database: &str) -> PathBuf {
 
 pub fn query_object(code_ref: &str) -> PathBuf {
     base_queries.join(format!("{}.so", code_ref))
+}
+
+pub fn list_users() -> std::io::Result<Vec<String>> {
+    println!("listing users");
+    let users = dir("_").join("users.ndjson");
+    // todo can we get some sort of file lock here that prevents new user registration?
+    let contents = fs::read_to_string(users);
+    let contents = contents.expect("Could not open users file");
+    let contents = contents.lines().map(String::from);
+        //.collect();
+
+    let mut vec: Vec<String> = Vec::new();
+    for line in contents {
+        let v: Value = serde_json::from_str(&line)?;
+
+        println!("User data: {:?}", v);
+        vec.push(v["username"].to_string());
+    }
+    // for line in lines {
+    // }
+    Ok(vec)
 }
 
 pub fn list_collections(database: &str) -> std::io::Result<Vec<String>> {

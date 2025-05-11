@@ -6,7 +6,7 @@ use rocket::http::CookieJar;
 use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
 use rocket::State;
-use rocket_dyn_templates::Template;
+use rocket_dyn_templates::{context, Template};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use crate::Queries;
@@ -24,11 +24,21 @@ pub fn register_page(flash: Option<FlashMessage<'_>>) -> Template {
 }
 
 
-#[post("/session/query", data = "<query>")]
-pub fn query_user(_user: UserSession, query: Form<Query<'_>>) -> Redirect {
-    println!("{:?}", query);
+// query a list of users
+// only the public ones? Or all?
+#[get("/session/query")]
+pub async fn query_user(user: UserSession) -> Template {
+    let mut db = DbConnection::open("_")
+        .await
+        .expect("db offline");
+    let res = db.list_users().await;
+    let res = res.expect("Could not query usernames");
     // TODO: query db and handle the errors accordingly
-    Redirect::to(uri!(crate::session::profile::index))
+    // Redirect::to(uri!(crate::session::profile::index))
+    Template::render("session", context! {
+        username: user.username,
+        usernames: res
+    })
 }
 
 // do the registration
