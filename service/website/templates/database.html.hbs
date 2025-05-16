@@ -62,7 +62,12 @@
         <p>You can only write your own database.</p>
         <form action="/database/{{database}}/append" method="post" accept-charset="utf-8">
             <label for="collection">collection</label>
-            <input type="text" name="collection" id="collection" value="TODO turn into select">
+            <input type="text" name="collection" id="collection" list="collections" required>
+            <datalist id="collections">
+                {{#each collections}}
+                    <option value="{{this.name}}">{{this.name}}</option>
+                {{/each}}
+            </datalist>
             <label for="entry">entry</label>
             <textarea name="data" id="entry">{}</textarea>
             <p><input data-augmented-ui type="submit" value="append"></p>

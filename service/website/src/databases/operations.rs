@@ -22,10 +22,11 @@ async fn database_page_basics(
     queries: &State<Queries>,
     database: &str,
     user: UserSession,
+    need_write_access: bool,
 ) -> Result<DatabasePageContext, Flash<Redirect>> {
     let db = get_user(queries, database).await.expect("cannot fetch user");
     let db = db.ok_or_else(|| Flash::error(Redirect::to("/"), "No such db"))?;
-    if !db.allow_public_queries && db.username != user.username {
+    if (need_write_access || !db.allow_public_queries) && db.username != user.username {
         return Err(Flash::error(Redirect::to("/"), "Not authorized"));
     }
 
@@ -50,7 +51,7 @@ pub async fn database_page(
     database: &str,
     user: UserSession,
 ) -> Result<Template, Flash<Redirect>> {
-    let ctx = database_page_basics(queries, database, user).await?;
+    let ctx = database_page_basics(queries, database, user, false).await?;
 
     Ok(Template::render(
         "database",
@@ -117,7 +118,7 @@ pub async fn database_append(
     user: UserSession,
     form: Form<AppendForm<'_>>,
 ) -> Result<Template, Flash<Redirect>> {
-    let mut ctx = database_page_basics(queries, database, user).await?;
+    let mut ctx = database_page_basics(queries, database, user, true).await?;
 
     let parsed = serde_json::from_str::<Value>(form.data);
     match parsed {
@@ -160,7 +161,7 @@ pub async fn database_query_custom(
     user: UserSession,
     form: Form<QueryForm<'_>>,
 ) -> Result<Template, Flash<Redirect>> {
-    let mut ctx = database_page_basics(queries, database, user).await?;
+    let mut ctx = database_page_basics(queries, database, user, false).await?;
 
     match ctx.conn.prepare(&form.query).await {
         Ok(code_ref) => match serde_json::from_str::<Value>(form.params) {
