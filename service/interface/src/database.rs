@@ -7,7 +7,7 @@ pub enum Command<'r> {
         database: &'r str,
     },
     List,
-    ListUsers,
+    ListUsers,  // TODO wtf?
     Append {
         collection: &'r str,
         data: Box<RawValue>,
@@ -19,6 +19,7 @@ pub enum Command<'r> {
         code_ref: &'r str,
         query: &'r str,
         param: Box<RawValue>,
+        privileged: bool,  // true = can access private collections
     },
 }
 

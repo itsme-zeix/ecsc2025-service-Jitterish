@@ -85,12 +85,14 @@ impl DbConnection {
         code_ref: &CodeRef,
         query: &str,
         param: &TS,
+        privileged: bool,
     ) -> std::io::Result<Vec<TD>> {
         let param = serde_json::value::to_raw_value(param)?;
         self.send(&Command::Execute {
             code_ref: code_ref.code_ref.as_str(),
             query,
             param,
+            privileged,
         })
         .await?;
         self.recv::<TD>().await
@@ -103,7 +105,7 @@ impl DbConnection {
         query: &str,
         param: &TS,
     ) -> std::io::Result<Vec<TD>> {
-        let result: Vec<Vec<TD>> = self.execute(code_ref, query, param).await?;
+        let result: Vec<Vec<TD>> = self.execute(code_ref, query, param, false).await?;
         Ok(one(&result)?.clone())
     }
 
@@ -114,7 +116,7 @@ impl DbConnection {
         query: &str,
         param: &TS,
     ) -> std::io::Result<TD> {
-        let result: Vec<TD> = self.execute(code_ref, query, param).await?;
+        let result: Vec<TD> = self.execute(code_ref, query, param, false).await?;
         Ok(one(&result)?.clone())
     }
 }

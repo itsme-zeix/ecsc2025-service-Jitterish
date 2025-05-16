@@ -88,12 +88,12 @@ pub async fn prepare_query(code: &str) -> std::io::Result<String> {
     Ok(code_ref)
 }
 
-pub async fn execute_query(database: &str, code_ref: &str, query: &str, param: &RawValue, output: BorrowedFd<'_>) -> std::io::Result<()> {
+pub async fn execute_query(database: &str, code_ref: &str, query: &str, param: &RawValue, privileged: bool, output: BorrowedFd<'_>) -> std::io::Result<()> {
     let obj = query_object(code_ref);
     let dir = dir(database);
     create_dir_all(&dir)?;
     let param = serde_json::to_string(param)?;
-    if let Err(e) = compiler::run(obj, dir, query, param.as_str(), output).await {
+    if let Err(e) = compiler::run(obj, dir, query, param.as_str(), privileged, output).await {
         return Err(std::io::Error::new(InvalidInput, format!("run error {}", e)));
     }
     Ok(())

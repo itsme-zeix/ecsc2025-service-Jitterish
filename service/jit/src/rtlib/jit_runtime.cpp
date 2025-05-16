@@ -246,9 +246,11 @@ static void terminate(const char *msg) {
     exit(0);
 }
 
+bool hasPrivilegedAccess = false;
+
 Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, JitFunction reduce, size_t limit, Value param) {
     auto storage = DataStorage(std::string(collection) + ".ndjson");
-    if (!storage.isPublic()) {
+    if (!hasPrivilegedAccess && !storage.isPublic()) {
         terminate("access denied");
     }
 

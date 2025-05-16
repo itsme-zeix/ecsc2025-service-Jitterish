@@ -90,7 +90,8 @@ pub async fn database_query(
     let mut err: Option<String> = None;
     let mut msgs: Vec<String> = Vec::new();
     let mut conn = DbConnection::open(database).await.expect("db offline");
-    match conn.execute::<Value, Value>(cr, form.query_name, &params).await {
+    // TODO use privileged access if necessary
+    match conn.execute::<Value, Value>(cr, form.query_name, &params, false).await {
         Ok(result) => {
             for e in &result {
                 msgs.push(serde_json::to_string(&e)?)
@@ -173,7 +174,7 @@ pub async fn database_query_custom(
 
     match ctx.conn.prepare(&form.query).await {
         Ok(code_ref) => match serde_json::from_str::<Value>(form.params) {
-            Ok(params) => match ctx.conn.execute::<Value, Value>(&code_ref, form.query_name, &params).await {
+            Ok(params) => match ctx.conn.execute::<Value, Value>(&code_ref, form.query_name, &params, ctx.user_owns_db).await {
                 Ok(result) => {
                     for r in &result {
                         ctx.msgs.push(serde_json::to_string(&r).unwrap())

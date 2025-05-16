@@ -84,8 +84,8 @@ async fn command(
             write_json(stream, result).await?;
         }
 
-        Command::Execute { code_ref, query, param } => {
-            execute_query(current_database, code_ref, query, &param, stream.get_ref().as_fd()).await?;
+        Command::Execute { code_ref, query, param, privileged } => {
+            execute_query(current_database, code_ref, query, &param, privileged, stream.get_ref().as_fd()).await?;
         }
     }
     Ok(())

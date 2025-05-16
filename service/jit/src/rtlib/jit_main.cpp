@@ -7,15 +7,16 @@
 
 
 int main(int argc, const char* argv[]) {
-    if (argc < 2 || argc > 3) {
-        std::cerr << "USAGE: " << argv[0] << " <query/function> [<param-as-json>]" << std::endl;
+    if (argc < 2 || argc > 4) {
+        std::cerr << "USAGE: " << argv[0] << " <query/function> [<param-as-json>] [--privileged]" << std::endl;
         return 1;
     }
 
     Value param{};
-    if (argc == 3) {
+    if (argc >= 3) {
         param = jsonToValue(nlohmann::json::parse(argv[2]));
     }
+    hasPrivilegedAccess = argc >= 4 && std::string(argv[3]) == "--privileged";
 
     auto f = (JitFunction) dlsym(RTLD_DEFAULT, argv[1]);
     if (!f) {

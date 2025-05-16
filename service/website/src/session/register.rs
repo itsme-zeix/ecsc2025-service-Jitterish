@@ -9,7 +9,7 @@ use rocket::http::CookieJar;
 use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
 use rocket::State;
-use rocket_dyn_templates::{context, Template};
+use rocket_dyn_templates::{Template};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 

@@ -51,10 +51,14 @@ pub async fn run<P: AsRef<Path>>(
     directory: P,
     query: &str,
     param: &str,
+    privileged: bool,
     output: BorrowedFd<'_>,
 ) -> Result<(), Box<dyn Error>> {
     let mut cmd = Command::new("/app/executable");
     cmd.arg(query).arg(param);
+    if privileged {
+        cmd.arg("--privileged");
+    }
     cmd.stdin(Stdio::null());
     cmd.stdout(Stdio::dup_file(&output)?);
 
