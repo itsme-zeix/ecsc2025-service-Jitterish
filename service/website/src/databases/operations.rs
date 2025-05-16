@@ -12,6 +12,7 @@ use serde_json::Value;
 
 struct DatabasePageContext {
     username: String,
+    user_owns_db: bool,
     conn: DbConnection,
     collections: Vec<Collection>,
     err: Option<String>,
@@ -22,11 +23,11 @@ async fn database_page_basics(
     queries: &State<Queries>,
     database: &str,
     user: UserSession,
-    need_write_access: bool,
 ) -> Result<DatabasePageContext, Flash<Redirect>> {
     let db = get_user(queries, database).await.expect("cannot fetch user");
     let db = db.ok_or_else(|| Flash::error(Redirect::to("/"), "No such db"))?;
-    if (need_write_access || !db.allow_public_queries) && db.username != user.username {
+    let user_owns_db = db.username == user.username;
+    if !db.allow_public_queries && !user_owns_db {
         return Err(Flash::error(Redirect::to("/"), "Not authorized"));
     }
 
@@ -35,6 +36,7 @@ async fn database_page_basics(
 
     Ok(DatabasePageContext {
         username: user.username,
+        user_owns_db,
         conn,
         collections,
         err: None,
@@ -51,7 +53,7 @@ pub async fn database_page(
     database: &str,
     user: UserSession,
 ) -> Result<Template, Flash<Redirect>> {
-    let ctx = database_page_basics(queries, database, user, false).await?;
+    let ctx = database_page_basics(queries, database, user).await?;
 
     Ok(Template::render(
         "database",
@@ -60,6 +62,7 @@ pub async fn database_page(
             username: ctx.username,
             database: database,
             collections: ctx.collections,
+            user_owns_db: ctx.user_owns_db,
             form: QueryForm{
                 query: "query q on XXX;",
                 query_name: "q",
@@ -80,6 +83,7 @@ pub async fn database_query(
     user: UserSession,
     form: Form<SimpleQueryForm<'_>>,
 ) -> std::io::Result<Template> {
+    // TODO use ctx or remove
     println!("Queries: {:?}", queries);
     let cr = &queries.user;
     let params: Value = serde_json::from_str(form.params)?;
@@ -118,7 +122,10 @@ pub async fn database_append(
     user: UserSession,
     form: Form<AppendForm<'_>>,
 ) -> Result<Template, Flash<Redirect>> {
-    let mut ctx = database_page_basics(queries, database, user, true).await?;
+    let mut ctx = database_page_basics(queries, database, user).await?;
+    if !ctx.user_owns_db {
+        return Err(Flash::error(Redirect::to(format!("/database/{}", database)), "No write access"));
+    }
 
     let parsed = serde_json::from_str::<Value>(form.data);
     match parsed {
@@ -142,6 +149,7 @@ pub async fn database_append(
             username: ctx.username,
             database: database,
             collections: ctx.collections,
+            user_owns_db: ctx.user_owns_db,
             queries: ["test", "a","b","c"],
             form: form.into_inner(),
             err: ctx.err,
@@ -161,7 +169,7 @@ pub async fn database_query_custom(
     user: UserSession,
     form: Form<QueryForm<'_>>,
 ) -> Result<Template, Flash<Redirect>> {
-    let mut ctx = database_page_basics(queries, database, user, false).await?;
+    let mut ctx = database_page_basics(queries, database, user).await?;
 
     match ctx.conn.prepare(&form.query).await {
         Ok(code_ref) => match serde_json::from_str::<Value>(form.params) {
@@ -187,10 +195,11 @@ pub async fn database_query_custom(
     Ok(Template::render(
         "database",
         context! {
-            username: ctx.username,
-            collections: ctx.collections,
             flash: flash,
+            username: ctx.username,
             database: database,
+            collections: ctx.collections,
+            user_owns_db: ctx.user_owns_db,
             queries: ["test", "a","b","c"],  // TODO
             form: form.into_inner(),
             err: ctx.err,

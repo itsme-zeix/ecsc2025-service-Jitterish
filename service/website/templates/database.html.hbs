@@ -1,8 +1,11 @@
 {{#*inline "page"}}
     <h1>Database {{database}}</h1>
 
-    <code>TODO everything here might need additional UI-level checks (what is permitted etc)</code>
-    <p>This database contains public relations, which you can query.</p>
+    {{#if user_owns_db}}
+        <p>This is your personal database, you have full access.</p>
+    {{else}}
+        <p>This database contains public relations, which you can query.</p>
+    {{/if}}
 
     <div data-augmented-ui class="content-card-2">
         <h3 class="title">Collections</h3>
@@ -62,7 +65,7 @@
         <p>You can only write your own database.</p>
         <form action="/database/{{database}}/append" method="post" accept-charset="utf-8">
             <label for="collection">collection</label>
-            <input type="text" name="collection" id="collection" list="collections" required>
+            <input type="text" name="collection" id="collection" list="collections">
             <datalist id="collections">
                 {{#each collections}}
                     <option value="{{this.name}}">{{this.name}}</option>
