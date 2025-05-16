@@ -4,19 +4,19 @@
     <div data-augmented-ui="" class="main-card">
         <form action="/session/register" method="post" accept-charset="utf-8">
             <label for="username">username</label>
-            <input type="text" name="username" id="username" value=""/>
+            <input type="text" name="username" id="username" value="" required minlength="3" pattern="\w{3,}"/>
 
             <br>
             <label for="password">password</label>
-            <input type="password" name="password" id="password" value=""/>
+            <input type="password" name="password" id="password" value="" required minlength="8"/>
 
             <br>
             <label for="firstname">First name</label>
-            <input type="text" name="firstname" id="firstname" value=""/>
+            <input type="text" name="firstname" id="firstname" value="" required/>
 
             <br>
             <label for="lastname">Last name</label>
-            <input type="text" name="lastname" id="lastname" value=""/>
+            <input type="text" name="lastname" id="lastname" value="" required/>
 
             <br>
 

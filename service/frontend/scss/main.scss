@@ -83,6 +83,15 @@ input:focus, textarea:focus, select:focus {
   outline-offset: 1px;
 }
 
+input {
+  &:invalid {
+    outline-color: rgba(vars.$error, .5);
+  }
+  &:required:invalid {
+    border-color: vars.$error;
+  }
+}
+
 .spacer-2 {
   margin: 2rem;
 }

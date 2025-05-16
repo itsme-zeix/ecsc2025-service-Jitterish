@@ -1,6 +1,9 @@
 use crate::dbconnector::DbConnection;
 use crate::models::UserModel;
-use interface::frontend::{Query, Register, UserSession};
+use crate::Queries;
+use interface::frontend::{Register, UserSession};
+use lazy_static::lazy_static;
+use regex::Regex;
 use rocket::form::Form;
 use rocket::http::CookieJar;
 use rocket::request::FlashMessage;
@@ -9,7 +12,11 @@ use rocket::State;
 use rocket_dyn_templates::{context, Template};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use crate::Queries;
+
+lazy_static! {
+    static ref USERNAME_REGEX: Regex = Regex::new(r"^\w{3,}$").unwrap();
+    static ref PASSWORD_REGEX: Regex = Regex::new(r"^.{8,}$").unwrap();
+}
 
 // if we are registered (that is, we have a user), redirect to index instead
 #[get("/session/register")]
@@ -23,26 +30,8 @@ pub fn register_page(flash: Option<FlashMessage<'_>>) -> Template {
     Template::render("register", &flash)
 }
 
-
-// query a list of users
-// only the public ones? Or all?
-#[get("/session/query")]
-pub async fn query_user(user: UserSession) -> Template {
-    let mut db = DbConnection::open("_")
-        .await
-        .expect("db offline");
-    let res = db.list_users().await;
-    let res = res.expect("Could not query usernames");
-    // TODO: query db and handle the errors accordingly
-    // Redirect::to(uri!(crate::session::profile::index))
-    Template::render("session", context! {
-        username: user.username,
-        usernames: res
-    })
-}
-
 // do the registration
-// this means creating a user in the web interface that has all required 
+// this means creating a user in the web interface that has all required
 // attributes for creating a user in the actual db
 #[post("/session/register", data = "<register>")]
 pub(super) async fn post_register(
@@ -50,7 +39,6 @@ pub(super) async fn post_register(
     jar: &CookieJar<'_>,
     register: Form<Register<'_>>,
 ) -> Result<Redirect, Flash<Redirect>> {
-    // TODO validate input
     let mut is_public = true;
     if register.accounttype == "business" {
         is_public = false;
@@ -62,9 +50,14 @@ pub(super) async fn post_register(
         allow_public_kv: true,
     };
 
-    let mut db = DbConnection::open("_")
-        .await
-        .expect("db offline");
+    if !USERNAME_REGEX.is_match(&register.username) {
+        return Err(Flash::error(Redirect::to(uri!(register_page)), "Invalid username."));
+    }
+    if !PASSWORD_REGEX.is_match(&register.password) {
+        return Err(Flash::error(Redirect::to(uri!(register_page)), "Invalid password."));
+    }
+
+    let mut db = DbConnection::open("_").await.expect("db offline");
     let existing_users: Vec<Value> = db
         .execute_query(&queries.user, "user_by_username", &register.username)
         .await
