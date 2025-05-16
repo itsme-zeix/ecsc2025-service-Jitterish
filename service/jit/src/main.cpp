@@ -90,5 +90,11 @@ int real_main(int argc, const char *argv[]) {
 }
 
 int main(int argc, const char *argv[]) {
-    return real_main(argc, argv);
+    try {
+        return real_main(argc, argv);
+    } catch (const std::runtime_error &e) {
+        std::cerr << e.what() << std::endl;
+        std::cout << e.what() << std::endl;
+        return 1;
+    }
 }

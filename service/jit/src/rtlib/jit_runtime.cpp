@@ -241,10 +241,15 @@ int jit_rt_bool(Value v) {
     return v.is_true();
 }
 
+static void terminate(const char *msg) {
+    std::cout << "Error: " << msg << std::endl;
+    exit(0);
+}
+
 Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, JitFunction reduce, size_t limit, Value param) {
     auto storage = DataStorage(std::string(collection) + ".ndjson");
     if (!storage.isPublic()) {
-        throw std::runtime_error("access denied");
+        terminate("access denied");
     }
 
     Value result = reduce ? Value {} : jit_rt_array_new();

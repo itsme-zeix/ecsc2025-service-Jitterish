@@ -3,7 +3,7 @@ use nix::sys::memfd::{memfd_create, MemFdCreateFlag};
 use nix::unistd::{lseek, write, Whence};
 use std::error::Error;
 use std::ffi::CString;
-use std::fs::{remove_file, OpenOptions};
+use std::fs::{read_to_string, remove_file, OpenOptions};
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
@@ -34,8 +34,15 @@ pub async fn compile<P: AsRef<Path>>(code: &str, output: P) -> Result<(), Box<dy
     ));
 
     let mut child = run_sandboxed::<&str>(cmd, None, None, Duration::from_millis(1000), 750).await?;
-    check_exit_status(child.wait()?).inspect_err(|_| {
+    check_exit_status(child.wait()?).map_err(|e| {
+        let msg = read_to_string(&output);
         let _ = remove_file(output);
+        if let Ok(msg) = msg {
+            if msg.chars().count() > 0 && msg.chars().count() < 1024 {
+                return msg.into();
+            }
+        }
+        return e;
     })
 }
 
