@@ -11,3 +11,6 @@ $success: #00ff80;
 $text-light: #b5c2c2;
 $border-color: #11d6d6;
 $border-soft: #097e7e;
+
+$label-bg: #777;
+$label-text: color.adjust($text-light, $lightness: 30%);

@@ -27,10 +27,6 @@
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
-
-  &.btn-lg {
-    padding: 1rem;
-  }
 }
 
 input[type="submit"], button, .btn {
@@ -41,6 +37,10 @@ input[type="submit"], button, .btn {
     padding-right: 2rem;
     @include aug.corner-clip(tl);
     @include aug.corner-clip(br);
+  }
+
+  &.btn-lg {
+    padding: 1rem 3rem;
   }
 }
 
@@ -56,4 +56,12 @@ input[type="submit"], button, .btn {
   &:focus-visible {
     outline-color: vars.$secondary;
   }
+}
+
+.label {
+  background-color: vars.$label-bg;
+  color: vars.$label-text;
+  border-radius: var(--standard-border-radius);
+  padding: .15rem .25rem;
+  font-size: 85%;
 }

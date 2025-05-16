@@ -57,15 +57,11 @@ pub(super) async fn post_register(
     jar: &CookieJar<'_>,
     register: Form<Register<'_>>,
 ) -> Result<Redirect, Flash<Redirect>> {
-    let mut is_public = true;
-    if register.accounttype == "business" {
-        is_public = false;
-    }
     let user = UserModel {
         username: register.username.to_owned(),
         password_hash: hex::encode(Sha256::digest(register.password.as_bytes())),
-        allow_public_queries: is_public,
-        allow_public_kv: true,
+        allow_public_queries: register.accounttype == "personal",
+        allow_public_kv: register.accounttype == "enterprise",
     };
 
     if !USERNAME_REGEX.is_match(&register.username) {
