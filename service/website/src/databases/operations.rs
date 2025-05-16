@@ -1,3 +1,4 @@
+use std::fs;
 use crate::databases::api::get_user;
 use crate::dbconnector::{DbConnection};
 use crate::Queries;
@@ -9,9 +10,10 @@ use rocket::response::{Flash, Redirect};
 use rocket::State;
 use rocket_dyn_templates::{context, Template};
 use serde_json::Value;
+use crate::models::UserModel;
 
 struct DatabasePageContext {
-    username: String,
+    db: UserModel,
     user_owns_db: bool,
     conn: DbConnection,
     collections: Vec<Collection>,
@@ -22,7 +24,7 @@ struct DatabasePageContext {
 async fn database_page_basics(
     queries: &State<Queries>,
     database: &str,
-    user: UserSession,
+    user: &UserSession,
 ) -> Result<DatabasePageContext, Flash<Redirect>> {
     let db = get_user(queries, database).await.expect("cannot fetch user");
     let db = db.ok_or_else(|| Flash::error(Redirect::to("/"), "No such db"))?;
@@ -35,7 +37,7 @@ async fn database_page_basics(
     let collections = conn.list_collections().await.expect("cannot list collections");
 
     Ok(DatabasePageContext {
-        username: user.username,
+        db,
         user_owns_db,
         conn,
         collections,
@@ -53,15 +55,16 @@ pub async fn database_page(
     database: &str,
     user: UserSession,
 ) -> Result<Template, Flash<Redirect>> {
-    let ctx = database_page_basics(queries, database, user).await?;
+    let ctx = database_page_basics(queries, database, &user).await?;
 
     Ok(Template::render(
         "database",
         context! {
             flash: flash,
-            username: ctx.username,
+            username: user.username,
             database: database,
             collections: ctx.collections,
+            db: ctx.db,
             user_owns_db: ctx.user_owns_db,
             form: QueryForm{
                 query: "query q on XXX;",
@@ -123,7 +126,7 @@ pub async fn database_append(
     user: UserSession,
     form: Form<AppendForm<'_>>,
 ) -> Result<Template, Flash<Redirect>> {
-    let mut ctx = database_page_basics(queries, database, user).await?;
+    let mut ctx = database_page_basics(queries, database, &user).await?;
     if !ctx.user_owns_db {
         return Err(Flash::error(Redirect::to(format!("/database/{}", database)), "No write access"));
     }
@@ -147,9 +150,10 @@ pub async fn database_append(
         "database",
         context! {
             flash: flash,
-            username: ctx.username,
+            username: user.username,
             database: database,
             collections: ctx.collections,
+            db: ctx.db,
             user_owns_db: ctx.user_owns_db,
             queries: ["test", "a","b","c"],
             form: form.into_inner(),
@@ -170,7 +174,7 @@ pub async fn database_query_custom(
     user: UserSession,
     form: Form<QueryForm<'_>>,
 ) -> Result<Template, Flash<Redirect>> {
-    let mut ctx = database_page_basics(queries, database, user).await?;
+    let mut ctx = database_page_basics(queries, database, &user).await?;
 
     match ctx.conn.prepare(&form.query).await {
         Ok(code_ref) => match serde_json::from_str::<Value>(form.params) {
@@ -197,9 +201,10 @@ pub async fn database_query_custom(
         "database",
         context! {
             flash: flash,
-            username: ctx.username,
+            username: user.username,
             database: database,
             collections: ctx.collections,
+            db: ctx.db,
             user_owns_db: ctx.user_owns_db,
             queries: ["test", "a","b","c"],  // TODO
             form: form.into_inner(),
@@ -207,4 +212,18 @@ pub async fn database_query_custom(
             msgs: ctx.msgs,
         },
     ))
+}
+
+
+#[get("/database/<database>/script")]
+pub async fn database_script(
+    queries: &State<Queries>,
+    database: &str,
+    user: UserSession,
+) -> Result<String, Flash<Redirect>> {
+    let ctx = database_page_basics(queries, database, &user).await?;
+    if !ctx.db.allow_public_kv {
+        return Err(Flash::error(Redirect::to(format!("/database/{}", database)), "No script attached"));
+    }
+    Ok(fs::read_to_string("queries/api.qry").unwrap())
 }

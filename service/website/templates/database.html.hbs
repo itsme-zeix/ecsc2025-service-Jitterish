@@ -6,6 +6,9 @@
     {{else}}
         <p>This database contains public relations, which you can query.</p>
     {{/if}}
+    {{#if db.allow_public_kv }}
+        <p>This database has an <a href="/database/{{database}}/script">API script attached</a>.</p>
+    {{/if}}
 
     <div data-augmented-ui class="content-card-2">
         <h3 class="title">Collections</h3>
