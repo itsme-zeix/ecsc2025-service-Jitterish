@@ -1,13 +1,45 @@
 use crate::databases::api::get_user;
-use crate::dbconnector::{one, DbConnection};
+use crate::dbconnector::{DbConnection};
 use crate::Queries;
-use interface::frontend::{AppendForm, DbForm, QueryForm, SimpleQueryForm, UserSession};
+use interface::database::Collection;
+use interface::frontend::{AppendForm, QueryForm, SimpleQueryForm, UserSession};
 use rocket::form::Form;
 use rocket::request::FlashMessage;
+use rocket::response::{Flash, Redirect};
 use rocket::State;
 use rocket_dyn_templates::{context, Template};
 use serde_json::Value;
-use std::io::ErrorKind;
+
+struct DatabasePageContext {
+    username: String,
+    conn: DbConnection,
+    collections: Vec<Collection>,
+    err: Option<String>,
+    msgs: Vec<String>,
+}
+
+async fn database_page_basics(
+    queries: &State<Queries>,
+    database: &str,
+    user: UserSession,
+) -> Result<DatabasePageContext, Flash<Redirect>> {
+    let db = get_user(queries, database).await.expect("cannot fetch user");
+    let db = db.ok_or_else(|| Flash::error(Redirect::to("/"), "No such db"))?;
+    if !db.allow_public_queries && db.username != user.username {
+        return Err(Flash::error(Redirect::to("/"), "Not authorized"));
+    }
+
+    let mut conn = DbConnection::open(database).await.expect("db offline");
+    let collections = conn.list_collections().await.expect("cannot list collections");
+
+    Ok(DatabasePageContext {
+        username: user.username,
+        conn,
+        collections,
+        err: None,
+        msgs: Vec::new(),
+    })
+}
 
 // the basic interaction page for databases
 // TODO: we do not want to return an error here, as it appears as 500
@@ -17,66 +49,27 @@ pub async fn database_page(
     flash: Option<FlashMessage<'_>>,
     database: &str,
     user: UserSession,
-) -> std::io::Result<Template> {
-    let db = get_user(queries, database).await?;
-    let db = db.ok_or_else(|| std::io::Error::new(ErrorKind::NotFound, "Database not found"))?;
-    if !db.allow_public_queries && db.username != user.username {
-        return Err(std::io::Error::new(ErrorKind::NotFound, "Not authorized"));
-    }
+) -> Result<Template, Flash<Redirect>> {
+    let ctx = database_page_basics(queries, database, user).await?;
 
     Ok(Template::render(
         "database",
         context! {
             flash: flash,
-            username: user.username,
+            username: ctx.username,
             database: database,
+            collections: ctx.collections,
             form: QueryForm{
                 query: "query q on XXX;",
                 query_name: "q",
                 params: "{}",
             },
-            queries: ["test", "test2", "a","b","c"],
+            queries: ["test", "test2", "a","b","c"],  // TODO
         },
     ))
 }
 
-//endpoint to list all collections in a database
-#[post("/database/<database>/list", data = "<db>")]
-pub async fn database_list(
-    queries: &State<Queries>,
-    flash: Option<FlashMessage<'_>>,
-    database: &str,
-    user: UserSession,
-    db: Form<DbForm<'_>>,
-) -> std::io::Result<Template> {
-    let mut err: Option<String> = None;
-    let mut msgs: Vec<String> = Vec::new();
-    let mut conn = DbConnection::open(database).await.expect("db offline");
-    let collections = conn.list_collections().await;
-    match collections {
-        Ok(collections) => {
-            for e in &collections {
-                msgs.push(serde_json::to_string(&e)?)
-            }
-        }
-        Err(e) => {
-            err = Some(format!("{}", e));
-        }
-    }
-
-    println!("Found collections: {:?}", msgs);
-    Ok(Template::render(
-        "database",
-        context! {
-            flash: flash,
-            username: user.username,
-            database: database,
-            queries: ["test", "a","b","c"],
-            err: err,
-            msgs: msgs,
-        },
-    ))
-}
+// TODO not used in UI for now
 // endpoint for predefined queries
 #[post("/database/<database>/query", data = "<form>")]
 pub async fn database_query(
@@ -92,7 +85,7 @@ pub async fn database_query(
     let mut err: Option<String> = None;
     let mut msgs: Vec<String> = Vec::new();
     let mut conn = DbConnection::open(database).await.expect("db offline");
-    match conn.execute::<Value, Value>(cr, form.query, &params).await {
+    match conn.execute::<Value, Value>(cr, form.query_name, &params).await {
         Ok(result) => {
             for e in &result {
                 msgs.push(serde_json::to_string(&e)?)
@@ -108,7 +101,7 @@ pub async fn database_query(
             flash: flash,
             username: user.username,
             database: database,
-            queries: ["test", "a","b","c"],
+            queries: ["test", "a","b","c"],  // TODO
             form: form.into_inner(),
             err: err,
             msgs: msgs,
@@ -123,40 +116,35 @@ pub async fn database_append(
     database: &str,
     user: UserSession,
     form: Form<AppendForm<'_>>,
-) -> std::io::Result<Template> {
-    let mut err: Option<String> = None;
-    let mut msgs: Vec<String> = Vec::new();
-    let mut conn = DbConnection::open(database).await.expect("db offline");
-    let db = get_user(queries, database).await?;
-    let db = db.ok_or_else(|| std::io::Error::new(ErrorKind::NotFound, "Database not found"))?;
-    if !db.allow_public_queries && db.username != user.username {
-        return Err(std::io::Error::new(ErrorKind::NotFound, "Not authorized"));
-    }
+) -> Result<Template, Flash<Redirect>> {
+    let mut ctx = database_page_basics(queries, database, user).await?;
 
     let parsed = serde_json::from_str::<Value>(form.data);
     match parsed {
-        Ok(parsed_data) => match conn.append(form.collection, parsed_data).await {
+        Ok(parsed_data) => match ctx.conn.append(form.collection, parsed_data).await {
             Ok(_) => {
-                msgs.push(format!("{} successfully appended.", form.data));
+                ctx.msgs.push(format!("{} successfully appended.", form.data));
+                ctx.collections = ctx.conn.list_collections().await.expect("cannot list collections");
             }
             Err(e) => {
-                err = Some(format!("{}", e));
+                ctx.err = Some(format!("cannot append: {}", e));
             }
         },
         Err(e) => {
-            err = Some(format!("Incorrect json supplied: {}", e));
+            ctx.err = Some(format!("Incorrect json supplied: {}", e));
         }
     }
     Ok(Template::render(
         "database",
         context! {
             flash: flash,
-            username: user.username,
+            username: ctx.username,
             database: database,
+            collections: ctx.collections,
             queries: ["test", "a","b","c"],
             form: form.into_inner(),
-            err: err,
-            msgs: msgs,
+            err: ctx.err,
+            msgs: ctx.msgs,
         },
     ))
 }
@@ -171,48 +159,41 @@ pub async fn database_query_custom(
     database: &str,
     user: UserSession,
     form: Form<QueryForm<'_>>,
-) -> std::io::Result<Template> {
-    // TODO deduplicate
-    let db = get_user(queries, database).await?;
-    let db = db.ok_or_else(|| std::io::Error::new(ErrorKind::NotFound, "Database not found"))?;
-    if !db.allow_public_queries && db.username != user.username {
-        return Err(std::io::Error::new(ErrorKind::NotFound, "Not authorized"));
-    }
+) -> Result<Template, Flash<Redirect>> {
+    let mut ctx = database_page_basics(queries, database, user).await?;
 
-    let mut err: Option<String> = None;
-    let mut msgs: Vec<String> = Vec::new();
-    let mut conn = DbConnection::open(database).await.expect("db offline");
-    println!("Existing queries: {:?}", queries);
-    println!("Form.query: {:?}", form.query);
-    match conn.prepare(&form.query).await {
-        Ok(code_ref) => {
-            let params: Value = serde_json::from_str(form.params)?;
-            match conn.execute::<Value, Value>(&code_ref, form.query_name, &params).await {
+    match ctx.conn.prepare(&form.query).await {
+        Ok(code_ref) => match serde_json::from_str::<Value>(form.params) {
+            Ok(params) => match ctx.conn.execute::<Value, Value>(&code_ref, form.query_name, &params).await {
                 Ok(result) => {
-                    for e in &result {
-                        msgs.push(serde_json::to_string(&e)?)
+                    for r in &result {
+                        ctx.msgs.push(serde_json::to_string(&r).unwrap())
                     }
                 }
                 Err(e) => {
-                    err = Some(format!("{}", e));
+                    ctx.err = Some(format!("{}", e));
                 }
+            },
+            Err(e) => {
+                ctx.err = Some(format!("{}", e));
             }
-        }
+        },
         Err(e) => {
-            err = Some(format!("{}", e));
+            ctx.err = Some(format!("{}", e));
         }
     }
 
     Ok(Template::render(
         "database",
         context! {
-            username: user.username,
+            username: ctx.username,
+            collections: ctx.collections,
             flash: flash,
             database: database,
-            queries: ["test", "a","b","c"],
+            queries: ["test", "a","b","c"],  // TODO
             form: form.into_inner(),
-            err: err,
-            msgs: msgs,
+            err: ctx.err,
+            msgs: ctx.msgs,
         },
     ))
 }

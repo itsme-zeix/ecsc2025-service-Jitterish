@@ -16,7 +16,6 @@ use interface::database::CodeRef;
 use interface::frontend::UserSession;
 use rocket::fs::FileServer;
 use rocket::request::FlashMessage;
-use rocket::response::Redirect;
 use rocket_dyn_templates::{context, Template};
 use std::error::Error;
 use std::fs;

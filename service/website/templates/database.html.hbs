@@ -4,8 +4,19 @@
     <code>TODO everything here might need additional UI-level checks (what is permitted etc)</code>
     <p>This database contains public relations, which you can query.</p>
 
+    <div data-augmented-ui class="content-card-2">
+        <h3 class="title">Collections</h3>
+        <ul>
+            {{#each collections}}
+                <li>{{this.name}}</li>
+            {{else}}
+                this database is empty
+            {{/each}}
+        </ul>
+    </div>
+
     <div data-augmented-ui class="content-card-1">
-        <h3 class="title">Read database</h3>
+        <h3 class="title">Read Database</h3>
         {{#if err}}
             <div data-augmented-ui class="alert alert-error">{{err}}</div>
         {{/if}}
@@ -18,17 +29,22 @@
             </div>
         {{/if}}
         <p>You can read all public databases.</p>
-        <form action="/database/{{database}}/query" method="post" accept-charset="utf-8">
+        <form action="/database/{{database}}/customquery" method="post" accept-charset="utf-8">
             <select name="query" id="query">
-                {{#each queries}}
-                    <option value="{{this}}">{{this}}</option>
+                {{#each collections}}
+                    <option value="query q on {{this.name}};">{{this.name}}</option>
                 {{/each}}
             </select>
+            <input type="hidden" name="query_name" value="q">
             <label for="params">params</label>
-            <input type="text" name="params" id="params" value="{}">
+            <input type="text" name="params" id="params" value="{}"><!-- TODO not really useful for now? -->
             <p><input data-augmented-ui type="submit" value="run query"></p>
         </form>
-        <br>
+    </div>
+
+
+    <div data-augmented-ui class="content-card-2">
+        <h3 class="title">Custom Queries</h3>
         <form action="/database/{{database}}/customquery" method="post" accept-charset="utf-8">
             <label for="query">query</label>
             <textarea name="query" id="query">{{form.query}}</textarea>
@@ -41,7 +57,7 @@
     </div>
 
 
-    <div data-augmented-ui class="content-card-2">
+    <div data-augmented-ui class="content-card-1">
         <h3 class="title">Write database</h3>
         <p>You can only write your own database.</p>
         <form action="/database/{{database}}/append" method="post" accept-charset="utf-8">
@@ -50,15 +66,6 @@
             <label for="entry">entry</label>
             <textarea name="data" id="entry">{}</textarea>
             <p><input data-augmented-ui type="submit" value="append"></p>
-        </form>
-    </div>
-
-    <div data-augmented-ui class="content-card-1">
-        <h3 class="title">List collections</h3>
-        <form action="/database/{{database}}/list" method="post">
-            <label for="database">database</label>
-            <input type="text" name="db" id="database" value="">
-            <p><input data-augmented-ui type="submit" value="list"></p>
         </form>
     </div>
 

@@ -61,7 +61,7 @@ pub struct AppendForm<'r> {
 
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
 pub struct SimpleQueryForm<'r> {
-    pub query: &'r str,
+    pub query_name: &'r str,
     pub params: &'r str,
 }
 
