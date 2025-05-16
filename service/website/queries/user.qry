@@ -4,8 +4,12 @@ func count(data, acc) { return (acc ?: 0) + 1; }
 
 func is_username(entry, username) { return entry["username"] == username; }
 
+func is_public(entry) { return entry["allow_public_queries"]; }
+
 query user_by_username on users
 filter is_username
 limit 1;
 
 query user_count on users reduce count;
+
+query public_users on users filter is_public;

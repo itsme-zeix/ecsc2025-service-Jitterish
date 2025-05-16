@@ -9,8 +9,8 @@ use rocket::http::CookieJar;
 use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
 use rocket::State;
-use rocket_dyn_templates::{Template};
-use serde_json::Value;
+use rocket_dyn_templates::{context, Template};
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
 lazy_static! {
@@ -28,6 +28,24 @@ pub(super) fn register(_user: UserSession) -> Redirect {
 #[get("/session/register", rank = 2)]
 pub fn register_page(flash: Option<FlashMessage<'_>>) -> Template {
     Template::render("register", &flash)
+}
+
+#[get("/session/query")]
+pub async fn query_user(user: UserSession, queries: &State<Queries>) -> Template {
+    let mut db = DbConnection::open("_").await.expect("db offline");
+    let res: Vec<UserModel> = db
+        .execute_query(&queries.user, "public_users", &json!("null"))
+        .await
+        .expect("could not query users");
+    // TODO: query db and handle the errors accordingly
+    // Redirect::to(uri!(crate::session::profile::index))
+    Template::render(
+        "session",
+        context! {
+            username: user.username,
+            usernames: res
+        },
+    )
 }
 
 // do the registration
@@ -65,7 +83,8 @@ pub(super) async fn post_register(
     if !existing_users.is_empty() {
         return Err(Flash::error(Redirect::to(uri!(register_page)), "Username already taken."));
     }
-    db.append("users", user).await
+    db.append("users", user)
+        .await
         .map_err(|e| Flash::error(Redirect::to(uri!(register_page)), format!("Append failed: {}", e)))?;
 
     jar.add_private(("username", register.username.to_owned()));
