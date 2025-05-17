@@ -6,17 +6,18 @@
 @import "augmented-ui/augmented-ui.min.css";
 
 @import "alerts";
-@import "buttons";
+@import "buttons";  // buttons and labels
 @import "cards";
 @import "header";
-@import "tiers";
+@import "tiers";  // "tiers" on register page
+@import "docs";  // "docs" page only
 
 :root {
   --sans-font: Titillium Web, "Segoe UI Web (West European)", Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif;
 
   color-scheme: dark;
   --bg: #212121;
-  --accent-bg: #2b2b2b;
+  --accent-bg: #{vars.$accent-bg};
   --text: #dcdcdc;
   --text-light: #{vars.$text-light}; // #ababab;
   --accent: #{vars.$primary}; // #ffb300;

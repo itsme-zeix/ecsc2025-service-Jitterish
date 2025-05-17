@@ -2,19 +2,7 @@
 @use "utils";
 @use "vars";
 
-.main-card {
-  @include aug.aug;
-  @include aug.corner1(tl);
-  @include aug.corner1(bl);
-  @include aug.corner2(tr);
-  @include aug.corner2(br);
-
-  padding: 2rem;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-}
-
-.content-card-1, .content-card-2 {
+.content-card-1, .content-card-2, .main-card {
   @include aug.aug;
 
   padding: 2rem;
@@ -36,6 +24,20 @@
 
     @include utils.marker-start();
   }
+
+  > hr {
+    margin: 2rem -2rem;
+    background-color: vars.$primary;
+  }
+}
+
+.main-card {
+  @include aug.corner1(tl);
+  @include aug.corner1(bl);
+  @include aug.corner2(tr);
+  @include aug.corner2(br);
+
+  margin-bottom: 1rem;
 }
 
 .content-card-1 {

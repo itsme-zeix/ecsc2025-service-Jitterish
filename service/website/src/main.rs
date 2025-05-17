@@ -8,34 +8,19 @@ mod databases;
 mod dbconnector;
 mod models;
 mod session;
+mod static_pages;
 
 use crate::dbconnector::DbConnection;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use interface::database::CodeRef;
-use interface::frontend::UserSession;
 use rocket::fs::FileServer;
-use rocket::request::FlashMessage;
-use rocket_dyn_templates::{context, Template};
+use rocket_dyn_templates::Template;
 use std::error::Error;
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::Path;
 
-#[get("/")]
-fn index_logged_in(flash: Option<FlashMessage<'_>>, user: UserSession) -> Template {
-    Template::render("index", context! {
-        flash: flash,
-        username: user.username,
-    })
-}
-
-#[get("/", rank = 2)]
-fn index(flash: Option<FlashMessage<'_>>) -> Template {
-    Template::render("index", context! {
-        flash: flash
-    })
-}
 
 #[derive(Debug)]
 pub struct Queries {
@@ -78,7 +63,7 @@ async fn rocket() -> _ {
         .manage(queries)
         .attach(Template::fairing())
         .mount("/static", FileServer::from("static/"))
-        .mount("/", routes![index, index_logged_in])
+        .mount("/", static_pages::routes())
         .mount("/", session::routes())
         .mount("/", databases::routes())
 }
