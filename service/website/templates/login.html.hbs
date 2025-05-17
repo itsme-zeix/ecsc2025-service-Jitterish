@@ -5,11 +5,16 @@
         <p>Please login to continue.</p>
 
         <form action="/session/login" method="post" accept-charset="utf-8">
-            <label for="username">username</label>
-            <input type="text" name="username" id="username" value=""/>
-            <label for="password">password</label>
-            <input type="password" name="password" id="password" value=""/>
-            <br/>
+            <div class="row">
+                <div class="col">
+                    <label for="username">Username</label>
+                    <input type="text" name="username" id="username" value=""/>
+                </div>
+                <div class="col">
+                    <label for="password">Password</label>
+                    <input type="password" name="password" id="password" value=""/>
+                </div>
+            </div>
             <br/>
             <p><input data-augmented-ui type="submit" value="login"></p>
         </form>
