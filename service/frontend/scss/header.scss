@@ -4,7 +4,7 @@
 
 header.main-menu {
   border: 0;
-  padding: 1rem;
+  padding: 1rem 2rem;
   margin-bottom: 2rem;
 
   font-size: 1rem;
@@ -17,6 +17,14 @@ header.main-menu {
 
   ul.menu {
     margin-top: 0;
+  }
+
+  display: flex;
+  flex-direction: row;
+  justify-content: stretch;
+
+  > .center {
+    flex-grow: 1;
   }
 }
 
@@ -60,6 +68,14 @@ ul.menu {
           border-bottom-color: vars.$secondary;
         }
       }
+    }
+  }
+
+  &.icons li {
+    min-width: 3rem;
+
+    a {
+      padding: 0 .5rem;
     }
   }
 }
