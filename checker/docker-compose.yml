@@ -27,4 +27,4 @@ services:
 
 networks:
   default:
-    name: jitterish-checker
+    name: jitterish_checker

@@ -34,18 +34,30 @@ class JitterishClient:
         self._assert_status_code(response, code)
         return response
 
-    async def register(self, username: str, password: str, first: str, last: str, income: int,
-                       accounttype: Literal['personal', 'business']) -> None:
+    async def register(self, username: str, password: str, first: str, last: str,
+                       accounttype: Literal['community', 'business', 'enterprise']) -> None:
         await self.get('/session/register')
         response = await self.post('/session/register', data={
             'username': username, 'password': password,
             'firstname': first, 'lastname': last,
-            'income': income, 'accounttype': accounttype
+            'accounttype': accounttype
         }, follow_redirects=True)
         if response.url.path != '/session/profile':
-            self.logger.warning(f'Unexpected redirect to {response.url}')
+            self.logger.warning(f'Unexpected redirect to {response.url} after registration')
             raise MumbleException('Registration failed')
         self.logger.info(f'Registered {username!r} (password {password!r})')
+
+    async def login(self, username: str, password: str) -> None:
+        await self.get('/session/login')
+        response = await self.post('/session/login', data={
+            'username': username, 'password': password,
+        }, follow_redirects=True)
+        if 'Invalid username' in response.text or 'Invalid password' in response.text:
+            raise MumbleException('Login failed (username/password not accepted)')
+        if response.url.path != '/session/profile':
+            self.logger.warning(f'Unexpected redirect to {response.url} after login')
+            raise MumbleException('Registration failed')
+        self.logger.info(f'Logged in as {username!r} (password {password!r})')
 
     async def api_create(self, database: str, data: Any) -> str:
         response = await self.post(f'/api/{database}/create', json=data)
@@ -59,6 +71,7 @@ class JitterishClient:
 
     async def api_get(self, database: str, what: str = 'keys', key: str = 'all', token: str | None = None) -> Any:
         response = await self.get(f'/api/{database}/{what}/{key}', params={'token': token} if token else {})
+        self.logger.info(f'KV fetched {what} on {key} => {response.json()}')
         return response.json()
 
 

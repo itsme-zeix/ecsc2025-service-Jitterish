@@ -1,10 +1,14 @@
 import asyncio
 import logging
+import os
 from hashlib import sha256
 
 from enochecker3 import PutflagCheckerTaskMessage, GetflagCheckerTaskMessage, ExploitCheckerTaskMessage
 
 from checker import checker
+
+os.environ['MONGO_USER'] = os.environ.get('MONGO_USER', 'jitterish_checker')
+os.environ['MONGO_PASSWORD'] = os.environ.get('MONGO_PASSWORD', 'jitterish_checker')
 
 
 async def demo() -> None:
@@ -24,21 +28,24 @@ async def demo() -> None:
         'round_length': 120,
         'task_chain_id': '',
     }
-    flag = 'FLAG{...}'
+    flag = 'FLAG{TESTFLAG}'
 
     # whatever you want to test
     task = PutflagCheckerTaskMessage(flag=flag, **params)
     response = await checker._call_putflag(task)
     print(response)
+    print("====================\n\n")
 
     task = GetflagCheckerTaskMessage(flag=flag, related_round_id=1, **params)
     print(await checker._call_getflag(task))
+    print("====================\n\n")
 
     task = ExploitCheckerTaskMessage(flag_regex=r'FLAG\{.+?\}',
                                      flag_hash=sha256(flag.encode()).hexdigest(),
                                      attack_info=response.attack_info,
                                      **params)
     print(await checker._call_exploit(task))
+    print("====================\n\n")
 
 
 if __name__ == '__main__':
