@@ -21,6 +21,7 @@ def expr_value(v: Any) -> Any:
         return [expr_value(_) for _ in v]
     return v
 
+
 @dataclass
 class Collection:
     name: str
@@ -50,6 +51,19 @@ class ExprGen(ABC):
         pass
 
 
+class ExprGenGroup(ExprGen):
+    def __init__(self, gens: list[ExprGen]) -> None:
+        super().__init__(gens[0].gen)
+        self.gens = gens
+
+    def generate(self, ctx: Context) -> Expr:
+        if self.gen.current_depth > self.gen.MAX_EXPR_DEPTH:
+            return self.gens[0].generate(ctx)
+        with self.gen.depth():
+            gens = [_ for _ in self.gens if _.applicable(ctx)]
+            return random.choice(gens).generate(ctx)
+
+
 class VarUse(ExprGen):
     TYPE = str
 
@@ -70,8 +84,8 @@ class IntConst(ExprGen):
 
 class IntOp(ExprGen):
     def generate(self, ctx: Context) -> Expr:
-        expr1 = self.gen.random_int_expr(ctx)
-        expr2 = self.gen.random_int_expr(ctx)
+        expr1 = self.gen.int_expr.generate(ctx)
+        expr2 = self.gen.int_expr.generate(ctx)
         options = [
             ('+', (expr1.value + expr2.value) & INT_MASK),
             ('-', (expr1.value - expr2.value) & INT_MASK),
@@ -85,7 +99,7 @@ class IntOp(ExprGen):
 
 class IntUnaryOp(ExprGen):
     def generate(self, ctx: Context) -> Expr:
-        expr = self.gen.random_int_expr(ctx)
+        expr = self.gen.int_expr.generate(ctx)
         return Expr(f'-{expr.expr}', (-expr.value) & INT_MASK)
 
 
@@ -107,9 +121,57 @@ class StringVarUse(VarUse):
 
 class StringAdd(ExprGen):
     def generate(self, ctx: Context) -> Expr:
-        expr1 = self.gen.random_str_expr(ctx)
-        expr2 = self.gen.random_str_expr(ctx) if random.randint(0, 2) else self.gen.random_int_expr(ctx)
+        expr1 = self.gen.str_expr.generate(ctx)
+        expr2 = self.gen.str_expr.generate(ctx) if random.randint(0, 2) else self.gen.int_expr.generate(ctx)
         return Expr(f'({expr1.expr} + {expr2.expr})', expr1.value + str(expr2.value))
+
+
+class BoolConst(ExprGen):
+    def generate(self, ctx: Context) -> Expr:
+        c = random.choice((True, False))
+        return Expr(json.dumps(c), c)
+
+
+class BoolUnary(ExprGen):
+    def generate(self, ctx: Context) -> Expr:
+        expr = self.gen.bool_expr.generate(ctx)
+        return Expr(f'!{expr.expr}', not expr.value)
+
+
+class BoolDefined(ExprGen):
+    def generate(self, ctx: Context) -> Expr:
+        options = [(_, True) for _ in ctx.vars]
+        options += [(str(random.randint(0, 1000)), True), (f'({random.randint(0, 1000)} + true)', False)]
+        e, r = random.choice(options)
+        return Expr(f'defined {e}', r)
+
+
+class BoolBinary(ExprGen):
+    def generate(self, ctx: Context) -> Expr:
+        expr1 = self.gen.bool_expr.generate(ctx)
+        expr2 = self.gen.bool_expr.generate(ctx) if random.randint(0, 100) <= 80 else self.gen.int_expr.generate(ctx)
+        return random.choice([
+            Expr(f'({expr1.expr} && {expr2.expr})', bool(expr1.value and expr2.value)),
+            Expr(f'({expr1.expr} || {expr2.expr})', bool(expr1.value or expr2.value)),
+            Expr(f'({expr1.expr} == {expr2.expr})', bool(expr1.value) == bool(expr2.value)),
+            Expr(f'({expr1.expr} != {expr2.expr})', bool(expr1.value) != bool(expr2.value)),
+        ])
+
+
+class BoolComparison(ExprGen):
+    def generate(self, ctx: Context) -> Expr:
+        expr1 = self.gen.int_expr.generate(ctx)
+        expr2 = self.gen.int_expr.generate(ctx)
+        return random.choice([
+            Expr(f'({expr1.expr} >= {expr2.expr})', expr1.value >= expr2.value),
+            Expr(f'({expr1.expr} <= {expr2.expr})', expr1.value <= expr2.value),
+            Expr(f'({expr1.expr} > {expr2.expr})', expr1.value > expr2.value),
+            Expr(f'({expr1.expr} < {expr2.expr})', expr1.value < expr2.value),
+        ])
+
+
+class BoolVarUse(VarUse):
+    TYPE = bool
 
 
 class CodeGenerator:
@@ -117,11 +179,13 @@ class CodeGenerator:
 
     def __init__(self, collections: dict[str, list[dict[str, Any]]]) -> None:
         self.collections = collections
-        self.depth = 0
-        self.gens_str: list[ExprGen] = [StringConst(self), StringVarUse(self), StringAdd(self)]
-        self.gens_int: list[ExprGen] = [IntConst(self), IntVarUse(self), IntOp(self), IntUnaryOp(self)]
+        self.current_depth = 0
+        self.str_expr = ExprGenGroup([StringConst(self), StringVarUse(self), StringAdd(self)])
+        self.int_expr = ExprGenGroup([IntConst(self), IntVarUse(self), IntOp(self), IntUnaryOp(self)])
+        self.bool_expr = ExprGenGroup([BoolConst(self), BoolUnary(self), BoolDefined(self),
+                                       BoolBinary(self), BoolComparison(self), BoolVarUse(self)])
 
-    def random_ident(self) -> str:
+    def ident(self) -> str:
         return ''.join(random.choice(string.ascii_lowercase) for _ in range(random.randint(6, 12)))
 
     def collection(self, flag: str) -> Collection:
@@ -130,53 +194,53 @@ class CodeGenerator:
 
         ctx = Context({})
         # "key"
-        ident_key = self.random_str_expr(ctx)
+        ident_key = self.str_expr.generate(ctx)
         for item in items:
-            item[ident_key] = self.random_str_expr(ctx)
+            item[ident_key] = self.str_expr.generate(ctx)
         # "data"
-        flag_key = self.random_str_expr(ctx)
+        flag_key = self.str_expr.generate(ctx)
         for i, item in enumerate(items):
-            item[flag_key] = self.random_str_expr(ctx) if i > 0 else Expr(json.dumps(flag), flag)
+            item[flag_key] = self.str_expr.generate(ctx) if i > 0 else Expr(json.dumps(flag), flag)
         # more things?
         if random.randint(1, 100) <= 65:
-            k = self.random_str_expr(ctx)
+            k = self.str_expr.generate(ctx)
             for item in items:
-                item[k] = self.random_int_expr(ctx)
+                item[k] = self.int_expr.generate(ctx)
         if random.randint(1, 100) <= 65:
-            k = self.random_str_expr(ctx)
+            k = self.str_expr.generate(ctx)
             for item in items:
-                item[k] = self.random_json_expr(ctx)
+                item[k] = self.json_expr(ctx)
         flag_item = items[0]
         random.shuffle(items)
         return Collection(name, items=items, ident_key=ident_key, flag_key=flag_key, flag_item=flag_item)
 
-    def generate_filter_func(self, collection: Collection, ident: Expr) -> Function:
-        name = self.random_ident()
-        var = self.random_ident()
+    def query_filter_func(self, collection: Collection, ident: Expr) -> Function:
+        name = self.ident()
+        var = self.ident()
         code = f'func {name}({var}) {{\n'
-        code += '    return ' + self.random_equality_test(f'{var}[{collection.ident_key.expr}]', ident) + ';\n'
+        code += '    return ' + self.equality_test(f'{var}[{collection.ident_key.expr}]', ident) + ';\n'
         code += '}'
         return Function(name, code, True)
 
-    def generate_selector_func(self, collection: Collection) -> Function:
-        name = self.random_ident()
-        var = self.random_ident()
+    def query_selector_func(self, collection: Collection) -> Function:
+        name = self.ident()
+        var = self.ident()
         code = f'func {name}({var}) {{\n'
         code += f'    return {var}[{collection.flag_key.expr}];\n'
         code += '}'
         return Function(name, code, collection.flag_item[collection.flag_key].value)
 
     def flag_query(self, collection: Collection) -> Function:
-        name = self.random_ident()
+        name = self.ident()
         code = f'query {name} on {collection.name}'
         data = collection.items
         if random.randint(1, 100) <= 70:
-            filter = self.generate_filter_func(collection, collection.flag_item[collection.ident_key])
+            filter = self.query_filter_func(collection, collection.flag_item[collection.ident_key])
             code = filter.code + '\n\n' + code
             code += f' filter {filter.name}'
             data = [collection.flag_item]
         if random.randint(1, 100) <= 70:
-            selector = self.generate_selector_func(collection)
+            selector = self.query_selector_func(collection)
             code = selector.code + '\n\n' + code
             code += f' map {selector.name}'
             data = [_[collection.flag_key] for _ in data]
@@ -188,33 +252,26 @@ class CodeGenerator:
         return Function(name, code, data)
 
     @contextmanager
-    def _depth(self) -> Generator[None, Any, None]:
-        self.depth += 1
+    def depth(self) -> Generator[None, Any, None]:
+        self.current_depth += 1
         yield
-        self.depth -= 1
+        self.current_depth -= 1
 
-    def random_int_expr(self, ctx: Context) -> Expr:
-        if self.depth > self.MAX_EXPR_DEPTH:
-            return self.gens_int[0].generate(ctx)
-        with self._depth():
-            gens = [_ for _ in self.gens_int if _.applicable(ctx)]
-            return random.choice(gens).generate(ctx)
-
-    def random_str_expr(self, ctx: Context) -> Expr:
-        if self.depth > self.MAX_EXPR_DEPTH:
-            return self.gens_str[0].generate(ctx)
-        with self._depth():
-            gens = [_ for _ in self.gens_str if _.applicable(ctx)]
-            return random.choice(gens).generate(ctx)
-
-    def random_json_expr(self, ctx: Context) -> Expr:
+    def json_expr(self, ctx: Context) -> Expr:
         c = random.choice(['true', 'false', 'null',
                            '[]', f'[{random.randint(0, 1000)}]',
-                           '{}', f'{{"{self.random_ident()}": {random.randint(0, 1000)}}}'])
+                           '{}', f'{{"{self.ident()}": {random.randint(0, 1000)}}}'])
         return Expr(c, json.loads(c))
 
-    def random_equality_test(self, expr1: str, expr2: Expr) -> str:
+    def equality_test(self, expr1: str, expr2: Expr) -> str:
         if random.randint(1, 100) <= 50:
             return f'{expr1} == {expr2.expr}'
         else:
             return f'!({expr1} != {expr2.expr})'
+
+    # TODO bool, objects, arrays, null, undefined
+    # TODO include/use the unit tests?
+    # TODO functions/calls
+    # TODO variables
+    # TODO if while etc
+    # TODO use "system" etc as identifiers

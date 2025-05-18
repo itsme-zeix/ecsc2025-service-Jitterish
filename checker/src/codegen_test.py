@@ -1,10 +1,12 @@
 import json
 import subprocess
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
+from unittest import TestCase
 
-from codegen import Expr, CodeGenerator, Context, Function, expr_value
+from .codegen import Expr, CodeGenerator, Context, Function, expr_value
 
 
 def find_compiler() -> Path:
@@ -30,7 +32,7 @@ class Compiler:
 
     def run_prog(self, code: str, function: str = 'jit_entrypoint', param: Any = None,
                  collections: dict[str, str | list] = {}) -> str:
-        with TemporaryDirectory() as tmpdir:
+        with TemporaryDirectory(dir='/dev/shm') as tmpdir:
             tmpdir = Path(tmpdir)
             for n, c in collections.items():
                 if isinstance(c, list):
@@ -65,33 +67,42 @@ class CompilerTester:
             raise
 
 
-def test_expressions() -> None:
-    compiler = Compiler()
-    tester = CompilerTester(compiler)
-    gen = CodeGenerator({})
-    for _ in range(10):
-        ctx = Context({})
-        code = gen.random_str_expr(ctx)
-        print(code)
-        tester.test_expr(code)
-    print('test_expressions completed.')
+class ExpressionTestCases(TestCase):
+    ITERATIONS = 20
 
+    def setUp(self):
+        self.compiler = Compiler()
+        self.tester = CompilerTester(self.compiler)
+        self.gen = CodeGenerator({})
 
-def test_queries() -> None:
-    compiler = Compiler()
-    tester = CompilerTester(compiler)
-    gen = CodeGenerator({})
-    for _ in range(10):
-        coll = gen.collection('FLAG{abc}')
-        qry = gen.flag_query(coll)
-        flg = tester.test_func(qry, {coll.name: coll.to_ndjson()})
-        # print(flg)
-    print('test_queries completed.')
+    def test_expressions_int(self) -> None:
+        for _ in range(self.ITERATIONS):
+            ctx = Context({})
+            code = self.gen.int_expr.generate(ctx)
+            print(code)
+            self.tester.test_expr(code)
 
+    def test_expressions_str(self) -> None:
+        for _ in range(self.ITERATIONS):
+            ctx = Context({})
+            code = self.gen.str_expr.generate(ctx)
+            print(code)
+            self.tester.test_expr(code)
 
-def main() -> None:
-    test_queries()
+    def test_expressions_bool(self) -> None:
+        for _ in range(self.ITERATIONS):
+            ctx = Context({})
+            code = self.gen.bool_expr.generate(ctx)
+            print(code)
+            self.tester.test_expr(code)
+
+    def test_queries(self) -> None:
+        for _ in range(self.ITERATIONS):
+            coll = self.gen.collection('FLAG{abc}')
+            qry = self.gen.flag_query(coll)
+            flg = self.tester.test_func(qry, {coll.name: coll.to_ndjson()})
+            # print(flg)
 
 
 if __name__ == '__main__':
-    main()
+    unittest.main()
