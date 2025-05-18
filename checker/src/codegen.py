@@ -71,6 +71,46 @@ class Context:
         return Context(vars=self.vars | {name: value}, funcs=self.funcs)
 
 
+class IdentifierGenerator:
+    FIRST_CHAR = string.ascii_letters + "____"
+    ALLOWED_CHARS = string.ascii_letters + string.digits + "__"
+    CANDIDATES = [
+        'undefined',
+        'NaN',
+        'Infinity',
+        'NUL',
+
+        'system',
+        'execve',
+        'exec',
+        'shell_exec',
+        'eval',
+        'puts',
+
+        'SELECT',
+        'INSERT',
+        'UPDATE',
+
+        'ProcessBuilder',
+    ]
+
+    def __init__(self) -> None:
+        self.used = set()
+        self.candidates = list(self.CANDIDATES)
+
+    def get(self) -> str:
+        while True:
+            if len(self.candidates) > 1 and random.randint(0, 100) < 8:
+                s = random.choice(self.candidates)
+                self.candidates.remove(s)
+            else:
+                l = random.randint(3, 12)
+                s = random.choice(self.FIRST_CHAR) + ''.join(random.choice(self.ALLOWED_CHARS) for _ in range(l - 1))
+            if s not in self.used:
+                self.used.add(s)
+                return s
+
+
 class ExprGen(ABC):
     def __init__(self, gen: 'CodeGenerator') -> None:
         self.gen = gen
@@ -113,8 +153,8 @@ class VarUse(TypedGen):
         return any(self.match(_) for _ in ctx.vars.values())
 
     def generate(self, ctx: Context) -> Expr:
-        vars = [(k, v) for k, v in ctx.vars.items() if self.match(v)]
-        name, value = random.choice(vars)
+        variables = [(k, v) for k, v in ctx.vars.items() if self.match(v)]
+        name, value = random.choice(variables)
         return Expr(name, value)
 
 
@@ -146,10 +186,40 @@ class IntUnaryOp(ExprGen):
 
 
 class StringConst(ExprGen):
-    STRING_CHARS = string.ascii_letters + string.digits + "._-:"
+    STRING_CHARS = string.ascii_letters + string.digits + "._-:/*+%$§"
+    CANDIDATES = [
+        "<script>",
+        "/bin/sh",
+        "/bin/bash",
+        "/etc/passwd",
+        "ncat",
+        "wget",
+        "curl",
+        "%n%n%n",
+        "%p%p%p%p%p",
+        "<img src=x onerror=alert(2) />",
+        "&lt;script&gt;alert(&#39;1&#39;);&lt;/script&gt;",
+        "1;DROP TABLE users",
+        "' OR 1=1 -- 1",
+        "`touch /tmp/blns.fail`",
+        "DROP TABLE",
+        "Kernel.exec('ls -al /')",
+        "$HOME",
+        "$ENV{'HOME'}",
+        "%d",
+        "file:///",
+        "{% print 'x' * 64 * 1024**3 %}",
+        "{{ ''.__class__.__mro__[2].__subclasses__()[40]('/etc/passwd').read() }}",
+    ]
+
+    @classmethod
+    def raw(cls) -> str:
+        if random.randint(0, 100) <= 5:
+            return random.choice(cls.CANDIDATES)
+        return ''.join(random.choice(cls.STRING_CHARS) for _ in range(random.randint(0, 12)))
 
     def generate(self, ctx: Context) -> Expr:
-        s = ''.join(random.choice(self.STRING_CHARS) for _ in range(random.randint(0, 12)))
+        s = self.raw()
         return Expr(json.dumps(s), s)
 
 
@@ -211,7 +281,7 @@ class ArrayConstant(ExprGen):
         if random.randint(0, 100) <= 50:
             a.append(random.randint(0, 1000))
         if random.randint(0, 100) <= 50:
-            a.append(self.gen.ident())
+            a.append(StringConst.raw())
         return Expr(json.dumps(a), a)
 
 
@@ -219,9 +289,9 @@ class ObjectConstant(ExprGen):
     def generate(self, ctx: Context) -> Expr:
         a = {}
         if random.randint(0, 100) <= 50:
-            a[self.gen.ident()] = random.randint(0, 1000)
+            a[self.gen.field()] = random.randint(0, 1000)
         if random.randint(0, 100) <= 50:
-            a[self.gen.ident()] = self.gen.ident()
+            a[self.gen.field()] = StringConst.raw()
         return Expr(json.dumps(a), a)
 
 
@@ -270,11 +340,11 @@ class Call(TypedGen):
     def generate(self, ctx: Context) -> Expr:
         with self.gen.depth():
             candidates = [f for f in ctx.funcs.values() if self.match(f.value)]
-            func: Function = random.choice(candidates)
+            f: Function = random.choice(candidates)
             output: list[Value] = []
-            for p in func.params:
+            for p in f.params:
                 output += list(p.output)
-            return Expr(f'{func.name}({", ".join(a.expr for a in func.params)})', func.value, tuple(output + func.output))
+            return Expr(f'{f.name}({", ".join(a.expr for a in f.params)})', f.value, tuple(output + f.output))
 
 
 class StmtGen(ABC):
@@ -304,7 +374,7 @@ class StmtGenGroup(StmtGen):
 
 class VarDefine(StmtGen):
     def generate(self, ctx: Context) -> Stmt:
-        name = self.gen.ident()
+        name = self.gen.var_names.get()
         expr = self.gen.any_expr.generate(ctx)
         ctx = ctx.update_var(name, expr.value)
         return Stmt([f'{name} = {expr.expr};'], ctx, list(expr.output))
@@ -354,7 +424,7 @@ class ObjectAssign(StmtGen):
         name, old_value = random.choice(list((n, v) for n, v in ctx.vars.items() if isinstance(v, dict)))
         expr = self.gen.any_expr_no_recursion.generate(ctx)
         if random.randint(0, 100) < 30 or len(old_value) == 0:
-            key = self.gen.ident()
+            key = self.gen.field()
         else:
             key = random.choice(list(old_value.keys()))
         ctx = ctx.update_var(name, {**old_value, key: expr.value})
@@ -398,7 +468,7 @@ class While(StmtGen):
         with self.gen.depth():
             gen = (self.gen.stmt_basic if self.gen.current_depth >= self.gen.MAX_EXPR_DEPTH else self.gen.stmt_full)
             expr = self.gen.bool_expr.generate(ctx)
-            var = self.gen.ident()
+            var = self.gen.var_names.get()
             code = [f'{var} = {expr.expr};', f'while {var} {{']
             ctx.update_var(var, expr.value)
             output: list[Value] = list(expr.output)
@@ -454,6 +524,8 @@ class CodeGenerator:
     def __init__(self, collections: dict[str, list[dict[str, Any]]]) -> None:
         self.collections = collections
         self.current_depth = 0
+        self.func_names = IdentifierGenerator()
+        self.var_names = IdentifierGenerator()
         self.str_expr = ExprGenGroup([StringConst(self), VarUse(self, str), StringAdd(self),
                                       PickArray(self, str), PickObject(self, str),
                                       Call(self, str), TestExpressions(self, str)])
@@ -481,7 +553,7 @@ class CodeGenerator:
         # + output
         self.stmt_with_output = StmtGenGroup(self.stmt_full.gens + [PrintVar(self)])
 
-    def ident(self) -> str:
+    def field(self) -> str:
         s = random.choice(string.ascii_letters + '_')
         return s + ''.join(random.choice(string.ascii_letters + '_') for _ in range(random.randint(6, 11)))
 
@@ -516,34 +588,34 @@ class CodeGenerator:
         return Collection(name, items=items, ident_key=ident_key, flag_key=flag_key, flag_item=flag_item)
 
     def query_filter_func(self, collection: Collection, ident: Expr) -> Function:
-        name = self.ident()
-        var = self.ident()
+        name = self.func_names.get()
+        var = self.var_names.get()
         code = f'func {name}({var}) {{\n'
         code += '    return ' + self.equality_test(f'{var}[{collection.ident_key.expr}]', ident) + ';\n'
         code += '}'
         return Function(name, code, [], True, [])
 
     def query_selector_func(self, collection: Collection) -> Function:
-        name = self.ident()
-        var = self.ident()
+        name = self.func_names.get()
+        var = self.var_names.get()
         code = f'func {name}({var}) {{\n'
         code += f'    return {var}[{collection.flag_key.expr}];\n'
         code += '}'
         return Function(name, code, [], collection.flag_item[collection.flag_key].value, [])
 
     def flag_query(self, collection: Collection) -> Function:
-        name = self.ident()
+        name = self.func_names.get()
         code = f'query {name} on {collection.name}'
         data = collection.items
         if random.randint(1, 100) <= 70:
-            filter = self.query_filter_func(collection, collection.flag_item[collection.ident_key])
-            code = filter.code + '\n\n' + code
-            code += f' filter {filter.name}'
+            filter_function = self.query_filter_func(collection, collection.flag_item[collection.ident_key])
+            code = filter_function.code + '\n\n' + code
+            code += f' filter {filter_function.name}'
             data = [collection.flag_item]
         if random.randint(1, 100) <= 70:
-            selector = self.query_selector_func(collection)
-            code = selector.code + '\n\n' + code
-            code += f' map {selector.name}'
+            selector_function = self.query_selector_func(collection)
+            code = selector_function.code + '\n\n' + code
+            code += f' map {selector_function.name}'
             data = [_[collection.flag_key] for _ in data]
         if len(data) == 1 and random.randint(1, 100) <= 70:
             l = random.randint(1, 10)
@@ -561,7 +633,7 @@ class CodeGenerator:
     def json_expr(self, ctx: Context) -> Expr:
         c = random.choice(['true', 'false', 'null',
                            '[]', f'[{random.randint(0, 1000)}]',
-                           '{}', f'{{"{self.ident()}": {random.randint(0, 1000)}}}'])
+                           '{}', f'{{"{self.field()}": {random.randint(0, 1000)}}}'])
         return Expr(c, json.loads(c))
 
     def equality_test(self, expr1: str, expr2: Expr) -> str:
@@ -571,11 +643,12 @@ class CodeGenerator:
             return f'!({expr1} != {expr2.expr})'
 
     def function_any(self, ctx: Context, max_params: int = 5, with_print: bool = True) -> Function:
-        name = self.ident()
+        self.var_names = IdentifierGenerator()
+        name = self.func_names.get()
         output = []
         ctx = Context({}, ctx.funcs)
         param_values = [self.any_expr.generate(ctx) for _ in range(random.randint(0, max_params))]
-        param_names = [self.ident() for _ in range(len(param_values))]
+        param_names = [self.var_names.get() for _ in range(len(param_values))]
         for n, v in zip(param_names, param_values):
             ctx.vars[n] = v.value
         code = f'func {name}({",".join(param_names)}) {{\n'
@@ -596,11 +669,21 @@ class CodeGenerator:
         ctx = Context()
         code = []
         for _ in range(random.randint(0, 9)):
-            func = self.function_any(ctx, max_params=5, with_print=with_print)
-            ctx.funcs[func.name] = func
-            code.append(func.code)
-        func = self.function_any(ctx, max_params=max_params, with_print=with_print)
-        code.append(func.code)
-        return Function(func.name, '\n\n'.join(code), func.params, func.value, func.output)
+            f = self.function_any(ctx, max_params=5, with_print=with_print)
+            ctx.funcs[f.name] = f
+            code.append(f.code)
+        f = self.function_any(ctx, max_params=max_params, with_print=with_print)
+        code.append(f.code)
+        return Function(f.name, '\n\n'.join(code), f.params, f.value, f.output)
 
-    # TODO use "system" etc as identifiers
+
+def main() -> None:
+    gen = CodeGenerator({})
+    func = gen.function_many(max_params=1)
+    print(func.code)
+    print(f'// CALL {func.name} {" ".join(json.dumps(_.value) for _ in func.params)}')
+    print(f'// => {json.dumps(func.value)}')
+
+
+if __name__ == '__main__':
+    main()

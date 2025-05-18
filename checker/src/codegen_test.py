@@ -142,12 +142,14 @@ class CodegenTestCases(TestCase):
 
     def test_functions(self) -> None:
         for _ in range(self.FUNC_ITERATIONS):
+            self.gen = CodeGenerator({})
             self.seed_random()
             func = self.gen.function_many(max_params=1)
             self._test_func(func, {})
 
     def test_queries(self) -> None:
         for _ in range(self.FUNC_ITERATIONS):
+            self.gen = CodeGenerator({})
             self.seed_random()
             coll = self.gen.collection('FLAG{abc}')
             qry = self.gen.flag_query(coll)
