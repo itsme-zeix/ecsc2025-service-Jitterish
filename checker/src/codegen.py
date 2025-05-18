@@ -4,8 +4,9 @@ import string
 from abc import abstractmethod, ABC
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from functools import wraps
 from types import UnionType
-from typing import Any, Generator, TypeAlias, Type, get_args
+from typing import Any, Generator, TypeAlias, Type, get_args, Callable
 
 Value: TypeAlias = int | str | list | dict | None
 
@@ -44,6 +45,20 @@ def expr_value(v: Any) -> Value:
     if isinstance(v, list):
         return [expr_value(_) for _ in v]
     return v
+
+
+def make_unique(c: Callable[[], str]) -> str:
+    used = set()
+
+    @wraps(c)
+    def wrapper() -> str:
+        while True:
+            s = c()
+            if s not in used:
+                used.add(s)
+                return s
+
+    return wrapper
 
 
 @dataclass
@@ -566,8 +581,9 @@ class CodeGenerator:
         ctx = Context()
         # "key"
         ident_key = self.str_expr.generate(ctx)
+        ident_key_gen = make_unique(lambda: self.str_expr.generate(ctx))
         for item in items:
-            item[ident_key] = self.str_expr.generate(ctx)
+            item[ident_key] = ident_key_gen()
         # "data"
         flag_key = self.str_expr.generate(ctx)
         for i, item in enumerate(items):

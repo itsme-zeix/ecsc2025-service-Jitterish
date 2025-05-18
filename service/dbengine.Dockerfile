@@ -5,7 +5,7 @@
 # 0. Compilation/runtime basics: working C/C++ compiler with support for C++ modules
 FROM debian:trixie AS basis
 RUN apt-get update && \
-    apt-get install -y clang-18 clang-tools-18 lld-18 && \
+    apt-get install -y clang-18 clang-tools-18 lld-18 nano htop wget curl && \
     apt-get clean && \
     update-alternatives --install /usr/bin/cc cc /usr/bin/clang-18 100 && \
     update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 100 && \
