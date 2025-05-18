@@ -11,42 +11,57 @@ os.environ['MONGO_USER'] = os.environ.get('MONGO_USER', 'jitterish_checker')
 os.environ['MONGO_PASSWORD'] = os.environ.get('MONGO_PASSWORD', 'jitterish_checker')
 
 
-async def demo() -> None:
-    """what a mess"""
+class DemoRunner:
+    def __init__(self):
+        self.responses = []
 
-    # setup code
-    logging.basicConfig(format=f'[%(asctime)s.%(msecs)03d] %(levelname)-9.9s: %(message)s', level=logging.INFO)
-    await checker._init()
-    params = {
-        'task_id': 1,
-        'address': '127.0.0.1',
-        'team_id': 1,
-        'team_name': 'test',
-        'current_round_id': 1,
-        'variant_id': 0,
-        'timeout': 30000,
-        'round_length': 120,
-        'task_chain_id': '',
-    }
-    flag = 'FLAG{TESTFLAG}'
+    async def run(self, task):
+        response = await getattr(checker, f'_call_{task.method.value}')(task)
+        print("====================")
+        print(response)
+        print("====================\n\n")
+        self.responses.append((task, response))
+        return response
 
-    # whatever you want to test
-    task = PutflagCheckerTaskMessage(flag=flag, **params)
-    response = await checker._call_putflag(task)
-    print(response)
-    print("====================\n\n")
+    def report(self) -> None:
+        print("\n\n====================")
+        for t, r in self.responses:
+            print(t.method.value, r)
 
-    task = GetflagCheckerTaskMessage(flag=flag, related_round_id=1, **params)
-    print(await checker._call_getflag(task))
-    print("====================\n\n")
+    async def demo(self) -> None:
+        """what a mess"""
 
-    task = ExploitCheckerTaskMessage(flag_regex=r'FLAG\{.+?\}',
-                                     flag_hash=sha256(flag.encode()).hexdigest(),
-                                     attack_info=response.attack_info,
-                                     **params)
-    print(await checker._call_exploit(task))
-    print("====================\n\n")
+        # setup code
+        logging.basicConfig(format=f'[%(asctime)s.%(msecs)03d] %(levelname)-9.9s: %(message)s', level=logging.INFO)
+        await checker._init()
+        params = {
+            'task_id': 1,
+            'address': '127.0.0.1',
+            'team_id': 1,
+            'team_name': 'test',
+            'current_round_id': 1,
+            'variant_id': 1,
+            'timeout': 30000,
+            'round_length': 120,
+            'task_chain_id': '',
+        }
+        flag = 'FLAG{TESTFLAG}'
+
+        # whatever you want to test
+        task = PutflagCheckerTaskMessage(flag=flag, **params)
+        put_response = await self.run(task)
+
+        task = GetflagCheckerTaskMessage(flag=flag, related_round_id=1, **params)
+        await self.run(task)
+
+        task = ExploitCheckerTaskMessage(flag_regex=r'FLAG\{.+?\}',
+                                         flag_hash=sha256(flag.encode()).hexdigest(),
+                                         attack_info=put_response.attack_info,
+                                         **params)
+        await self.run(task)
+
+        self.report()
 
 
 if __name__ == '__main__':
-    asyncio.run(demo())
+    asyncio.run(DemoRunner().demo())

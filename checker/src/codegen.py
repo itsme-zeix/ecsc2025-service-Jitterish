@@ -7,9 +7,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from functools import wraps
 from types import UnionType
-from typing import Any, Generator, TypeAlias, Type, get_args, Callable
+from typing import Any, Generator, TypeAlias, Type, get_args, Callable, TypeVar, Hashable
 
 Value: TypeAlias = int | str | list | dict | None
+T = TypeVar('T', bound=Hashable)
 
 
 @dataclass(frozen=True)
@@ -17,6 +18,17 @@ class Expr:
     expr: str
     value: Value
     output: tuple[Value, ...] = field(default_factory=lambda: ())
+
+    def to_json(self) -> dict:
+        return {
+            'expr': self.expr,
+            'value': self.value,
+            'output': list(self.output),
+        }
+
+    @classmethod
+    def from_json(cls, d: dict) -> 'Expr':
+        return Expr(d['expr'], d['value'], tuple(d['output']))
 
 
 @dataclass(frozen=True)
@@ -34,6 +46,13 @@ class Function:
     value: Value
     output: list[Value] = field(default_factory=list)
 
+    def as_script(self) -> str:
+        params = ' '.join(json.dumps(_) for _ in self.params)
+        code = f'// EXECUTE {self.name} {params}\n\n' + self.code + '\n'
+        code += f'\n// Result: {json.dumps(self.value)}'
+        for o in self.output:
+            code += f'\n// output: {json.dumps(o)}'
+
 
 INT_MASK = 0xffffffffffffff
 
@@ -48,11 +67,11 @@ def expr_value(v: Any) -> Value:
     return v
 
 
-def make_unique(c: Callable[[], str]) -> str:
+def make_unique(c: Callable[[], T]) -> Callable[[], T]:
     used = set()
 
     @wraps(c)
-    def wrapper() -> str:
+    def wrapper() -> T:
         while True:
             s = c()
             if s not in used:
@@ -76,6 +95,25 @@ class Collection:
     @property
     def private(self) -> bool:
         return 'private' in self.name
+
+    def to_json(self) -> dict:
+        return {
+            'name': self.name,
+            'items': [[(k.to_json(), v.to_json()) for k, v in item.items()] for item in self.items],
+            'ident_key': self.ident_key.to_json(),
+            'flag_key': self.flag_key.to_json(),
+            'flag_item': [(k.to_json(), v.to_json()) for k, v in self.flag_item.items()],
+        }
+
+    @classmethod
+    def from_json(cls, d: dict) -> 'Collection':
+        return cls(
+            name=d['name'],
+            items=[{Expr.from_json(k): Expr.from_json(v) for k, v in item} for item in d['items']],
+            ident_key=Expr.from_json(d['ident_key']),
+            flag_key=Expr.from_json(d['flag_key']),
+            flag_item={Expr.from_json(k): Expr.from_json(v) for k, v in d['flag_item']},
+        )
 
 
 @dataclass
@@ -537,8 +575,7 @@ class TestStatements(StmtGen):
 class CodeGenerator:
     MAX_EXPR_DEPTH = 5
 
-    def __init__(self, collections: dict[str, list[dict[str, Any]]]) -> None:
-        self.collections = collections
+    def __init__(self) -> None:
         self.current_depth = 0
         self.func_names = IdentifierGenerator()
         self.var_names = IdentifierGenerator()
@@ -623,23 +660,23 @@ class CodeGenerator:
     def flag_query(self, collection: Collection) -> Function:
         name = self.func_names.get()
         code = f'query {name} on {collection.name}'
-        data = collection.items
+        data: list[Value] = expr_value(collection.items)
         if random.randint(1, 100) <= 70:
             filter_function = self.query_filter_func(collection, collection.flag_item[collection.ident_key])
             code = filter_function.code + '\n\n' + code
             code += f' filter {filter_function.name}'
-            data = [collection.flag_item]
+            data = [expr_value(collection.flag_item)]
         if random.randint(1, 100) <= 70:
             selector_function = self.query_selector_func(collection)
             code = selector_function.code + '\n\n' + code
             code += f' map {selector_function.name}'
-            data = [_[collection.flag_key] for _ in data]
+            data = [_[collection.flag_key.value] for _ in data]
         if len(data) == 1 and random.randint(1, 100) <= 70:
             l = random.randint(1, 10)
             code += f' limit {l}'
             data = data[:l]
         code += ';'
-        return Function(name, code, [], data, [])
+        return Function(name, code, [], value=data, output=[])
 
     @contextmanager
     def depth(self) -> Generator[None, Any, None]:
@@ -709,7 +746,7 @@ class CodeGenerator:
 
 
 def main() -> None:
-    gen = CodeGenerator({})
+    gen = CodeGenerator()
     func = gen.function_many(max_params=1)
     print(func.code)
     # print(CodeGenerator.uglify(func.code))

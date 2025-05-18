@@ -8,8 +8,6 @@ from tempfile import TemporaryDirectory
 from typing import Any
 from unittest import TestCase
 
-import time
-
 from .codegen import Expr, CodeGenerator, Context, Function, expr_value
 
 
@@ -66,7 +64,7 @@ class CodegenTestCases(TestCase):
 
     def setUp(self):
         self.compiler = Compiler()
-        self.gen = CodeGenerator({})
+        self.gen = CodeGenerator()
 
     def _run_prog(self, *args, **kwargs) -> tuple[list[Any], Any]:
         lines = self.compiler.run_prog(*args, **kwargs)
@@ -143,14 +141,14 @@ class CodegenTestCases(TestCase):
 
     def test_functions(self) -> None:
         for _ in range(self.FUNC_ITERATIONS):
-            self.gen = CodeGenerator({})
+            self.gen = CodeGenerator()
             self.seed_random()
             func = self.gen.function_many(max_params=1)
             self._test_func(func, {})
 
     def test_functions_uglified(self) -> None:
         for _ in range(self.FUNC_ITERATIONS):
-            self.gen = CodeGenerator({})
+            self.gen = CodeGenerator()
             self.seed_random()
             func = self.gen.function_many(max_params=1)
             func = Function(func.name, self.gen.uglify(func.code), func.params, func.value, func.output)
@@ -158,7 +156,7 @@ class CodegenTestCases(TestCase):
 
     def test_queries(self) -> None:
         for _ in range(self.FUNC_ITERATIONS):
-            self.gen = CodeGenerator({})
+            self.gen = CodeGenerator()
             self.seed_random()
             coll = self.gen.collection('FLAG{abc}')
             qry = self.gen.flag_query(coll)

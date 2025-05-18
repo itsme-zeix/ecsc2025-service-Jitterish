@@ -14,7 +14,7 @@
         <h3 class="title">Collections</h3>
         <ul>
             {{#each collections}}
-                <li>{{this.name}}</li>
+                <li data-role="collection">{{this.name}}</li>
             {{else}}
                 this database is empty
             {{/each}}
@@ -30,7 +30,7 @@
             <div data-augmented-ui class="alert alert-info">
                 <small class="title">query output</small>
                 {{#each msgs}}
-                    <p>{{this}}</p>
+                    <p data-role="output">{{this}}</p>
                 {{/each}}
             </div>
         {{/if}}

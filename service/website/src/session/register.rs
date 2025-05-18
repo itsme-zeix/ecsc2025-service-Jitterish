@@ -62,7 +62,7 @@ pub(super) async fn post_register(
     let user = UserModel {
         username: register.username.to_owned(),
         password_hash: hex::encode(Sha256::digest(register.password.as_bytes())),
-        allow_public_queries: register.accounttype == "personal",
+        allow_public_queries: register.accounttype == "community",
         allow_public_kv: register.accounttype == "enterprise",
     };
 

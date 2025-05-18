@@ -1,5 +1,8 @@
 import asyncio
+import html
+import json
 import logging
+import re
 from logging import LoggerAdapter
 from typing import Callable, Any, Literal
 
@@ -34,6 +37,14 @@ class JitterishClient:
         self._assert_status_code(response, code)
         return response
 
+    def find_error_alerts(self, text: str) -> list[str]:
+        return re.findall('class="alert alert-error"(.*?)</div>', text)
+
+    def log_error_alerts(self, response: Response) -> None:
+        alerts = self.find_error_alerts(response.text)
+        if alerts:
+            self.logger.warning(f'Error alerts found on {response.url}: {alerts}')
+
     async def register(self, username: str, password: str, first: str, last: str,
                        accounttype: Literal['community', 'business', 'enterprise']) -> None:
         await self.get('/session/register')
@@ -42,6 +53,7 @@ class JitterishClient:
             'firstname': first, 'lastname': last,
             'accounttype': accounttype
         }, follow_redirects=True)
+        self.log_error_alerts(response)
         if response.url.path != '/session/profile':
             self.logger.warning(f'Unexpected redirect to {response.url} after registration')
             raise MumbleException('Registration failed')
@@ -52,12 +64,40 @@ class JitterishClient:
         response = await self.post('/session/login', data={
             'username': username, 'password': password,
         }, follow_redirects=True)
+        self.log_error_alerts(response)
         if 'Invalid username' in response.text or 'Invalid password' in response.text:
             raise MumbleException('Login failed (username/password not accepted)')
         if response.url.path != '/session/profile':
             self.logger.warning(f'Unexpected redirect to {response.url} after login')
             raise MumbleException('Registration failed')
         self.logger.info(f'Logged in as {username!r} (password {password!r})')
+
+    async def db_list_collections(self, db: str) -> list[str]:
+        response = await self.get(f'/database/{db}')
+        collections = re.findall(r'<li data-role="collection">\s*([A-Za-z0-9_]*)', response.text)
+        self.logger.info(f'Collections in {db}: {collections}')
+        return collections
+
+    async def db_append(self, db: str, collection: str, data: Any) -> None:
+        self.logger.info(f'Appending to {db}/{collection}: {json.dumps(data)}')
+        response = await self.post(f'/database/{db}/append', data={'collection': collection, 'data': json.dumps(data)})
+        self.log_error_alerts(response)
+        if 'successfully appended' not in response.text:
+            raise MumbleException('Failed to append to database')
+
+    async def db_query(self, db: str, code: str, query_name: str, param: Any) -> tuple[list[Any], Any]:
+        self.logger.info(f'Querying {db} with {query_name}({param})')
+        response = await self.post(f'/database/{db}/customquery',
+                                   data={'query': code, 'query_name': query_name, 'params': json.dumps(param)})
+        self.log_error_alerts(response)
+        if 'class="alert alert-error"' in response.text:
+            raise MumbleException('Failed to query database')
+
+        raw_output = re.findall('<p data-role="output">(.*?)</p>', response.text)
+        raw_output = [html.unescape(_) for _ in raw_output]
+        self.logger.info(f'Query output: {"\n".join(raw_output)}')
+        output = [json.loads(_) for _ in raw_output]  # TODO how to handle error messages
+        return output[:-1], output[-1]
 
     async def api_create(self, database: str, data: Any) -> str:
         response = await self.post(f'/api/{database}/create', json=data)

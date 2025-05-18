@@ -208,12 +208,7 @@ pub async fn database_query_custom(
                     for r in &result {
                         let s = serde_json::to_string(&r)
                             .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "Query error"))?;
-                        ctx.msgs.push(serde_json::to_string(&r).map_err(|_| {
-                            Flash::error(
-                                Redirect::to(format!("/database/{}", database)),
-                                "Custom query returned invalid JSON",
-                            )
-                        })?)
+                        ctx.msgs.push(s)
                     }
                 }
                 Err(e) => {
