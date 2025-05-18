@@ -335,6 +335,29 @@ class PrintVar(StmtGen):
         return Stmt([f'print({name});'], ctx, [value])
 
 
+class If(StmtGen):
+    def generate(self, ctx: Context) -> Stmt:
+        with self.gen.depth():
+            gen = (self.gen.stmt_basic if self.gen.current_depth >= self.gen.MAX_EXPR_DEPTH else self.gen.stmt_full)
+            expr = self.gen.bool_expr.generate(ctx)
+            code = ['if ' + expr.expr + ' {']
+            output = []
+            stmt1 = gen.generate(ctx)
+            code += ['    ' + _ for _ in stmt1.code]
+            if expr.value:
+                ctx = stmt1.ctx
+                output = stmt1.output
+            if random.randint(0, 100) <= 50:
+                code.append('} else {')
+                stmt2 = gen.generate(ctx)
+                code += ['    ' + _ for _ in stmt2.code]
+                if not expr.value:
+                    ctx = stmt2.ctx
+                    output = stmt2.output
+            code.append('}')
+        return Stmt(code, ctx, output)
+
+
 class CodeGenerator:
     MAX_EXPR_DEPTH = 5
 
@@ -349,8 +372,12 @@ class CodeGenerator:
                                        BoolBinary(self), BoolComparison(self), BoolVarUse(self),
                                        PickArray(self, bool), PickObject(self, bool)])
         self.any_expr = ExprGenGroup([self.str_expr, self.int_expr, self.bool_expr, ArrayConstant(self), ObjectConstant(self)])
+        # statements without recursion/output
         self.stmt_basic = StmtGenGroup([VarDefine(self), VarAssign(self), ArrayAppend(self), ArrayAssign(self), ObjectAssign(self)])
-        self.stmt_with_output = StmtGenGroup(self.stmt_basic.gens + [PrintVar(self)])
+        # + calls/control structures
+        self.stmt_full = StmtGenGroup(self.stmt_basic.gens + [If(self)])
+        # + output
+        self.stmt_with_output = StmtGenGroup(self.stmt_full.gens + [PrintVar(self)])
 
     def ident(self) -> str:
         s = random.choice(string.ascii_letters + '_')
@@ -448,7 +475,7 @@ class CodeGenerator:
         code = f'func {name}({",".join(param_names)}) {{\n'
 
         for _ in range(10):
-            stmt = (self.stmt_with_output if with_print else self.stmt_basic).generate(ctx)
+            stmt = (self.stmt_with_output if with_print else self.stmt_full).generate(ctx)
             code += ''.join(f'    {s}\n' for s in stmt.code)
             ctx = stmt.ctx
             output += stmt.output
@@ -458,9 +485,8 @@ class CodeGenerator:
         code += '}\n'
         return Function(name, code, param_values, result.value, output)
 
-    # TODO bool, objects, arrays, null, undefined
     # TODO include/use the unit tests?
     # TODO calls
     # TODO variables should be used more often in expressions
-    # TODO if while etc
+    # TODO while
     # TODO use "system" etc as identifiers
