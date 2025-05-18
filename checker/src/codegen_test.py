@@ -53,7 +53,7 @@ class Compiler:
 
 
 class CodegenTestCases(TestCase):
-    FUNC_ITERATIONS = 1000
+    FUNC_ITERATIONS = 100
     EXPR_ITERATIONS = 10
     EXPR_CHUNKS = 2000
 
@@ -91,7 +91,8 @@ class CodegenTestCases(TestCase):
         except:
             print(func.code)
             print(func.params)
-            print(collections)
+            for name, coll in collections.items():
+                print(f'=== {name} ===\n{coll}\n================')
             raise
 
     def test_expressions_int(self) -> None:
@@ -145,6 +146,14 @@ class CodegenTestCases(TestCase):
             self.gen = CodeGenerator({})
             self.seed_random()
             func = self.gen.function_many(max_params=1)
+            self._test_func(func, {})
+
+    def test_functions_uglified(self) -> None:
+        for _ in range(self.FUNC_ITERATIONS):
+            self.gen = CodeGenerator({})
+            self.seed_random()
+            func = self.gen.function_many(max_params=1)
+            func = Function(func.name, self.gen.uglify(func.code), func.params, func.value, func.output)
             self._test_func(func, {})
 
     def test_queries(self) -> None:

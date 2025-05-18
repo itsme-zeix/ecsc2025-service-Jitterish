@@ -1,5 +1,6 @@
 import json
 import random
+import re
 import string
 from abc import abstractmethod, ABC
 from contextlib import contextmanager
@@ -160,7 +161,7 @@ class TypedGen(ExprGen, ABC):
             self.generated_types = (generated_type,)
 
     def match(self, value: Value) -> bool:
-        return self.generated_types is () or any(type(value) == t for t in self.generated_types)
+        return self.generated_types == () or any(type(value) == t for t in self.generated_types)
 
 
 class VarUse(TypedGen):
@@ -692,11 +693,26 @@ class CodeGenerator:
         code.append(f.code)
         return Function(f.name, '\n\n'.join(code), f.params, f.value, f.output)
 
+    @classmethod
+    def uglify(cls, code: str) -> str:
+        code = re.sub(r'".*?"', lambda m: m.group(0).replace(' ', '▅'), code)
+        if random.randint(0, 100) <= 50:
+            code = re.sub(r'\s+', ' ', code)
+            code = re.sub(r' ([+*/=<>-]|&&|\|\||==|<=|>=) ', '\\1', code)
+            code = re.sub('([;{}():,]) ', '\\1', code)
+            code = re.sub(' ([{(\[])', '\\1', code)
+        else:
+            rnd_whitespace = lambda m: ''.join(random.choice('   \r\n\t') for _ in range(random.randint(1, 4)))
+            code = re.sub(r'\s+', rnd_whitespace, code)
+        code = code.replace('▅', ' ')
+        return code
+
 
 def main() -> None:
     gen = CodeGenerator({})
     func = gen.function_many(max_params=1)
     print(func.code)
+    # print(CodeGenerator.uglify(func.code))
     print(f'// CALL {func.name} {" ".join(json.dumps(_.value) for _ in func.params)}')
     print(f'// => {json.dumps(func.value)}')
 
