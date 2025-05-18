@@ -31,21 +31,23 @@ pub fn register_page(flash: Option<FlashMessage<'_>>) -> Template {
 }
 
 #[get("/session/query")]
-pub async fn query_user(user: UserSession, queries: &State<Queries>) -> Template {
-    let mut db = DbConnection::open("_").await.expect("db offline");
+pub async fn query_user(user: UserSession, queries: &State<Queries>) -> Result<Template, Flash<Redirect>> {
+    let mut db = DbConnection::open("_")
+        .await
+        .map_err(|_| Flash::error(Redirect::to("/"), "Database not reachable"))?;
     let res: Vec<UserModel> = db
         .execute_query(&queries.user, "public_users", &json!("null"))
         .await
-        .expect("could not query users");
+        .map_err(|_| Flash::error(Redirect::to("/"), "Could not query public users"))?;
     // TODO: query db and handle the errors accordingly
     // Redirect::to(uri!(crate::session::profile::index))
-    Template::render(
+    Ok(Template::render(
         "session",
         context! {
             username: user.username,
             usernames: res
         },
-    )
+    ))
 }
 
 // do the registration
@@ -71,11 +73,13 @@ pub(super) async fn post_register(
         return Err(Flash::error(Redirect::to(uri!(register_page)), "Invalid password."));
     }
 
-    let mut db = DbConnection::open("_").await.expect("db offline");
+    let mut db = DbConnection::open("_")
+        .await
+        .map_err(|_| Flash::error(Redirect::to("/"), "Database not reachable"))?;
     let existing_users: Vec<Value> = db
         .execute_query(&queries.user, "user_by_username", &register.username)
         .await
-        .expect("query error");
+        .map_err(|_| Flash::error(Redirect::to("/"), "User by username query error"))?;
     if !existing_users.is_empty() {
         return Err(Flash::error(Redirect::to(uri!(register_page)), "Username already taken."));
     }

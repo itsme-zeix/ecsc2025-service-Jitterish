@@ -1,10 +1,10 @@
-use std::env;
 use interface::database::{CodeRef, Collection, Command};
 use rocket::tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use rocket::tokio::net::TcpStream;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
+use std::env;
 use std::io::ErrorKind;
 
 pub struct DbConnection {
@@ -61,7 +61,7 @@ impl DbConnection {
         self.send(&Command::List).await?;
         self.recv::<Collection>().await
     }
-    
+
     pub async fn list_users(self: &mut DbConnection) -> std::io::Result<Vec<String>> {
         self.send(&Command::ListUsers).await?;
         self.recv::<String>().await

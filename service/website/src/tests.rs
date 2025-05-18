@@ -58,24 +58,23 @@ struct TestX<'r> {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum TestY<'r> {
-    Y {
-        a: &'r str,
-        data: Box<RawValue>,
-    }
+    Y { a: &'r str, data: Box<RawValue> },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum TestZ<'r> {
-    Z {
-        a: &'r str,
-        data: Box<RawValue>,
-    }
+    Z { a: &'r str, data: Box<RawValue> },
 }
 
 #[tokio::test]
 async fn test_serde() {
     println!("{:?}", serde_json::from_str::<TestX>(r#"{"a": "b", "data": {"x":"y"}}"#));
-    println!("{:?}", serde_json::from_str::<TestY>(r#"{"type": "Y", "a": "b", "data": {"x":"y"}}"#));
-    println!("{:?}", serde_json::from_str::<TestZ>(r#"{"Z": {"a": "b", "data": {"x":"y"}}}"#));
+    println!(
+        "{:?}",
+        serde_json::from_str::<TestY>(r#"{"type": "Y", "a": "b", "data": {"x":"y"}}"#)
+    );
+    println!(
+        "{:?}",
+        serde_json::from_str::<TestZ>(r#"{"Z": {"a": "b", "data": {"x":"y"}}}"#)
+    );
 }
-

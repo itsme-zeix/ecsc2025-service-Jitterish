@@ -1,5 +1,5 @@
-use rocket::response::{Redirect, Flash};
 use rocket::http::CookieJar;
+use rocket::response::{Flash, Redirect};
 
 #[post("/session/logout")]
 pub fn logout(jar: &CookieJar<'_>) -> Flash<Redirect> {

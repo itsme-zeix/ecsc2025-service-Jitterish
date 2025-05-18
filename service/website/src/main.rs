@@ -21,7 +21,6 @@ use std::fs;
 use std::fs::create_dir_all;
 use std::path::Path;
 
-
 #[derive(Debug)]
 pub struct Queries {
     pub user: CodeRef,
