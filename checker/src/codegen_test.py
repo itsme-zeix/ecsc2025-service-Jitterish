@@ -22,6 +22,10 @@ JIT_ROOT: Path = Path(__file__).absolute().parent.parent.parent / 'service' / 'j
 COMPILER: Path = find_compiler()
 
 
+def read_json_lines(s: str) -> list[Any]:
+    return [json.loads(l) for l in s.strip().split('\n') if l]
+
+
 class Compiler:
     def compile(self, code: str, output: Path) -> None:
         p = subprocess.Popen([str(COMPILER), '/dev/stdin', str(output)], stdin=subprocess.PIPE)
@@ -48,27 +52,36 @@ class CompilerTester:
     def __init__(self, compiler: Compiler) -> None:
         self.compiler = compiler
 
+    def run_prog(self, *args, **kwargs) -> tuple[list[Any], Any]:
+        lines = self.compiler.run_prog(*args, **kwargs)
+        raw_result = read_json_lines(lines)
+        return raw_result[:-1], raw_result[-1]
+
     def test_expr(self, expr: Expr) -> None:
-        result = self.compiler.run_prog(f'func jit_entrypoint() {{ return {expr.expr}; }}')
-        result = json.loads(result)
+        output, result = self.run_prog(f'func jit_entrypoint() {{ return {expr.expr}; }}')
         if result != expr.value:
             print(expr.expr)
             raise Exception(f'Expected {expr.value}, got {result}')
+        assert output == []
 
     def test_func(self, func: Function, collections: dict[str, str]) -> Any:
         try:
-            result = self.compiler.run_prog(func.code, func.name, collections=collections)
-            result = json.loads(result)
+            param = None if len(func.params) == 0 else func.params[0].value
+            output, result = self.run_prog(func.code, func.name, param=param, collections=collections)
             if result != expr_value(func.value):
                 raise Exception(f'Expected {func.value}, got {result}')
+            expected_output = expr_value(func.output)
+            if output != expected_output:
+                raise Exception(f'Expected output {expected_output}, got {output}')
             return result
         except:
             print(func.code)
             raise
 
 
-class ExpressionTestCases(TestCase):
-    ITERATIONS = 20
+class CodegenTestCases(TestCase):
+    ITERATIONS = 25
+    CHUNKS = 1000
 
     def setUp(self):
         self.compiler = Compiler()
@@ -79,22 +92,50 @@ class ExpressionTestCases(TestCase):
         for _ in range(self.ITERATIONS):
             ctx = Context({})
             code = self.gen.int_expr.generate(ctx)
-            print(code)
             self.tester.test_expr(code)
 
     def test_expressions_str(self) -> None:
         for _ in range(self.ITERATIONS):
             ctx = Context({})
             code = self.gen.str_expr.generate(ctx)
-            print(code)
             self.tester.test_expr(code)
 
     def test_expressions_bool(self) -> None:
         for _ in range(self.ITERATIONS):
             ctx = Context({})
             code = self.gen.bool_expr.generate(ctx)
-            print(code)
             self.tester.test_expr(code)
+
+    def _test_expr_chunks(self, gen) -> None:
+        code = 'func jit_entrypoint() {\n'
+        exprs = []
+        for _ in range(self.CHUNKS):
+            ctx = Context({})
+            expr = gen.generate(ctx)
+            exprs.append(expr)
+            code += 'print(' + expr.expr + ');\n'
+        code += 'return 0; }'
+        output, result = self.tester.run_prog(code)
+        if len(output) != len(exprs):
+            raise Exception('Wrong number of output lines')
+        for e, o in zip(exprs, output):
+            if e.value != o:
+                raise Exception(f'Expected {e.value}, got {o} for: {e.expr}')
+
+    def test_bool_chunked(self) -> None:
+        self._test_expr_chunks(self.gen.bool_expr)
+
+    def test_str_chunked(self) -> None:
+        self._test_expr_chunks(self.gen.str_expr)
+
+    def test_int_chunked(self) -> None:
+        self._test_expr_chunks(self.gen.int_expr)
+
+    def test_functions(self) -> None:
+        for _ in range(self.ITERATIONS):
+            func = self.gen.function_any(max_params=1)
+            print(func.code)
+            self.tester.test_func(func, {})
 
     def test_queries(self) -> None:
         for _ in range(self.ITERATIONS):

@@ -70,10 +70,8 @@ class ExpressionsTestCase(CompileTestCase):
         self.assertEqual('1', self.run_expr('-6 + 7'))
 
     def test_bughunt(self):
-        self.assertEqual('true', self.run_expr('!defined (941 + true)'))
-        self.assertEqual('true', self.run_expr('!defined (941 + true) != false'))
-        self.assertEqual('true', self.run_expr('(!defined (941 + true) != false) != 987'))
-        self.assertEqual('false', self.run_expr('((!defined (941 + true) != false) != 987) != true'))
+        self.assertEqual('true', self.run_expr('(!(defined 544 == 216) == (149 < --(-784 + -893)))'))
+        self.assertEqual('false', self.run_expr('defined 544 == 216'))
 
 
 class StatementsTestCase(CompileTestCase):
