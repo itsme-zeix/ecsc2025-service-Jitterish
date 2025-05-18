@@ -15,7 +15,7 @@ primary_expr
 unary_expr
     : left=unary_expr '[' rght=expr ']'  # PropertyGet
     | callee=NAME '(' (expr (',' expr)* ','?)? ')'  # CallExpr
-    | op=('!' | '-' | 'len' | 'defined') expr  # UnaryOp
+    | op=('!' | '-' | 'len' | 'defined') unary_expr  # UnaryOp
     | primary_expr  # RawExpr
     ;
 

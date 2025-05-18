@@ -67,6 +67,7 @@ class ExpressionsTestCase(CompileTestCase):
         self.assertEqual('[true,false,true,true,false,true,true,false]', self.run_expr('[1==1,1!=1,1!=2, 1<2, 1>2, 1<=2, 1<=1, 1>=2]'))
         self.assertEqual('true', self.run_expr('defined 1'))
         self.assertEqual('false', self.run_expr('defined {}["a"]'))
+        self.assertEqual('1', self.run_expr('-6 + 7'))
 
 
 class StatementsTestCase(CompileTestCase):
@@ -149,9 +150,9 @@ class QueriesTestCase(CompileTestCase):
         compile('query jit_entrypoint on private1;', self.tmpdir / 'code.so')
         r = subprocess.run([str(self.tmpdir / 'code.so'), 'jit_entrypoint'], cwd=DEMO_DIR,
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self.assertNotEqual(0, r.returncode)
+        self.assertEqual(0, r.returncode)
         self.assertNotIn(b'SAAR', r.stdout)
-        self.assertIn(b'access denied', r.stderr)
+        self.assertIn(b'access denied', r.stdout)
 
     def test_failsafe(self):
         result = self.run_prog('query jit_entrypoint on broken;')

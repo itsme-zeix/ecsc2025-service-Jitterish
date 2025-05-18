@@ -198,7 +198,7 @@ public:
 
     std::any visitUnaryOp(JitterishParser::UnaryOpContext *ctx) override {
         auto op = ctx->op->getText();
-        auto expr = compile(ctx->expr());
+        auto expr = compile(ctx->unary_expr());
         if (op == "!") {
             return codegen.callRuntime("jit_rt_not", expr);
         } else if (op == "-") {
