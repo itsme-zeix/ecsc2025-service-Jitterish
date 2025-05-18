@@ -1,10 +1,14 @@
 import json
+import random
+import secrets
 import subprocess
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 from unittest import TestCase
+
+import time
 
 from .codegen import Expr, CodeGenerator, Context, Function, expr_value
 
@@ -48,79 +52,84 @@ class Compiler:
             return subprocess.check_output(cmd, cwd=tmpdir).decode().strip()
 
 
-class CompilerTester:
-    def __init__(self, compiler: Compiler) -> None:
-        self.compiler = compiler
+class CodegenTestCases(TestCase):
+    FUNC_ITERATIONS = 1000
+    EXPR_ITERATIONS = 10
+    EXPR_CHUNKS = 2000
 
-    def run_prog(self, *args, **kwargs) -> tuple[list[Any], Any]:
+    START_SEED = int(secrets.randbits(32))
+
+    def seed_random(self) -> None:
+        print(f'SEED {self.START_SEED}')
+        random.seed(self.START_SEED)
+        self.START_SEED += 1
+
+    def setUp(self):
+        self.compiler = Compiler()
+        self.gen = CodeGenerator({})
+
+    def _run_prog(self, *args, **kwargs) -> tuple[list[Any], Any]:
         lines = self.compiler.run_prog(*args, **kwargs)
         raw_result = read_json_lines(lines)
         return raw_result[:-1], raw_result[-1]
 
-    def test_expr(self, expr: Expr) -> None:
-        output, result = self.run_prog(f'func jit_entrypoint() {{ return {expr.expr}; }}')
+    def _test_expr(self, expr: Expr) -> None:
+        output, result = self._run_prog(f'func jit_entrypoint() {{ return {expr.expr}; }}')
         if result != expr.value:
             print(expr.expr)
-            raise Exception(f'Expected {expr.value}, got {result}')
+            self.assertEqual(expr.value, result, f'output of {expr.expr} is wrong')
         assert output == []
 
-    def test_func(self, func: Function, collections: dict[str, str]) -> Any:
+    def _test_func(self, func: Function, collections: dict[str, str]) -> Any:
         try:
             param = None if len(func.params) == 0 else func.params[0].value
-            output, result = self.run_prog(func.code, func.name, param=param, collections=collections)
-            if result != expr_value(func.value):
-                raise Exception(f'Expected {func.value}, got {result}')
+            output, result = self._run_prog(func.code, func.name, param=param, collections=collections)
+            self.assertEqual(expr_value(func.value), result)
             expected_output = expr_value(func.output)
-            if output != expected_output:
-                raise Exception(f'Expected output {expected_output}, got {output}')
+            self.assertEqual(expected_output, output, f'output of {func.name} is wrong')
             return result
         except:
             print(func.code)
+            print(func.params)
+            print(collections)
             raise
 
-
-class CodegenTestCases(TestCase):
-    ITERATIONS = 25
-    CHUNKS = 1000
-
-    def setUp(self):
-        self.compiler = Compiler()
-        self.tester = CompilerTester(self.compiler)
-        self.gen = CodeGenerator({})
-
     def test_expressions_int(self) -> None:
-        for _ in range(self.ITERATIONS):
+        for _ in range(self.EXPR_ITERATIONS):
+            self.seed_random()
             ctx = Context({})
             code = self.gen.int_expr.generate(ctx)
-            self.tester.test_expr(code)
+            self._test_expr(code)
 
     def test_expressions_str(self) -> None:
-        for _ in range(self.ITERATIONS):
+        for _ in range(self.EXPR_ITERATIONS):
+            self.seed_random()
             ctx = Context({})
             code = self.gen.str_expr.generate(ctx)
-            self.tester.test_expr(code)
+            self._test_expr(code)
 
     def test_expressions_bool(self) -> None:
-        for _ in range(self.ITERATIONS):
+        for _ in range(self.EXPR_ITERATIONS):
+            self.seed_random()
             ctx = Context({})
             code = self.gen.bool_expr.generate(ctx)
-            self.tester.test_expr(code)
+            self._test_expr(code)
 
     def _test_expr_chunks(self, gen) -> None:
+        self.seed_random()
         code = 'func jit_entrypoint() {\n'
         exprs = []
-        for _ in range(self.CHUNKS):
+        for _ in range(self.EXPR_CHUNKS):
             ctx = Context({})
             expr = gen.generate(ctx)
             exprs.append(expr)
             code += 'print(' + expr.expr + ');\n'
         code += 'return 0; }'
-        output, result = self.tester.run_prog(code)
+        output, result = self._run_prog(code)
         if len(output) != len(exprs):
             raise Exception('Wrong number of output lines')
         for e, o in zip(exprs, output):
-            if e.value != o:
-                raise Exception(f'Expected {e.value}, got {o} for: {e.expr}')
+            self.assertEqual(e.value, o, f'Output of {e.expr}')
 
     def test_bool_chunked(self) -> None:
         self._test_expr_chunks(self.gen.bool_expr)
@@ -132,16 +141,17 @@ class CodegenTestCases(TestCase):
         self._test_expr_chunks(self.gen.int_expr)
 
     def test_functions(self) -> None:
-        for _ in range(self.ITERATIONS):
-            func = self.gen.function_any(max_params=1)
-            print(func.code)
-            self.tester.test_func(func, {})
+        for _ in range(self.FUNC_ITERATIONS):
+            self.seed_random()
+            func = self.gen.function_many(max_params=1)
+            self._test_func(func, {})
 
     def test_queries(self) -> None:
-        for _ in range(self.ITERATIONS):
+        for _ in range(self.FUNC_ITERATIONS):
+            self.seed_random()
             coll = self.gen.collection('FLAG{abc}')
             qry = self.gen.flag_query(coll)
-            flg = self.tester.test_func(qry, {coll.name: coll.to_ndjson()})
+            flg = self._test_func(qry, {coll.name: coll.to_ndjson()})
             # print(flg)
 
 

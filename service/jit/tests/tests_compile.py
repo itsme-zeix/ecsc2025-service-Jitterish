@@ -128,6 +128,20 @@ class StatementsTestCase(CompileTestCase):
         for c in false_cases:
             self.assertEqual('0', self.run_stmt(f'''if {c} return 1; else return 0;'''))
 
+    def test_nonlazy_eval(self):
+        base = '''
+        func t(x) { print(x); return true; }
+        func f(x) { print(x); return false; }
+        '''
+        self.assertEqual('1\n2\ntrue', self.run_prog(base + 'func jit_entrypoint() { return t(1) && t(2); }'))
+        self.assertEqual('1\n2\nfalse', self.run_prog(base + 'func jit_entrypoint() { return t(1) && f(2); }'))
+        self.assertEqual('1\n2\nfalse', self.run_prog(base + 'func jit_entrypoint() { return f(1) && t(2); }'))
+        self.assertEqual('1\n2\nfalse', self.run_prog(base + 'func jit_entrypoint() { return f(1) && f(2); }'))
+        self.assertEqual('1\n2\ntrue', self.run_prog(base + 'func jit_entrypoint() { return t(1) || t(2); }'))
+        self.assertEqual('1\n2\ntrue', self.run_prog(base + 'func jit_entrypoint() { return t(1) || f(2); }'))
+        self.assertEqual('1\n2\ntrue', self.run_prog(base + 'func jit_entrypoint() { return f(1) || t(2); }'))
+        self.assertEqual('1\n2\nfalse', self.run_prog(base + 'func jit_entrypoint() { return f(1) || f(2); }'))
+
 
 class QueriesTestCase(CompileTestCase):
     data1 = read_json_lines(DEMO_DIR / 'data1.ndjson')
