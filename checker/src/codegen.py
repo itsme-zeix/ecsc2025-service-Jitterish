@@ -4,7 +4,8 @@ import string
 from abc import abstractmethod, ABC
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Generator, TypeAlias, Type
+from types import UnionType
+from typing import Any, Generator, TypeAlias, Type, get_args
 
 Value: TypeAlias = int | str | list | dict | None
 
@@ -58,7 +59,7 @@ class Collection:
 
     @property
     def private(self) -> bool:
-        return  'private' in self.name
+        return 'private' in self.name
 
 
 @dataclass
@@ -95,15 +96,25 @@ class ExprGenGroup(ExprGen):
             return random.choice(gens).generate(ctx)
 
 
-class VarUse(ExprGen):
-    TYPE = str
+class TypedGen(ExprGen, ABC):
+    def __init__(self, gen: 'CodeGenerator', generated_type: Type | UnionType) -> None:
+        super().__init__(gen)
+        if isinstance(generated_type, UnionType):
+            self.generated_types = tuple(get_args(generated_type))
+        else:
+            self.generated_types = (generated_type,)
 
+    def match(self, value: Value) -> bool:
+        return self.generated_types is () or any(type(value) == t for t in self.generated_types)
+
+
+class VarUse(TypedGen):
     def applicable(self, ctx: Context) -> bool:
-        return any(type(_) == self.TYPE for _ in ctx.vars.values())
+        return any(self.match(_) for _ in ctx.vars.values())
 
     def generate(self, ctx: Context) -> Expr:
-        v = [(k, v) for k, v in ctx.vars.items() if type(v) == self.TYPE]
-        name, value = random.choice(v)
+        vars = [(k, v) for k, v in ctx.vars.items() if self.match(v)]
+        name, value = random.choice(vars)
         return Expr(name, value)
 
 
@@ -134,20 +145,12 @@ class IntUnaryOp(ExprGen):
         return Expr(f'-{expr.expr}', (-expr.value) & INT_MASK, expr.output)
 
 
-class IntVarUse(VarUse):
-    TYPE = int
-
-
 class StringConst(ExprGen):
     STRING_CHARS = string.ascii_letters + string.digits + "._-:"
 
     def generate(self, ctx: Context) -> Expr:
         s = ''.join(random.choice(self.STRING_CHARS) for _ in range(random.randint(0, 12)))
         return Expr(json.dumps(s), s)
-
-
-class StringVarUse(VarUse):
-    TYPE = str
 
 
 class StringAdd(ExprGen):
@@ -202,10 +205,6 @@ class BoolComparison(ExprGen):
         ])
 
 
-class BoolVarUse(VarUse):
-    TYPE = bool
-
-
 class ArrayConstant(ExprGen):
     def generate(self, ctx: Context) -> Expr:
         a = []
@@ -226,17 +225,13 @@ class ObjectConstant(ExprGen):
         return Expr(json.dumps(a), a)
 
 
-class PickArray(ExprGen):
-    def __init__(self, gen: 'CodeGenerator', type: Type) -> None:
-        super().__init__(gen)
-        self.type = type
-
+class PickArray(TypedGen):
     def candidates(self, ctx: Context) -> list[tuple[str, int, Value]]:
         result = []
         for k, v in ctx.vars.items():
             if isinstance(v, list):
                 for i, v2 in enumerate(v):
-                    if type(v2) == self.type:
+                    if self.match(v2):
                         result.append((k, i, v2))
         return result
 
@@ -249,17 +244,13 @@ class PickArray(ExprGen):
         return Expr(f'{var}[{i}]', v)
 
 
-class PickObject(ExprGen):
-    def __init__(self, gen: 'CodeGenerator', type: Type) -> None:
-        super().__init__(gen)
-        self.type = type
-
+class PickObject(TypedGen):
     def candidates(self, ctx: Context) -> list[tuple[str, str, Value]]:
         result = []
         for var, v in ctx.vars.items():
             if isinstance(v, dict):
                 for k, v2 in v.items():
-                    if type(v2) == self.type:
+                    if self.match(v2):
                         result.append((var, k, v2))
         return result
 
@@ -272,17 +263,13 @@ class PickObject(ExprGen):
         return Expr(f'{var}[{json.dumps(k)}]', v)
 
 
-class Call(ExprGen):
-    def __init__(self, gen: 'CodeGenerator', type: Type | None) -> None:
-        super().__init__(gen)
-        self.type = type
-
+class Call(TypedGen):
     def applicable(self, ctx: Context) -> bool:
-        return any(type(f.value) == self.type or self.type is None for f in ctx.funcs.values())
+        return any(self.match(f.value) for f in ctx.funcs.values())
 
     def generate(self, ctx: Context) -> Expr:
         with self.gen.depth():
-            candidates = [f for f in ctx.funcs.values() if type(f.value) == self.type or self.type is None]
+            candidates = [f for f in ctx.funcs.values() if self.match(f.value)]
             func: Function = random.choice(candidates)
             output: list[Value] = []
             for p in func.params:
@@ -329,7 +316,7 @@ class VarAssign(StmtGen):
 
     def generate(self, ctx: Context) -> Stmt:
         name = random.choice(list(ctx.vars.keys()))
-        expr = self.gen.any_expr.generate(ctx)
+        expr = self.gen.any_expr_no_recursion.generate(ctx)
         ctx = ctx.update_var(name, expr.value)
         return Stmt([f'{name} = {expr.expr};'], ctx, list(expr.output))
 
@@ -340,7 +327,7 @@ class ArrayAppend(StmtGen):
 
     def generate(self, ctx: Context) -> Stmt:
         name, old_value = random.choice(list((n, v) for n, v in ctx.vars.items() if isinstance(v, list)))
-        expr = self.gen.any_expr.generate(ctx)
+        expr = self.gen.any_expr_no_recursion.generate(ctx)
         ctx = ctx.update_var(name, old_value + [expr.value])
         return Stmt([f'{name}[+] = {expr.expr};'], ctx, list(expr.output))
 
@@ -351,7 +338,7 @@ class ArrayAssign(StmtGen):
 
     def generate(self, ctx: Context) -> Stmt:
         name, old_value = random.choice(list((n, v) for n, v in ctx.vars.items() if isinstance(v, list) and len(v) > 0))
-        expr = self.gen.any_expr.generate(ctx)
+        expr = self.gen.any_expr_no_recursion.generate(ctx)
         i = random.randint(0, len(old_value) - 1)
         new_value = old_value[:]
         new_value[i] = expr.value
@@ -365,7 +352,7 @@ class ObjectAssign(StmtGen):
 
     def generate(self, ctx: Context) -> Stmt:
         name, old_value = random.choice(list((n, v) for n, v in ctx.vars.items() if isinstance(v, dict)))
-        expr = self.gen.any_expr.generate(ctx)
+        expr = self.gen.any_expr_no_recursion.generate(ctx)
         if random.randint(0, 100) < 30 or len(old_value) == 0:
             key = self.gen.ident()
         else:
@@ -406,26 +393,91 @@ class If(StmtGen):
         return Stmt(code, ctx, list(output))
 
 
+class While(StmtGen):
+    def generate(self, ctx: Context) -> Stmt:
+        with self.gen.depth():
+            gen = (self.gen.stmt_basic if self.gen.current_depth >= self.gen.MAX_EXPR_DEPTH else self.gen.stmt_full)
+            expr = self.gen.bool_expr.generate(ctx)
+            var = self.gen.ident()
+            code = [f'{var} = {expr.expr};', f'while {var} {{']
+            ctx.update_var(var, expr.value)
+            output: list[Value] = list(expr.output)
+            stmt = gen.generate(ctx)
+            code += ['    ' + _ for _ in stmt.code]
+            if expr.value:
+                code.append(f'{var} = false;')
+                ctx = stmt.ctx.update_var(var, False)
+                output += stmt.output
+            code.append('}')
+        return Stmt(code, ctx, list(output))
+
+
+class TestExpressions(TypedGen):
+    CONSTANTS = [
+        Expr('(1+2*3+4-2)', 9),
+        Expr('(1 && 2)', True),
+        Expr('(1 && 0)', False),
+        Expr('([!false, 5+-3, "a"+"b", "c"+7, 2*(1+1)])', [True, 2, "ab", "c7", 4]),
+        Expr('([len {"a":0}, len [1,2], len "abc"])', [1, 2, 3]),
+        Expr('([ [5,11,3][1], {"a":1,"b":2}["a"] ])', [11, 1]),
+        Expr('([1==1,1!=1,1!=2, 1<2, 1>2, 1<=2, 1<=1, 1>=2])', [True, False, True, True, False, True, True, False]),
+        Expr('(defined 1)', True),
+        Expr('(defined {}["a"])', False),
+        Expr('(-6 + 7)', 1),
+        Expr('["a", {}, {"a":"b"}, null, 2, true, false]', ["a", {}, {"a": "b"}, None, 2, True, False]),
+    ]
+
+    def applicable(self, ctx: Context) -> bool:
+        return any(self.match(_.value) for _ in self.CONSTANTS)
+
+    def generate(self, ctx: Context) -> Expr:
+        return random.choice([_ for _ in self.CONSTANTS if self.match(_.value)])
+
+
+class TestStatements(StmtGen):
+    CONSTANTS = [
+        lambda ctx: Stmt(['a=[3,3,3];', 'a[0]=1;', 'a[1]=2;', 'a[2]=3;'], ctx.update_var('a', [1, 2, 3])),
+        lambda ctx: Stmt(['a={"a":0};', 'a["a"]=1;', 'a["b"]=2;'], ctx.update_var('a', {"b": 2, "a": 1})),
+        lambda ctx: Stmt(['a=[1];', 'a[+]=2;', 'a[+]=3;'], ctx.update_var('a', [1, 2, 3])),
+        lambda ctx: Stmt(['a=[[], [], []];', 'a[0][+]=1;', 'a[1]=a[0];'], ctx.update_var('a', [[1], [1], []])),
+        lambda ctx: Stmt(['i = 5; s = 0;', 'while i > 0 { s = s + i;  i = i - 1; }'],
+                         ctx.update_var('s', 15).update_var('i', 0)),
+    ]
+
+    def generate(self, ctx: Context) -> Stmt:
+        return random.choice(self.CONSTANTS)(ctx)
+
+
 class CodeGenerator:
     MAX_EXPR_DEPTH = 5
 
     def __init__(self, collections: dict[str, list[dict[str, Any]]]) -> None:
         self.collections = collections
         self.current_depth = 0
-        self.str_expr = ExprGenGroup([StringConst(self), StringVarUse(self), StringAdd(self),
-                                      PickArray(self, str), PickObject(self, str), Call(self, str)])
-        self.int_expr = ExprGenGroup([IntConst(self), IntVarUse(self), IntOp(self), IntUnaryOp(self),
-                                      PickArray(self, int), PickObject(self, int), Call(self, int)])
+        self.str_expr = ExprGenGroup([StringConst(self), VarUse(self, str), StringAdd(self),
+                                      PickArray(self, str), PickObject(self, str),
+                                      Call(self, str), TestExpressions(self, str)])
+        self.int_expr = ExprGenGroup([IntConst(self), VarUse(self, int), IntOp(self), IntUnaryOp(self),
+                                      PickArray(self, int), PickObject(self, int),
+                                      Call(self, int), TestExpressions(self, int)])
         self.bool_expr = ExprGenGroup([BoolConst(self), BoolUnary(self), BoolDefined(self),
-                                       BoolBinary(self), BoolComparison(self), BoolVarUse(self),
-                                       PickArray(self, bool), PickObject(self, bool), Call(self, bool)])
-        self.any_expr = ExprGenGroup(
-            [self.str_expr, self.int_expr, self.bool_expr, ArrayConstant(self), ObjectConstant(self), Call(self, None)])
+                                       BoolBinary(self), BoolComparison(self), VarUse(self, bool),
+                                       PickArray(self, bool), PickObject(self, bool),
+                                       Call(self, bool), TestExpressions(self, bool)])
+        self.any_expr_no_recursion = ExprGenGroup([
+            self.str_expr, self.int_expr, self.bool_expr,
+            ArrayConstant(self), ObjectConstant(self),
+            Call(self, Any), TestExpressions(self, Any),
+
+            VarUse(self, str | int | bool | None),
+        ])
+        self.any_expr = ExprGenGroup(self.any_expr_no_recursion.gens[:-1] + [VarUse(self, Any)])
         # statements without recursion/output
-        self.stmt_basic = StmtGenGroup(
-            [VarDefine(self), VarAssign(self), ArrayAppend(self), ArrayAssign(self), ObjectAssign(self)])
+        self.stmt_basic = StmtGenGroup([VarDefine(self), VarAssign(self),
+                                        ArrayAppend(self), ArrayAssign(self), ObjectAssign(self),
+                                        TestStatements(self)])
         # + calls/control structures
-        self.stmt_full = StmtGenGroup(self.stmt_basic.gens + [If(self)])
+        self.stmt_full = StmtGenGroup(self.stmt_basic.gens + [If(self), While(self)])
         # + output
         self.stmt_with_output = StmtGenGroup(self.stmt_full.gens + [PrintVar(self)])
 
@@ -551,7 +603,4 @@ class CodeGenerator:
         code.append(func.code)
         return Function(func.name, '\n\n'.join(code), func.params, func.value, func.output)
 
-    # TODO include/use the unit tests?
-    # TODO variables should be used more often in expressions
-    # TODO while
     # TODO use "system" etc as identifiers
