@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
-from codegen import Expr, CodeGenerator, Context
+from codegen import Expr, CodeGenerator, Context, Function, expr_value
 
 
 def find_compiler() -> Path:
@@ -53,8 +53,19 @@ class CompilerTester:
             print(expr.expr)
             raise Exception(f'Expected {expr.value}, got {result}')
 
+    def test_func(self, func: Function, collections: dict[str, str]) -> Any:
+        try:
+            result = self.compiler.run_prog(func.code, func.name, collections=collections)
+            result = json.loads(result)
+            if result != expr_value(func.value):
+                raise Exception(f'Expected {func.value}, got {result}')
+            return result
+        except:
+            print(func.code)
+            raise
 
-def main() -> None:
+
+def test_expressions() -> None:
     compiler = Compiler()
     tester = CompilerTester(compiler)
     gen = CodeGenerator({})
@@ -63,7 +74,23 @@ def main() -> None:
         code = gen.random_str_expr(ctx)
         print(code)
         tester.test_expr(code)
-    print('Tests completed.')
+    print('test_expressions completed.')
+
+
+def test_queries() -> None:
+    compiler = Compiler()
+    tester = CompilerTester(compiler)
+    gen = CodeGenerator({})
+    for _ in range(10):
+        coll = gen.collection('FLAG{abc}')
+        qry = gen.flag_query(coll)
+        flg = tester.test_func(qry, {coll.name: coll.to_ndjson()})
+        # print(flg)
+    print('test_queries completed.')
+
+
+def main() -> None:
+    test_queries()
 
 
 if __name__ == '__main__':
