@@ -204,20 +204,30 @@ async def putnoise(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, http
     for item in collection.items:
         await client.db_append(username, collection.name, expr_value(item))
 
-    await db.set("account", (username, password))
-    await db.set("collection", (username, collection.to_json(), public_value))
+    await db.set("noise_account", (username, password))
+    await db.set("noise_collection", (username, collection.to_json(), public_value))
 
 
 @checker.getnoise(0)
 async def getnoise(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
                    di: DependencyInjector) -> None:
     try:
-        username, password = await db.get("account")
-        database, collection, public_value = await db.get("collection")
+        username, password = await db.get("noise_account")
+        database, collection, public_value = await db.get("noise_collection")
     except KeyError:
         raise MumbleException("Database info missing")
 
-    # TODO load the putflag account if there's one
+    # load the putflag account if there's one. Hacky.
+    # checks that the public collections from a community account are indeed public to other accounts
+    # (and teams can't just lock down accounts that contain flags)
+    try:
+        flag_db = ChainDB(db.collection, db.task_chain_id.replace('noise', 'flag'))
+        database, collection, public_value = await flag_db.get("public_collection")
+        logger.info(f"Using the public part of putflag's database/collection ({database} / {collection['name']})")
+    except KeyError:
+        logger.warning('No related putflag found, use the putnoise database/collection instead')
+        pass
+    # end of hacky part
 
     collection = Collection.from_json(collection)
 
@@ -262,7 +272,7 @@ async def exploit_kv_newline_injection(task: ExploitCheckerTaskMessage, logger: 
     my_token = generate_token()
 
     # get keys
-    keys = (await client.api_get(username))[:5]
+    keys = (await client.api_get(username))[:10]
     # hack first 5 keys
     data = ''
     for key in keys:
