@@ -121,9 +121,13 @@ class Collection:
 class Context:
     vars: dict[str, Value] = field(default_factory=dict)
     funcs: dict[str, Function] = field(default_factory=dict)
+    params: set[str] = field(default_factory=set)  # names of current function's parameters
 
     def update_var(self, name: str, value: Value) -> 'Context':
-        return Context(vars=self.vars | {name: value}, funcs=self.funcs)
+        params = self.params
+        if name in params:
+            params = params - {name}
+        return Context(vars=self.vars | {name: value}, funcs=self.funcs, params=params)
 
 
 class IdentifierGenerator:
@@ -454,10 +458,10 @@ class VarAssign(StmtGen):
 
 class ArrayAppend(StmtGen):
     def applicable(self, ctx: Context) -> bool:
-        return any(isinstance(_, list) for _ in ctx.vars.values())
+        return any(n not in ctx.params and isinstance(v, list) for n, v in ctx.vars.items())
 
     def generate(self, ctx: Context) -> Stmt:
-        name, old_value = random.choice(list((n, v) for n, v in ctx.vars.items() if isinstance(v, list)))
+        name, old_value = random.choice([(n, v) for n, v in ctx.vars.items() if n not in ctx.params and isinstance(v, list)])
         expr = self.gen.any_expr_no_recursion.generate(ctx)
         ctx = ctx.update_var(name, old_value + [expr.value])
         return Stmt([f'{name}[+] = {expr.expr};'], ctx, list(expr.output))
@@ -465,10 +469,11 @@ class ArrayAppend(StmtGen):
 
 class ArrayAssign(StmtGen):
     def applicable(self, ctx: Context) -> bool:
-        return any(isinstance(_, list) and len(_) > 0 for _ in ctx.vars.values())
+        return any(n not in ctx.params and isinstance(v, list) and len(v) > 0 for n, v in ctx.vars.items())
 
     def generate(self, ctx: Context) -> Stmt:
-        name, old_value = random.choice(list((n, v) for n, v in ctx.vars.items() if isinstance(v, list) and len(v) > 0))
+        candidates = [(n, v) for n, v in ctx.vars.items() if n not in ctx.params and isinstance(v, list) and len(v) > 0]
+        name, old_value = random.choice(candidates)
         expr = self.gen.any_expr_no_recursion.generate(ctx)
         i = random.randint(0, len(old_value) - 1)
         new_value = old_value[:]
@@ -479,10 +484,10 @@ class ArrayAssign(StmtGen):
 
 class ObjectAssign(StmtGen):
     def applicable(self, ctx: Context) -> bool:
-        return any(isinstance(_, dict) for _ in ctx.vars.values())
+        return any(n not in ctx.params and isinstance(v, dict) for n, v in ctx.vars.items())
 
     def generate(self, ctx: Context) -> Stmt:
-        name, old_value = random.choice(list((n, v) for n, v in ctx.vars.items() if isinstance(v, dict)))
+        name, old_value = random.choice([(n, v) for n, v in ctx.vars.items() if n not in ctx.params and isinstance(v, dict)])
         expr = self.gen.any_expr_no_recursion.generate(ctx)
         if random.randint(0, 100) < 30 or len(old_value) == 0:
             key = self.gen.field()
@@ -604,6 +609,7 @@ class CodeGenerator:
             VarUse(self, str | int | bool | None),
         ])
         self.any_expr = ExprGenGroup(self.any_expr_no_recursion.gens[:-1] + [VarUse(self, Any)])
+
         # statements without recursion/output
         self.stmt_basic = StmtGenGroup([VarDefine(self), VarAssign(self),
                                         ArrayAppend(self), ArrayAssign(self), ObjectAssign(self),
@@ -712,6 +718,7 @@ class CodeGenerator:
         param_names = [self.var_names.get() for _ in range(len(param_values))]
         for n, v in zip(param_names, param_values):
             ctx.vars[n] = v.value
+            ctx.params.add(n)
         code = f'func {name}({",".join(param_names)}) {{\n'
 
         for _ in range(10):
