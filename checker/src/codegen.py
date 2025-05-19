@@ -196,6 +196,10 @@ class IdentifierGenerator:
         'ProcessBuilder',
     ]
 
+    KEYWORDS = {'query', 'on', 'filter', 'map', 'reduce', 'limit',
+                'func', 'return', 'if', 'else', 'while',
+                'len', 'defined', 'null', 'true', 'false'}
+
     def __init__(self) -> None:
         self.used: set[str] = set()
         self.candidates = list(self.CANDIDATES)
@@ -208,7 +212,7 @@ class IdentifierGenerator:
             else:
                 l = random.randint(3, 12)
                 s = random.choice(self.FIRST_CHAR) + ''.join(random.choice(self.ALLOWED_CHARS) for _ in range(l - 1))
-            if s not in self.used:
+            if s not in self.used and s not in self.KEYWORDS:
                 self.used.add(s)
                 return s
 
