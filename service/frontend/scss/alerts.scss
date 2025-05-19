@@ -43,4 +43,8 @@
                     #{rgba(vars.$secondary, .1)},
     ) 100% 1;
   }
+
+  p {
+    margin-bottom: .25rem;
+  }
 }
