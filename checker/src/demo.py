@@ -3,7 +3,8 @@ import logging
 import os
 from hashlib import sha256
 
-from enochecker3 import PutflagCheckerTaskMessage, GetflagCheckerTaskMessage, ExploitCheckerTaskMessage
+from enochecker3 import PutflagCheckerTaskMessage, GetflagCheckerTaskMessage, ExploitCheckerTaskMessage, \
+    PutnoiseCheckerTaskMessage, GetnoiseCheckerTaskMessage, HavocCheckerTaskMessage
 
 from checker import checker
 
@@ -26,7 +27,7 @@ class DemoRunner:
     def report(self) -> None:
         print("\n\n====================")
         for t, r in self.responses:
-            print(t.method.value, r)
+            print(f'{t.method.value:8s} {t.variant_id}  {r}')
 
     async def demo(self) -> None:
         """what a mess"""
@@ -40,7 +41,7 @@ class DemoRunner:
             'team_id': 1,
             'team_name': 'test',
             'current_round_id': 1,
-            'variant_id': 1,
+            'variant_id': 0,
             'timeout': 30000,
             'round_length': 120,
             'task_chain_id': '',
@@ -48,17 +49,21 @@ class DemoRunner:
         flag = 'FLAG{TESTFLAG}'
 
         # whatever you want to test
+        r'''
         task = PutflagCheckerTaskMessage(flag=flag, **params)
         put_response = await self.run(task)
-
         task = GetflagCheckerTaskMessage(flag=flag, related_round_id=1, **params)
         await self.run(task)
-
         task = ExploitCheckerTaskMessage(flag_regex=r'FLAG\{.+?\}',
                                          flag_hash=sha256(flag.encode()).hexdigest(),
                                          attack_info=put_response.attack_info,
                                          **params)
         await self.run(task)
+        '''
+
+        await self.run(PutnoiseCheckerTaskMessage(**params))
+        await self.run(GetnoiseCheckerTaskMessage(related_round_id=1, **params))
+        await self.run(HavocCheckerTaskMessage(**params))
 
         self.report()
 

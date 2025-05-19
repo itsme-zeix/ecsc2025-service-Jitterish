@@ -47,11 +47,12 @@ class Function:
     output: list[Value] = field(default_factory=list)
 
     def as_script(self) -> str:
-        params = ' '.join(json.dumps(_) for _ in self.params)
+        params = ' '.join(json.dumps(_.value) for _ in self.params)
         code = f'// EXECUTE {self.name} {params}\n\n' + self.code + '\n'
         code += f'\n// Result: {json.dumps(self.value)}'
         for o in self.output:
             code += f'\n// output: {json.dumps(o)}'
+        return code
 
 
 INT_MASK = 0xffffffffffffff
@@ -240,7 +241,7 @@ class IntUnaryOp(ExprGen):
 
 
 class StringConst(ExprGen):
-    STRING_CHARS = string.ascii_letters + string.digits + "._-:/*+%$§"
+    STRING_CHARS = string.ascii_letters + string.digits + "._-:/*+%$"
     CANDIDATES = [
         "<script>",
         "/bin/sh",
@@ -719,10 +720,10 @@ class CodeGenerator:
         code += '}\n'
         return Function(name, code, param_values, result.value, output)
 
-    def function_many(self, max_params: int = 5, with_print: bool = True) -> Function:
+    def function_many(self, max_params: int = 5, max_additional_funcs: int = 9, with_print: bool = True) -> Function:
         ctx = Context()
         code = []
-        for _ in range(random.randint(0, 9)):
+        for _ in range(random.randint(0, max_additional_funcs)):
             f = self.function_any(ctx, max_params=5, with_print=with_print)
             ctx.funcs[f.name] = f
             code.append(f.code)
@@ -737,7 +738,7 @@ class CodeGenerator:
             code = re.sub(r'\s+', ' ', code)
             code = re.sub(r' ([+*/=<>-]|&&|\|\||==|<=|>=) ', '\\1', code)
             code = re.sub('([;{}():,]) ', '\\1', code)
-            code = re.sub(' ([{(\[])', '\\1', code)
+            code = re.sub(r' ([{(\[])', '\\1', code)
         else:
             rnd_whitespace = lambda m: ''.join(random.choice('   \r\n\t') for _ in range(random.randint(1, 4)))
             code = re.sub(r'\s+', rnd_whitespace, code)
