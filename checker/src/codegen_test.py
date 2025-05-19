@@ -3,6 +3,7 @@ import random
 import secrets
 import subprocess
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
@@ -57,10 +58,11 @@ class CodegenTestCases(TestCase):
 
     START_SEED = int(secrets.randbits(32))
 
-    def seed_random(self) -> None:
+    def seed_random(self) -> int:
         print(f'SEED {self.START_SEED}')
         random.seed(self.START_SEED)
         self.START_SEED += 1
+        return self.START_SEED - 1
 
     def setUp(self):
         self.compiler = Compiler()
@@ -144,6 +146,22 @@ class CodegenTestCases(TestCase):
             self.seed_random()
             func = self.gen.function_many(max_params=1)
             self._test_func(func, {})
+
+    def test_functions_threaded(self) -> None:
+        executor = ThreadPoolExecutor(max_workers=8)
+        futures = []
+        for _ in range(self.FUNC_ITERATIONS):
+            self.gen = CodeGenerator()
+            seed = self.seed_random()
+            func = self.gen.function_many(max_params=1)
+            future = executor.submit(self._test_func, func, {})
+            futures.append((future, seed))
+        for f, s in futures:
+            try:
+                f.result()
+            except:
+                print(f'FAIL with seed {s}')
+                raise
 
     def test_functions_uglified(self) -> None:
         for _ in range(self.FUNC_ITERATIONS):
