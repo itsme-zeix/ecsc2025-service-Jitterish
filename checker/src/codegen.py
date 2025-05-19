@@ -32,7 +32,7 @@ class Expr:
         return Expr(d['expr'], d['value'], tuple(d['output']))
 
     def clone(self) -> 'Expr':
-        return Expr(self.expr, clone(self.value), tuple(clone(list(self.output))), unmodifiable=self.unmodifiable)
+        return Expr(self.expr, clone(self.value), tuple(cast(list, clone(list(self.output)))), unmodifiable=self.unmodifiable)
 
     def sealed(self) -> 'Expr':
         return Expr(self.expr, self.value, tuple(self.output), unmodifiable=self.unmodifiable or not is_sealed_type(self.value))
@@ -170,7 +170,8 @@ class Context:
 
     def fork(self) -> 'Context':
         cloner = AliasSensitiveClone()
-        return Context(vars=cloner.clone(self.vars), funcs=self.funcs, unmodifiable_vars=set(self.unmodifiable_vars))
+        return Context(vars=cast(dict, cloner.clone(self.vars)), funcs=self.funcs,
+                       unmodifiable_vars=set(self.unmodifiable_vars))
 
 
 class IdentifierGenerator:
