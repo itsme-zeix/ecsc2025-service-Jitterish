@@ -49,7 +49,7 @@ class DemoRunner:
         flag = 'FLAG{TESTFLAG}'
 
         # whatever you want to test
-        r'''
+        #r'''
         task = PutflagCheckerTaskMessage(flag=flag, **params)
         put_response = await self.run(task)
         task = GetflagCheckerTaskMessage(flag=flag, related_round_id=1, **params)
@@ -59,7 +59,7 @@ class DemoRunner:
                                          attack_info=put_response.attack_info,
                                          **params)
         await self.run(task)
-        '''
+        #'''
 
         await self.run(PutnoiseCheckerTaskMessage(**params))
         await self.run(GetnoiseCheckerTaskMessage(related_round_id=1, **params))

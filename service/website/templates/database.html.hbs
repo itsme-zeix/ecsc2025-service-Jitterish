@@ -53,7 +53,7 @@
         <h3 class="title">Custom Queries</h3>
         <form action="/database/{{database}}/customquery" method="post" accept-charset="utf-8">
             <label for="query">query</label>
-            <textarea name="query" id="query">{{form.query}}</textarea>
+            <textarea name="query" id="query" rows="12">{{form.query}}</textarea>
             <label for="query_name">query_name</label>
             <input type="text" name="query_name" id="query_name" value="{{form.query_name}}">
             <label for="params">params</label>
