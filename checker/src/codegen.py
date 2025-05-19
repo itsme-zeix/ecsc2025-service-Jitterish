@@ -18,6 +18,7 @@ class Expr:
     expr: str
     value: Value
     output: tuple[Value, ...] = field(default_factory=lambda: ())
+    unmodifiable: bool = False
 
     def to_json(self) -> dict:
         return {
@@ -29,6 +30,12 @@ class Expr:
     @classmethod
     def from_json(cls, d: dict) -> 'Expr':
         return Expr(d['expr'], d['value'], tuple(d['output']))
+
+    def clone(self) -> 'Expr':
+        return Expr(self.expr, clone(self.value), tuple(clone(list(self.output))), unmodifiable=self.unmodifiable)
+
+    def sealed(self) -> 'Expr':
+        return Expr(self.expr, self.value, tuple(self.output), unmodifiable=self.unmodifiable or not is_sealed_type(self.value))
 
 
 @dataclass(frozen=True)
@@ -82,6 +89,34 @@ def make_unique(c: Callable[[], T]) -> Callable[[], T]:
     return wrapper
 
 
+def clone(x: Value) -> Value:
+    if isinstance(x, list):
+        return [clone(_) for _ in x]
+    if isinstance(x, dict):
+        return {k: clone(v) for k, v in x.items()}
+    return x
+
+
+def is_sealed_type(v: Value) -> bool:
+    return not isinstance(v, dict) and not isinstance(v, list)
+
+
+class AliasSensitiveClone:
+    def __init__(self) -> None:
+        self._d: dict[int, Value] = {}
+
+    def clone(self, x: Value) -> Value:
+        if isinstance(x, list):
+            if id(x) not in self._d:
+                self._d[id(x)] = [self.clone(_) for _ in x]
+            return self._d[id(x)]
+        if isinstance(x, dict):
+            if id(x) not in self._d:
+                self._d[id(x)] = {k: self.clone(v) for k, v in x.items()}
+            return self._d[id(x)]
+        return x
+
+
 @dataclass
 class Collection:
     name: str
@@ -121,13 +156,21 @@ class Collection:
 class Context:
     vars: dict[str, Value] = field(default_factory=dict)
     funcs: dict[str, Function] = field(default_factory=dict)
-    params: set[str] = field(default_factory=set)  # names of current function's parameters
+    unmodifiable_vars: set[str] = field(default_factory=set)  # names of current function's parameters, and its aliases
 
-    def update_var(self, name: str, value: Value) -> 'Context':
-        params = self.params
-        if name in params:
-            params = params - {name}
-        return Context(vars=self.vars | {name: value}, funcs=self.funcs, params=params)
+    def update_var(self, name: str, value: Value, unmodifiable: bool = False) -> 'Context':
+        if unmodifiable and is_sealed_type(value):
+            unmodifiable = False
+        unmod_vars = self.unmodifiable_vars
+        if name in unmod_vars and not unmodifiable:
+            unmod_vars = unmod_vars - {name}
+        elif name not in unmod_vars and unmodifiable:
+            unmod_vars = unmod_vars | {name}
+        return Context(vars=self.vars | {name: value}, funcs=self.funcs, unmodifiable_vars=unmod_vars)
+
+    def fork(self) -> 'Context':
+        cloner = AliasSensitiveClone()
+        return Context(vars=cloner.clone(self.vars), funcs=self.funcs, unmodifiable_vars=set(self.unmodifiable_vars))
 
 
 class IdentifierGenerator:
@@ -210,13 +253,18 @@ class TypedGen(ExprGen, ABC):
 
 
 class VarUse(TypedGen):
+    def variables(self, ctx: Context) -> list[tuple[str, Value]]:
+        if self.gen.can_alias_unmodifiable:
+            return [(k, v) for k, v in ctx.vars.items() if self.match(v)]
+        else:
+            return [(k, v) for k, v in ctx.vars.items() if k not in ctx.unmodifiable_vars and self.match(v)]
+
     def applicable(self, ctx: Context) -> bool:
-        return any(self.match(_) for _ in ctx.vars.values())
+        return len(self.variables(ctx)) > 0
 
     def generate(self, ctx: Context) -> Expr:
-        variables = [(k, v) for k, v in ctx.vars.items() if self.match(v)]
-        name, value = random.choice(variables)
-        return Expr(name, value)
+        name, value = random.choice(self.variables(ctx))
+        return Expr(name, value, unmodifiable=name in ctx.unmodifiable_vars and not is_sealed_type(value))
 
 
 class IntConst(ExprGen):
@@ -361,41 +409,45 @@ class ObjectConstant(ExprGen):
 
 
 class PickArray(TypedGen):
-    def candidates(self, ctx: Context) -> list[tuple[str, int, Value]]:
+    def candidates(self, ctx: Context) -> list[tuple[str, int, Value, bool]]:
         result = []
-        for k, v in ctx.vars.items():
+        for var, v in ctx.vars.items():
             if isinstance(v, list):
                 for i, v2 in enumerate(v):
                     if self.match(v2):
-                        result.append((k, i, v2))
+                        alias_unmodifiable = var in ctx.unmodifiable_vars and not is_sealed_type(v2)
+                        if self.gen.can_alias_unmodifiable or not alias_unmodifiable:
+                            result.append((var, i, v2, alias_unmodifiable))
         return result
 
     def applicable(self, ctx: Context) -> bool:
         return len(self.candidates(ctx)) > 0
 
     def generate(self, ctx: Context) -> Expr:
-        cands = self.candidates(ctx)
-        var, i, v = random.choice(cands)
-        return Expr(f'{var}[{i}]', v)
+        candidates = self.candidates(ctx)
+        var, i, v, alias_unmodifiable = random.choice(candidates)
+        return Expr(f'{var}[{i}]', v, unmodifiable=alias_unmodifiable)
 
 
 class PickObject(TypedGen):
-    def candidates(self, ctx: Context) -> list[tuple[str, str, Value]]:
+    def candidates(self, ctx: Context) -> list[tuple[str, str, Value, bool]]:
         result = []
         for var, v in ctx.vars.items():
             if isinstance(v, dict):
                 for k, v2 in v.items():
                     if self.match(v2):
-                        result.append((var, k, v2))
+                        alias_unmodifiable = var in ctx.unmodifiable_vars and not is_sealed_type(v2)
+                        if self.gen.can_alias_unmodifiable or not alias_unmodifiable:
+                            result.append((var, k, v2, alias_unmodifiable))
         return result
 
     def applicable(self, ctx: Context) -> bool:
         return len(self.candidates(ctx)) > 0
 
     def generate(self, ctx: Context) -> Expr:
-        cands = self.candidates(ctx)
-        var, k, v = random.choice(cands)
-        return Expr(f'{var}[{json.dumps(k)}]', v)
+        candidates = self.candidates(ctx)
+        var, k, v, alias_unmodifiable = random.choice(candidates)
+        return Expr(f'{var}[{json.dumps(k)}]', v, unmodifiable=alias_unmodifiable)
 
 
 class Call(TypedGen):
@@ -409,7 +461,8 @@ class Call(TypedGen):
             output: list[Value] = []
             for p in f.params:
                 output += list(p.output)
-            return Expr(f'{f.name}({", ".join(a.expr for a in f.params)})', f.value, tuple(output + f.output))
+            return Expr(f'{f.name}({", ".join(a.expr for a in f.params)})',
+                        AliasSensitiveClone().clone(f.value), tuple(output + f.output))
 
 
 class StmtGen(ABC):
@@ -441,7 +494,7 @@ class VarDefine(StmtGen):
     def generate(self, ctx: Context) -> Stmt:
         name = self.gen.var_names.get()
         expr = self.gen.any_expr.generate(ctx)
-        ctx = ctx.update_var(name, expr.value)
+        ctx = ctx.update_var(name, expr.value, expr.unmodifiable)
         return Stmt([f'{name} = {expr.expr};'], ctx, list(expr.output))
 
 
@@ -452,48 +505,52 @@ class VarAssign(StmtGen):
     def generate(self, ctx: Context) -> Stmt:
         name = random.choice(list(ctx.vars.keys()))
         expr = self.gen.any_expr_no_recursion.generate(ctx)
-        ctx = ctx.update_var(name, expr.value)
+        ctx = ctx.update_var(name, expr.value, expr.unmodifiable)
         return Stmt([f'{name} = {expr.expr};'], ctx, list(expr.output))
 
 
 class ArrayAppend(StmtGen):
     def applicable(self, ctx: Context) -> bool:
-        return any(n not in ctx.params and isinstance(v, list) for n, v in ctx.vars.items())
+        return any(n not in ctx.unmodifiable_vars and isinstance(v, list) for n, v in ctx.vars.items())
 
     def generate(self, ctx: Context) -> Stmt:
-        name, old_value = random.choice([(n, v) for n, v in ctx.vars.items() if n not in ctx.params and isinstance(v, list)])
+        name, value = random.choice(
+            [(n, v) for n, v in ctx.vars.items() if n not in ctx.unmodifiable_vars and isinstance(v, list)])
         expr = self.gen.any_expr_no_recursion.generate(ctx)
-        ctx = ctx.update_var(name, old_value + [expr.value])
+        value.append(expr.value)
+        ctx = ctx.update_var(name, value, name in ctx.unmodifiable_vars or expr.unmodifiable)
         return Stmt([f'{name}[+] = {expr.expr};'], ctx, list(expr.output))
 
 
 class ArrayAssign(StmtGen):
     def applicable(self, ctx: Context) -> bool:
-        return any(n not in ctx.params and isinstance(v, list) and len(v) > 0 for n, v in ctx.vars.items())
+        return any(n not in ctx.unmodifiable_vars and isinstance(v, list) and len(v) > 0 for n, v in ctx.vars.items())
 
     def generate(self, ctx: Context) -> Stmt:
-        candidates = [(n, v) for n, v in ctx.vars.items() if n not in ctx.params and isinstance(v, list) and len(v) > 0]
-        name, old_value = random.choice(candidates)
+        candidates = [(n, v) for n, v in ctx.vars.items() if
+                      n not in ctx.unmodifiable_vars and isinstance(v, list) and len(v) > 0]
+        name, value = random.choice(candidates)
         expr = self.gen.any_expr_no_recursion.generate(ctx)
-        i = random.randint(0, len(old_value) - 1)
-        new_value = old_value[:]
-        new_value[i] = expr.value
-        ctx = ctx.update_var(name, new_value)
+        i = random.randint(0, len(value) - 1)
+        value[i] = expr.value
+        ctx = ctx.update_var(name, value, name in ctx.unmodifiable_vars or expr.unmodifiable)
         return Stmt([f'{name}[{i}] = {expr.expr};'], ctx, list(expr.output))
 
 
 class ObjectAssign(StmtGen):
     def applicable(self, ctx: Context) -> bool:
-        return any(n not in ctx.params and isinstance(v, dict) for n, v in ctx.vars.items())
+        return any(n not in ctx.unmodifiable_vars and isinstance(v, dict) for n, v in ctx.vars.items())
 
     def generate(self, ctx: Context) -> Stmt:
-        name, old_value = random.choice([(n, v) for n, v in ctx.vars.items() if n not in ctx.params and isinstance(v, dict)])
+        name, value = random.choice(
+            [(n, v) for n, v in ctx.vars.items() if n not in ctx.unmodifiable_vars and isinstance(v, dict)])
         expr = self.gen.any_expr_no_recursion.generate(ctx)
-        if random.randint(0, 100) < 30 or len(old_value) == 0:
+        if random.randint(0, 100) < 30 or len(value) == 0:
             key = self.gen.field()
         else:
-            key = random.choice(list(old_value.keys()))
-        ctx = ctx.update_var(name, {**old_value, key: expr.value})
+            key = random.choice(list(value.keys()))
+        value[key] = expr.value
+        ctx = ctx.update_var(name, value, name in ctx.unmodifiable_vars or expr.unmodifiable)
         return Stmt([f'{name}[{json.dumps(key)}] = {expr.expr};'], ctx, list(expr.output))
 
 
@@ -503,7 +560,7 @@ class PrintVar(StmtGen):
 
     def generate(self, ctx: Context) -> Stmt:
         name, value = random.choice(list(ctx.vars.items()))
-        return Stmt([f'print({name});'], ctx, [value])
+        return Stmt([f'print({name});'], ctx, [clone(value)])
 
 
 class If(StmtGen):
@@ -513,18 +570,23 @@ class If(StmtGen):
             expr = self.gen.bool_expr.generate(ctx)
             code = ['if ' + expr.expr + ' {']
             output: list[Value] = list(expr.output)
-            stmt1 = gen.generate(ctx)
-            code += ['    ' + _ for _ in stmt1.code]
             if expr.value:
+                stmt1 = gen.generate(ctx)
                 ctx = stmt1.ctx
                 output += stmt1.output
+            else:
+                stmt1 = gen.generate(ctx.fork())
+            code += ['    ' + _ for _ in stmt1.code]
+
             if random.randint(0, 100) <= 50:
                 code.append('} else {')
-                stmt2 = gen.generate(ctx)
-                code += ['    ' + _ for _ in stmt2.code]
                 if not expr.value:
+                    stmt2 = gen.generate(ctx)
                     ctx = stmt2.ctx
                     output += stmt2.output
+                else:
+                    stmt2 = gen.generate(ctx.fork())
+                code += ['    ' + _ for _ in stmt2.code]
             code.append('}')
         return Stmt(code, ctx, list(output))
 
@@ -538,12 +600,15 @@ class While(StmtGen):
             code = [f'{var} = {expr.expr};', f'while {var} {{']
             ctx.update_var(var, expr.value)
             output: list[Value] = list(expr.output)
-            stmt = gen.generate(ctx)
+            if expr.value:
+                stmt = gen.generate(ctx)
+                ctx = stmt.ctx.update_var(var, False)
+                output += stmt.output
+            else:
+                stmt = gen.generate(ctx.fork())
             code += ['    ' + _ for _ in stmt.code]
             if expr.value:
                 code.append(f'{var} = false;')
-                ctx = stmt.ctx.update_var(var, False)
-                output += stmt.output
             code.append('}')
         return Stmt(code, ctx, list(output))
 
@@ -567,7 +632,7 @@ class TestExpressions(TypedGen):
         return any(self.match(_.value) for _ in self.CONSTANTS)
 
     def generate(self, ctx: Context) -> Expr:
-        return random.choice([_ for _ in self.CONSTANTS if self.match(_.value)])
+        return random.choice([_ for _ in self.CONSTANTS if self.match(_.value)]).clone()
 
 
 class TestStatements(StmtGen):
@@ -589,6 +654,8 @@ class CodeGenerator:
 
     def __init__(self) -> None:
         self.current_depth = 0
+        self.can_alias_unmodifiable = True
+
         self.func_names = IdentifierGenerator()
         self.var_names = IdentifierGenerator()
         self.str_expr = ExprGenGroup([StringConst(self), VarUse(self, str), StringAdd(self),
@@ -697,6 +764,13 @@ class CodeGenerator:
         yield
         self.current_depth -= 1
 
+    @contextmanager
+    def no_alias_unmodifiable(self) -> Generator[None, Any, None]:
+        old = self.can_alias_unmodifiable
+        self.can_alias_unmodifiable = False
+        yield
+        self.can_alias_unmodifiable = old
+
     def json_expr(self, ctx: Context) -> Expr:
         c = random.choice(['true', 'false', 'null',
                            '[]', f'[{random.randint(0, 1000)}]',
@@ -714,11 +788,12 @@ class CodeGenerator:
         name = self.func_names.get()
         output = []
         ctx = Context({}, ctx.funcs)
-        param_values = [self.any_expr.generate(ctx) for _ in range(random.randint(0, max_params))]
+        param_values = [self.any_expr.generate(ctx).sealed() for _ in range(random.randint(0, max_params))]
         param_names = [self.var_names.get() for _ in range(len(param_values))]
         for n, v in zip(param_names, param_values):
             ctx.vars[n] = v.value
-            ctx.params.add(n)
+            if v.unmodifiable:
+                ctx.unmodifiable_vars.add(n)
         code = f'func {name}({",".join(param_names)}) {{\n'
 
         for _ in range(10):
@@ -727,7 +802,8 @@ class CodeGenerator:
             ctx = stmt.ctx
             output += stmt.output
 
-        result = self.any_expr.generate(ctx)
+        with self.no_alias_unmodifiable():
+            result = self.any_expr.generate(ctx)
         output += result.output
         code += '    return ' + result.expr + ';\n'
         code += '}\n'

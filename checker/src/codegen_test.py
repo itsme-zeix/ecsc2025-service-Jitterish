@@ -87,8 +87,7 @@ class CodegenTestCases(TestCase):
             self.assertEqual(expected_output, output, f'output of {func.name} is wrong')
             return result
         except:
-            print(func.code)
-            print(func.params)
+            print(func.as_script())
             for name, coll in collections.items():
                 print(f'=== {name} ===\n{coll}\n================')
             raise
