@@ -4,7 +4,7 @@ import os
 from hashlib import sha256
 
 from enochecker3 import PutflagCheckerTaskMessage, GetflagCheckerTaskMessage, ExploitCheckerTaskMessage, \
-    PutnoiseCheckerTaskMessage, GetnoiseCheckerTaskMessage, HavocCheckerTaskMessage
+    PutnoiseCheckerTaskMessage, GetnoiseCheckerTaskMessage, HavocCheckerTaskMessage, BaseCheckerTaskMessage
 
 from checker import checker
 
@@ -31,6 +31,8 @@ class DemoRunner:
 
     async def demo(self) -> None:
         """what a mess"""
+
+        task: BaseCheckerTaskMessage
 
         # setup code
         logging.basicConfig(format=f'[%(asctime)s.%(msecs)03d] %(levelname)-9.9s: %(message)s', level=logging.INFO)

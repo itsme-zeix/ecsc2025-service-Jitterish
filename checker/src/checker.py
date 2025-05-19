@@ -264,8 +264,8 @@ async def havoc(task: HavocCheckerTaskMessage, logger: LoggerAdapter, client: As
 
 @checker.exploit(0)
 async def exploit_kv_newline_injection(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
-                                       httpclient: AsyncClient) -> str | None:
-    if task.attack_info == "":
+                                       httpclient: AsyncClient) -> bytes | None:
+    if not task.attack_info:
         raise InternalErrorException("Missing attack info")
     username = task.attack_info
     client = JitterishClient(logger, httpclient)
@@ -287,8 +287,8 @@ async def exploit_kv_newline_injection(task: ExploitCheckerTaskMessage, logger: 
 
 @checker.exploit(1)
 async def exploit_jit(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
-                      httpclient: AsyncClient) -> str | None:
-    if task.attack_info == "":
+                      httpclient: AsyncClient) -> bytes | None:
+    if not task.attack_info:
         raise InternalErrorException("Missing attack info")
     f1 = await exploit_jit_symbol_override(task.attack_info, logger, searcher, httpclient)
     f2 = await exploit_jit_rce(task.attack_info, logger, searcher, httpclient)
@@ -296,7 +296,7 @@ async def exploit_jit(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, se
 
 
 async def exploit_jit_symbol_override(database: str, logger: LoggerAdapter, searcher: FlagSearcher,
-                                      httpclient: AsyncClient) -> str | None:
+                                      httpclient: AsyncClient) -> bytes | None:
     # any account will do it
     client = JitterishClient(logger, httpclient)
     await client.register(generate_username(), generate_password(),
@@ -317,7 +317,7 @@ async def exploit_jit_symbol_override(database: str, logger: LoggerAdapter, sear
     return searcher.search_flag(data)
 
 
-async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSearcher, httpclient: AsyncClient) -> str | None:
+async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSearcher, httpclient: AsyncClient) -> bytes | None:
     """this exploit does NOT work with a debug build of libjit_rt. Use the release/minsizerel builds."""
     # any account will do it
     client = JitterishClient(logger, httpclient)

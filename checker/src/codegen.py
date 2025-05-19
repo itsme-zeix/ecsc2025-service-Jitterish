@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from functools import wraps
 from types import UnionType
-from typing import Any, Generator, TypeAlias, Type, get_args, Callable, TypeVar, Hashable
+from typing import Any, Generator, TypeAlias, Type, get_args, Callable, TypeVar, Hashable, cast
 
 Value: TypeAlias = int | str | list | dict | None
 T = TypeVar('T', bound=Hashable)
@@ -150,7 +150,7 @@ class IdentifierGenerator:
     ]
 
     def __init__(self) -> None:
-        self.used = set()
+        self.used: set[str] = set()
         self.candidates = list(self.CANDIDATES)
 
     def get(self) -> str:
@@ -192,9 +192,11 @@ class ExprGenGroup(ExprGen):
 
 
 class TypedGen(ExprGen, ABC):
-    def __init__(self, gen: 'CodeGenerator', generated_type: Type | UnionType) -> None:
+    def __init__(self, gen: 'CodeGenerator', generated_type: Type | UnionType | Any) -> None:
         super().__init__(gen)
-        if isinstance(generated_type, UnionType):
+        if generated_type == Any:
+            self.generated_types: tuple[Type, ...] = ()
+        elif isinstance(generated_type, UnionType):
             self.generated_types = tuple(get_args(generated_type))
         else:
             self.generated_types = (generated_type,)
@@ -223,13 +225,15 @@ class IntOp(ExprGen):
     def generate(self, ctx: Context) -> Expr:
         expr1 = self.gen.int_expr.generate(ctx)
         expr2 = self.gen.int_expr.generate(ctx)
+        v1 = cast(int, expr1.value)
+        v2 = cast(int, expr2.value)
         options = [
-            ('+', (expr1.value + expr2.value) & INT_MASK),
-            ('-', (expr1.value - expr2.value) & INT_MASK),
-            ('*', (expr1.value * expr2.value) & INT_MASK),
+            ('+', (v1 + v2) & INT_MASK),
+            ('-', (v1 - v2) & INT_MASK),
+            ('*', (v1 * v2) & INT_MASK),
         ]
-        if expr2.value > 0:
-            options.append(('/', (expr1.value // expr2.value) & INT_MASK))
+        if v2 > 0:
+            options.append(('/', (v1 // v2) & INT_MASK))
         op, result = random.choice(options)
         return Expr(f'({expr1.expr} {op} {expr2.expr})', result, expr1.output + expr2.output)
 
@@ -237,7 +241,7 @@ class IntOp(ExprGen):
 class IntUnaryOp(ExprGen):
     def generate(self, ctx: Context) -> Expr:
         expr = self.gen.int_expr.generate(ctx)
-        return Expr(f'-{expr.expr}', (-expr.value) & INT_MASK, expr.output)
+        return Expr(f'-{expr.expr}', (-cast(int, expr.value)) & INT_MASK, expr.output)
 
 
 class StringConst(ExprGen):
@@ -282,7 +286,7 @@ class StringAdd(ExprGen):
     def generate(self, ctx: Context) -> Expr:
         expr1 = self.gen.str_expr.generate(ctx)
         expr2 = self.gen.str_expr.generate(ctx) if random.randint(0, 2) else self.gen.int_expr.generate(ctx)
-        return Expr(f'({expr1.expr} + {expr2.expr})', expr1.value + str(expr2.value), expr1.output + expr2.output)
+        return Expr(f'({expr1.expr} + {expr2.expr})', str(expr1.value) + str(expr2.value), expr1.output + expr2.output)
 
 
 class BoolConst(ExprGen):
@@ -322,17 +326,19 @@ class BoolComparison(ExprGen):
     def generate(self, ctx: Context) -> Expr:
         expr1 = self.gen.int_expr.generate(ctx)
         expr2 = self.gen.int_expr.generate(ctx)
+        v1 = cast(int, expr1.value)
+        v2 = cast(int, expr2.value)
         return random.choice([
-            Expr(f'({expr1.expr} >= {expr2.expr})', expr1.value >= expr2.value, expr1.output + expr2.output),
-            Expr(f'({expr1.expr} <= {expr2.expr})', expr1.value <= expr2.value, expr1.output + expr2.output),
-            Expr(f'({expr1.expr} > {expr2.expr})', expr1.value > expr2.value, expr1.output + expr2.output),
-            Expr(f'({expr1.expr} < {expr2.expr})', expr1.value < expr2.value, expr1.output + expr2.output),
+            Expr(f'({expr1.expr} >= {expr2.expr})', v1 >= v2, expr1.output + expr2.output),
+            Expr(f'({expr1.expr} <= {expr2.expr})', v1 <= v2, expr1.output + expr2.output),
+            Expr(f'({expr1.expr} > {expr2.expr})', v1 > v2, expr1.output + expr2.output),
+            Expr(f'({expr1.expr} < {expr2.expr})', v1 < v2, expr1.output + expr2.output),
         ])
 
 
 class ArrayConstant(ExprGen):
     def generate(self, ctx: Context) -> Expr:
-        a = []
+        a: list[Value] = []
         if random.randint(0, 100) <= 50:
             a.append(random.randint(0, 1000))
         if random.randint(0, 100) <= 50:
@@ -342,7 +348,7 @@ class ArrayConstant(ExprGen):
 
 class ObjectConstant(ExprGen):
     def generate(self, ctx: Context) -> Expr:
-        a = {}
+        a: dict[str, Value] = {}
         if random.randint(0, 100) <= 50:
             a[self.gen.field()] = random.randint(0, 1000)
         if random.randint(0, 100) <= 50:
@@ -615,7 +621,7 @@ class CodeGenerator:
         name = ''.join(random.choice(string.ascii_lowercase) for _ in range(random.randint(6, 12)))
         if private:
             name = 'private' + name
-        items = [{} for _ in range(random.randint(1, 5))]
+        items: list[dict[Expr, Expr]] = [{} for _ in range(random.randint(1, 5))]
 
         ctx = Context()
         # "key"
@@ -661,7 +667,7 @@ class CodeGenerator:
     def flag_query(self, collection: Collection) -> Function:
         name = self.func_names.get()
         code = f'query {name} on {collection.name}'
-        data: list[Value] = expr_value(collection.items)
+        data: list[Value] = [expr_value(_) for _ in collection.items]
         if random.randint(1, 100) <= 70:
             filter_function = self.query_filter_func(collection, collection.flag_item[collection.ident_key])
             code = filter_function.code + '\n\n' + code

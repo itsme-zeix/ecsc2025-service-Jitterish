@@ -38,8 +38,8 @@ class Compiler:
 
     def run_prog(self, code: str, function: str = 'jit_entrypoint', param: Any = None,
                  collections: dict[str, str | list] = {}) -> str:
-        with TemporaryDirectory(dir='/dev/shm') as tmpdir:
-            tmpdir = Path(tmpdir)
+        with TemporaryDirectory(dir='/dev/shm') as tmpdir_str:
+            tmpdir = Path(tmpdir_str)
             for n, c in collections.items():
                 if isinstance(c, list):
                     c = '\n'.join(json.dumps(_) for _ in c) + '\n'
@@ -162,6 +162,30 @@ class CodegenTestCases(TestCase):
             qry = self.gen.flag_query(coll)
             flg = self._test_func(qry, {coll.name: coll.to_ndjson()})
             # print(flg)
+
+    def test_func_query_combinations(self) -> None:
+        for _ in range(self.FUNC_ITERATIONS):
+            self.gen = CodeGenerator()
+            coll = self.gen.collection('FLAG{abc}')
+            self.seed_random()
+            func = self.gen.function_many(max_params=1)
+            qry = self.gen.flag_query(coll)
+            joined = Function(func.name, f'{func.code}\n{qry.code}', func.params, func.value, func.output)
+            self._test_func(joined, {})
+
+
+    '''
+    def test_bughunt(self) -> None:
+        code = (Path(__file__).parent / 'codegen_test.qry').read_text()
+        func = Function("J4NThsi1YMt7", code, [Expr('', 72057594037927547)], 828, [])
+        # EXECUTE oqL9TVxM__0t {"SiKz_tmF": 491}
+        # Result: [650, "mk2QXU54l"]
+        # output: {"SiKz_tmF": 491, "baXxkopUj_": 1}
+        # output: "9"
+        # output: "9"
+        # output: {"SiKz_tmF": 491, "baXxkopUj_": {}}
+        self._test_func(func, {})
+    '''
 
 
 if __name__ == '__main__':
