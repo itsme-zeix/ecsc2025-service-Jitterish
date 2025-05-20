@@ -96,7 +96,10 @@ class JitterishClient:
         raw_output = re.findall('<p data-role="output">(.*?)</p>', response.text)
         raw_output = [html.unescape(_) for _ in raw_output]
         self.logger.info(f'Query output: {"\n".join(raw_output)}')
-        output = [json.loads(_) for _ in raw_output]  # TODO how to handle error messages
+        try:
+            output = [json.loads(_) for _ in raw_output]  # TODO how to handle error messages
+        except json.JSONDecodeError:
+            raise MumbleException('Query output is no valid JSON')
         return output[:-1], output[-1]
 
     async def api_create(self, database: str, data: Any) -> str:

