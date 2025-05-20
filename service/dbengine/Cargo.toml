@@ -9,8 +9,9 @@ publish = false
 [dependencies]
 interface = { version = "0.1.0", path = "../interface" }
 tokio = { version = "1", features = ["full"] }
-# TODO
+# BEGIN REMOVE IN PROD
 # unshare = { path = "/home/markus/Projekte/repos/unshare" }
+# END REMOVE IN PROD
 unshare = { git = "https://github.com/MarkusBauer/unshare.git" }
 nix = { version = "0.29.0", features = ["default", "fs", "mount", "resource", "signal", "user"] }
 lazy_static = "1.5.0"

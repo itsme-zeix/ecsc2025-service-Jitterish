@@ -29,7 +29,6 @@ async fn connection(socket: TcpStream) -> std::io::Result<()> {
             return Ok(());
         }
 
-        println!("Connection sent: {:?}", buffer);
         match serde_json::from_str::<Command>(buffer.as_str()) {
             Ok(cmd) => {
                 match command(&mut stream, &mut current_database, cmd).await {
@@ -63,14 +62,6 @@ async fn command(
             for collection in db::list_collections(current_database)? {
                 let result = &Collection { name: collection };
                 write_json(stream, result).await?;
-            }
-        }
-
-        Command::ListUsers => {
-            println!("Handling Command in command");
-            for user in db::list_users()? {
-                println!("Got user: {:?}", user);
-                write_json(stream, &user).await?;
             }
         }
 

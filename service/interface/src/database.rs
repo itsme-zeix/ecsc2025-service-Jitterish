@@ -7,7 +7,6 @@ pub enum Command<'r> {
         database: &'r str,
     },
     List,
-    ListUsers,  // TODO wtf?
     Append {
         collection: &'r str,
         data: Box<RawValue>,

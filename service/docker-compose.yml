@@ -1,5 +1,4 @@
 services:
-  # TODO Still WIP, just here to prove that things will run in docker just fine.
   dbengine:
     build:
       context: .
@@ -7,9 +6,11 @@ services:
     volumes:
       - ./data/db-engine-data:/app/dbengine/data
       - ./data/db-engine-queries:/app/dbengine/queries
+    # BEGIN REMOVE IN PROD
     ports:
-      - "9999:9999"  # TODO for debug only
-    # restart: unless-stopped
+      - "9999:9999"  # for debug only
+    # END REMOVE IN PROD
+    restart: unless-stopped
     cap_add:
       - SYS_ADMIN
     security_opt:
@@ -28,5 +29,4 @@ services:
     depends_on:
       dbengine:
         condition: service_started
-    # restart: unless-stopped
-
+    restart: unless-stopped

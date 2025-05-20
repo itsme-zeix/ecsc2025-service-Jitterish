@@ -3,7 +3,6 @@ use rocket::response::Redirect;
 
 use rocket_dyn_templates::{context, Template};
 
-// TODO: we need to be careful here with special chars in usernames, as it is passed to the url
 #[get("/session/profile")]
 pub(super) fn index(user: UserSession) -> Template {
     Template::render(

@@ -62,11 +62,6 @@ impl DbConnection {
         self.recv::<Collection>().await
     }
 
-    pub async fn list_users(self: &mut DbConnection) -> std::io::Result<Vec<String>> {
-        self.send(&Command::ListUsers).await?;
-        self.recv::<String>().await
-    }
-
     pub async fn append<T: Serialize>(self: &mut DbConnection, collection: &str, value: T) -> std::io::Result<()> {
         let data = serde_json::value::to_raw_value(&value)?;
         self.send(&Command::Append { collection, data }).await?;
