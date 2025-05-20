@@ -28,9 +28,15 @@ from codegen import CodeGenerator, Context, StringConst, expr_value, Collection,
 T = TypeVar("T")
 P = ParamSpec("P")
 
-print("HERE", os.environ, flush=True)
 checker = Enochecker("Jitterish", 8000)
 app = lambda: checker.app
+
+
+"""
+=== VARIANTS ===
+0 = community, private collections, pwn the jit
+1 = enterprise, private DB with public API, pwn the storage format
+"""
 
 
 def handle_invalid_response_exceptions(f: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
@@ -54,7 +60,7 @@ def log_code_on_error(logger: LoggerAdapter, query: Function) -> Generator[None,
         raise
 
 
-@checker.putflag(0)
+@checker.putflag(1)
 @handle_invalid_response_exceptions
 async def putflag_enterprise(task: PutflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                              db: ChainDB) -> str:
@@ -87,7 +93,7 @@ async def putflag_enterprise(task: PutflagCheckerTaskMessage, logger: LoggerAdap
     return username
 
 
-@checker.getflag(0)
+@checker.getflag(1)
 @handle_invalid_response_exceptions
 async def getflag_enterprise(task: GetflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                              db: ChainDB) -> None:
@@ -111,7 +117,7 @@ async def getflag_enterprise(task: GetflagCheckerTaskMessage, logger: LoggerAdap
     assert_equals(payload['flag'], task.flag, "Flag missing")
 
 
-@checker.putflag(1)
+@checker.putflag(0)
 @handle_invalid_response_exceptions
 async def putflag_community(task: PutflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                             db: ChainDB) -> str:
@@ -144,7 +150,7 @@ async def putflag_community(task: PutflagCheckerTaskMessage, logger: LoggerAdapt
     return username
 
 
-@checker.getflag(1)
+@checker.getflag(0)
 @handle_invalid_response_exceptions
 async def getflag_community(task: GetflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                             db: ChainDB) -> None:
@@ -184,7 +190,7 @@ async def getflag_community(task: GetflagCheckerTaskMessage, logger: LoggerAdapt
 
 
 @checker.putnoise(0)
-async def putnoise(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB) -> None:
+async def putnoise_community(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB) -> None:
     """
     "Community" account with public relation.
     """
@@ -209,7 +215,7 @@ async def putnoise(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, http
 
 
 @checker.getnoise(0)
-async def getnoise(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
+async def getnoise_community(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
                    di: DependencyInjector) -> None:
     try:
         username, password = await db.get("noise_account")
@@ -262,7 +268,7 @@ async def havoc(task: HavocCheckerTaskMessage, logger: LoggerAdapter, client: As
     await client.get('/docs')
 
 
-@checker.exploit(0)
+@checker.exploit(1)
 async def exploit_kv_newline_injection(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
                                        httpclient: AsyncClient) -> bytes | None:
     if not task.attack_info:
@@ -285,7 +291,7 @@ async def exploit_kv_newline_injection(task: ExploitCheckerTaskMessage, logger: 
     return searcher.search_flag(data)
 
 
-@checker.exploit(1)
+@checker.exploit(0)
 async def exploit_jit(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
                       httpclient: AsyncClient) -> bytes | None:
     if not task.attack_info:
