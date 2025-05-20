@@ -4,6 +4,8 @@ use rocket::tokio;
 use serde_json::json;
 use serde_json::value::RawValue;
 
+// REMOVE IN PROD
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct UserModel {
     username: String,

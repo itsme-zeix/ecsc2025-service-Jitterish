@@ -1,0 +1,10 @@
+services:
+  cleanup-source:
+    image: debian/trixie
+    volumes:
+      - ./cleanup.sh:/cleanup.sh
+      - ./:/service
+    working_dir: /service/
+    command: /cleanup.sh
+    profiles:
+      - donotstart # Service doesn't start with docker-compose up

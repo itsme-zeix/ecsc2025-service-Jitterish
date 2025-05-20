@@ -3,6 +3,8 @@ use std::error::Error;
 use std::io::Read;
 use unshare::ExitStatus;
 
+// REMOVE IN PROD
+
 async fn run_cmd_with_params(
     s: &str,
     executable: Option<&str>,

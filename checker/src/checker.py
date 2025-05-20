@@ -261,6 +261,9 @@ async def getnoise_community(task: GetnoiseCheckerTaskMessage, logger: LoggerAda
             assert_equals(output, f.output, "Query result is wrong")
 
 
+# TODO test that other, unauthenticated users can add data to another kv storage.
+
+
 @checker.havoc(0)
 async def havoc(task: HavocCheckerTaskMessage, logger: LoggerAdapter, client: AsyncClient, db: ChainDB,
                 di: DependencyInjector) -> None:

@@ -124,6 +124,8 @@ pub async fn run_sandboxed<P: AsRef<Path>>(
     Ok(child)
 }
 
+// BEGIN REMOVE IN PROD
 #[cfg(test)]
 #[path = "./sandbox_test.rs"]
 mod test;
+// END REMOVE IN PROD
