@@ -1,8 +1,8 @@
 services:
   cleanup-source:
-    image: debian/trixie
+    image: debian:trixie
     volumes:
-      - ./cleanup.sh:/cleanup.sh
+      - ../meta/cleanup.sh:/cleanup.sh
       - ./:/service
     working_dir: /service/
     command: /cleanup.sh

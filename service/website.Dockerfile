@@ -20,12 +20,10 @@ RUN --mount=type=cache,id=cache-rust-website,target=/src/website/target,sharing=
 
 
 # 2. Build runtime container
-# TODO switch to trixie as soon as images are available
 FROM debian:trixie AS runtime
 
 COPY --from=builder-rust /output/website /app/website/
 COPY website/queries /app/website/queries
-COPY website/references /app/website/references
 COPY website/static /app/website/static
 COPY website/templates /app/website/templates
 COPY website/Rocket.toml /app/website/
