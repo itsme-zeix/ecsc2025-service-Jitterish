@@ -11,6 +11,7 @@ from typing import Any, Generator, TypeAlias, Type, get_args, Callable, TypeVar,
 
 Value: TypeAlias = int | str | list | dict | None
 T = TypeVar('T', bound=Hashable)
+T2 = TypeVar('T', bound=Hashable)
 
 
 @dataclass(frozen=True)
@@ -75,15 +76,16 @@ def expr_value(v: Any) -> Value:
     return v
 
 
-def make_unique(c: Callable[[], T]) -> Callable[[], T]:
-    used = set()
+def make_unique(c: Callable[[], T], key: Callable[[T], T2] = id) -> Callable[[], T]:
+    used: set[T2] = set()
 
     @wraps(c)
     def wrapper() -> T:
         while True:
             s = c()
-            if s not in used:
-                used.add(s)
+            k = key(s)
+            if k not in used:
+                used.add(k)
                 return s
 
     return wrapper
@@ -704,7 +706,7 @@ class CodeGenerator:
         ctx = Context()
         # "key"
         ident_key = self.str_expr.generate(ctx)
-        ident_key_gen = make_unique(lambda: self.str_expr.generate(ctx))
+        ident_key_gen = make_unique(lambda: self.str_expr.generate(ctx), lambda expr: expr.value)
         for item in items:
             item[ident_key] = ident_key_gen()
         # "data"
