@@ -39,3 +39,20 @@ Then use one of:
 To run from PyCharm/RustRover/whatever, do:
 - run `docker-compose up -d jitterish-mongo`
 - set `MONGO_USER=jitterish_checker  MONGO_PASSWORD=jitterish_checker`
+
+
+## Final validation
+... at least on my machine...
+```bash
+git clone Jitterish Jitterish-tmp
+cd Jitterish-tmp/service
+docker compose -f ../meta/docker-compose.override.yml --project-directory . run --rm cleanup-source
+scc .
+docker compose up
+
+cd ../checker
+docker compose up
+
+enochecker_test -a localhost -p 8001 -A 172.22.0.1
+```
+
