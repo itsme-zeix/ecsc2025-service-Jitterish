@@ -31,7 +31,6 @@ P = ParamSpec("P")
 checker = Enochecker("Jitterish", 8000)
 app = lambda: checker.app
 
-
 """
 === VARIANTS ===
 0 = community, private collections, pwn the jit
@@ -111,10 +110,17 @@ async def getflag_enterprise(task: GetflagCheckerTaskMessage, logger: LoggerAdap
     except KeyError:
         raise MumbleException("Database info missing")
 
-    # key is public?
     client = JitterishClient(logger, httpclient)
+    customers = (await client.list_customers())['enterprise']
+    assert_in(username, customers, f"Customer {username} missing in customer list")
+
+    # key is public?
     keys = await client.api_get(username, 'keys')
     assert_in(key, keys, "Key missing")
+
+    # can append to this collection?
+    await client.api_create(username, CodeGenerator().any_expr.generate(Context()).value)
+    # we might actually test if it's retrievable, but not for now
 
     # token auth
     payload = await client.api_get(username, 'value', key, token)
@@ -169,8 +175,11 @@ async def getflag_community(task: GetflagCheckerTaskMessage, logger: LoggerAdapt
     except KeyError:
         raise MumbleException("Database info missing")
 
-    # login
     client = JitterishClient(logger, httpclient)
+    customers = (await client.list_customers())['community']
+    assert_in(username, customers, f"Customer {username} missing in customer list")
+
+    # login
     await client.login(username, password)
 
     # check collection is listed
@@ -199,7 +208,8 @@ async def getflag_community(task: GetflagCheckerTaskMessage, logger: LoggerAdapt
 
 
 @checker.putnoise(0)
-async def putnoise_community(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB) -> None:
+async def putnoise_community(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
+                             db: ChainDB) -> None:
     """
     "Community" account with public relation.
     """
@@ -225,7 +235,7 @@ async def putnoise_community(task: PutnoiseCheckerTaskMessage, logger: LoggerAda
 
 @checker.getnoise(0)
 async def getnoise_community(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
-                   di: DependencyInjector) -> None:
+                             di: DependencyInjector) -> None:
     try:
         username, password = await db.get("noise_account")
         database, collection, public_value = await db.get("noise_collection")
@@ -268,9 +278,6 @@ async def getnoise_community(task: GetnoiseCheckerTaskMessage, logger: LoggerAda
             output, result = await client.db_query(database, code, f.name, param)
             assert_equals(result, f.value, "Query output is wrong")
             assert_equals(output, f.output, "Query result is wrong")
-
-
-# TODO test that other, unauthenticated users can add data to another kv storage.
 
 
 @checker.havoc(0)
@@ -347,7 +354,8 @@ async def exploit_jit_symbol_override(database: str, logger: LoggerAdapter, sear
     return searcher.search_flag(all_output)
 
 
-async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSearcher, httpclient: AsyncClient) -> bytes | None:
+async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSearcher,
+                          httpclient: AsyncClient) -> bytes | None:
     """this exploit does NOT work with a debug build of libjit_rt. Use the release/minsizerel builds."""
     # any account will do it
     client = JitterishClient(logger, httpclient)
@@ -379,5 +387,6 @@ async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSe
 if __name__ == "__main__":
     # production: gunicorn -c gunicorn.conf.py "checker:app()"
     import logging
+
     logging.basicConfig(format=f'[%(asctime)s.%(msecs)03d] %(levelname)-9.9s: %(message)s', level=logging.INFO)
     checker.run(port=8001)

@@ -72,6 +72,13 @@ class JitterishClient:
             raise MumbleException('Registration failed')
         self.logger.info(f'Logged in as {username!r} (password {password!r})')
 
+    async def list_customers(self) -> dict[str, list[str]]:
+        response = await self.get('/customers')
+        return {
+            'community': re.findall(r'href="/database/(\w+)"', response.text),
+            'enterprise': re.findall(r'href="/api/(\w+)/keys/all"', response.text)
+        }
+
     async def db_list_collections(self, db: str) -> list[str]:
         response = await self.get(f'/database/{db}')
         collections = re.findall(r'<li data-role="collection">\s*([A-Za-z0-9_]*)', response.text)
