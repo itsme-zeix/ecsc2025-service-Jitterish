@@ -10,7 +10,6 @@ Categories:
 
 - Pwn
 - Misc
-- Potentially Rev
 - ?
 
 Overview
@@ -59,12 +58,14 @@ Rough idea is to have at least one flag stores per component (so at least 3 in t
 
 ### Flag Store 1
 
-The first flag store is an account with a private and a public table. Attackers can run JIT code against the public table but not the private table.
+The first flag store is an account with a private and a public table (account type: community). 
+Attackers can run JIT code against the public table but not the private table.
 Bypassing the JIT limits (or RCE) give access to the private table.
 
 ### Flag Store 2
 
-An account with only private tables, but pre-defined queries that everybody can trigger. Details tbd...
+An account with only private tables, but pre-defined queries that everybody can trigger (account type: enterprise).
+There's a (pre-defined) API script bound to these accounts, which allows append and limited query operations.
 
 ### Flag Store 3
 
@@ -99,18 +100,22 @@ func _ZN11DataStorage8isPublicEv(){ return true; }
 - Patchability: easy
 - Categories: pwn
 
-### Flag Store 2, Vuln 1 (sth in Database Engine)
+### Flag Store 2, Vuln 1 (newline injection in database storage format)
 
-tbd. Might be a protocol desync between web-frontend and engine. Or something different, if it turns out that we can't limit that to one flag store.
-- Difficulty: ?
-- Discoverability: ?
-- Patchability: ?
-- Categories: misc?
+Both website and database engine use serde's `RawValue` to pass json from API to database storage, which preserves formatting.
+If we append a value which includes a newline, we break the engine's ndjson storage format, which allows us to write arbirary data to a collection.
+There's a collection including authentication data, so we can authenticate ourselves for any stored data.
+- Difficulty: medium
+- Discoverability: hard
+- Patchability: easy
+- Categories: misc
 
 ### Flag Store 3, Vuln 1 (sth in Web Frontend)
 
 tbd.
-Maybe a typical misc/web vulnerability, or some vulnerable queries in our own jitted language. Whatever feels natural in the chosen web framework.
+Maybe a typical misc/web vulnerability, or some vulnerable queries in our own jitted language.
+And we still have a protocol desync in our communication which might exploit sth.
+Whatever feels natural in the chosen web framework.
 - Difficulty: tbd, maybe easy to medium
 - Discoverability: ?
 - Patchability: ?
@@ -127,7 +132,7 @@ If you want to be super safe you can also check the number of arguments, but imh
 
 ### Flag Store 2, Vuln 1
 
-TBD.
+Replace `RawValue` with `Value`, either in engine or website.
 
 ### Flag Store 3, Vuln 1
 
@@ -135,7 +140,7 @@ TBD.
 
 ## Current status
 
-- JIT prototype exists (with 90% feature completion)
+- Service playable, with flag store 3 missing.
 
 
 Work Packages
@@ -237,25 +242,25 @@ gantt
     weekday monday
     todayMarker on
     section WP 1: JIT
-        WP 1.1 JIT Prototype                        :mkb_wp11, after start, 35d
-        WP 1.2 JIT Features                         :mkb_wp12, after mkb_wp11, 90d
-        WP 1.3 JIT Vulnerabilities                  :mkb_wp13, after mkb_wp11, 90d
+        WP 1.1 JIT Prototype                        :mkb_wp11, done, after start, 35d
+        WP 1.2 JIT Features                         :mkb_wp12, done, after mkb_wp11, 90d
+        WP 1.3 JIT Vulnerabilities                  :mkb_wp13,done,  after mkb_wp11, 90d
         Fixing JIT                                  :crit, after ctftest, until end
     section WP 2: Database Engine
-        WP 2.1 Database                             :mkb_wp21, after mkb_wp11, 90d
-        WP 2.2 Database Isolation                   :mkb_wp22, after mkb_wp11, 30d
-        WP 2.3 Database Vulnerability               :mkb_wp23, after mkb_wp11, 90d
+        WP 2.1 Database                             :mkb_wp21, done, after mkb_wp11, 90d
+        WP 2.2 Database Isolation                   :mkb_wp22, done, after mkb_wp11, 30d
+        WP 2.3 Database Vulnerability               :mkb_wp23, done, after mkb_wp11, 90d
         Fixing Database Engine                      :crit, after ctftest, until end
     section WP 3: Frontend
-        WP 3.1 Frontend Prototype                   :singlechar_wp31, after start, 65d
-        WP 3.2 Backend integration                  :singlechar_wp33, after singlechar_wp31 mkb_wp11, 30d
-        WP 3.3 Web Flagstore                        :singlechar_wp32, after singlechar_wp31, 60d
-        WP 3.4 Frontend Styling                     :singlechar_wp34, after singlechar_wp33, 14d
+        WP 3.1 Frontend Prototype                   :singlechar_wp31, done, after start, 65d
+        WP 3.2 Backend integration                  :singlechar_wp33, done, after singlechar_wp31 mkb_wp11, 30d
+        WP 3.3 Web Flagstore                        :singlechar_wp32, active, after singlechar_wp31, 60d
+        WP 3.4 Frontend Styling                     :singlechar_wp34, done, after singlechar_wp33, 14d
         Fixing Frontend                             :crit, after ctftest, until end
     section WP 4: Checker & Setup
-        WP 4.1 Dockerize                            :both_wp40, after mkb_wp11 mkb_wp22 singlechar_wp31, 30d
-        WP 4.1 Service Interaction                  :both_wp41, after mkb_wp13 mkb_wp22 both_wp40, 14d
-        WP 4.2 Code Generation                      :both_wp42, after both_wp41, 14d
+        WP 4.1 Dockerize                            :both_wp40, done, after mkb_wp11 mkb_wp22 singlechar_wp31, 30d
+        WP 4.1 Service Interaction                  :both_wp41, done, after mkb_wp13 mkb_wp22 both_wp40, 14d
+        WP 4.2 Code Generation                      :both_wp42, done, after both_wp41, 14d
         WP 4.3 Exploits                             :both_wp43, after mkb_wp13 mkb_wp23, 14d
         Fixing Checker                              :crit, after ctftest, until end
     section Milestones
