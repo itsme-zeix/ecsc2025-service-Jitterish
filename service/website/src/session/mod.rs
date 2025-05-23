@@ -2,6 +2,7 @@ pub mod login;
 pub mod logout;
 pub mod profile;
 pub mod register;
+pub mod userlist;
 
 pub fn routes() -> Vec<rocket::Route> {
     routes![
@@ -14,6 +15,6 @@ pub fn routes() -> Vec<rocket::Route> {
         register::register,
         register::register_page,
         register::post_register,
-        register::query_user
+        userlist::userlist,
     ]
 }

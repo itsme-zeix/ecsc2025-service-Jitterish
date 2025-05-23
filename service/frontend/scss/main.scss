@@ -123,3 +123,19 @@ input {
     }
   }
 }
+
+.condensed-list {
+  columns: 3;
+  
+  @media (max-width: 50rem) {
+    columns: 2;
+  }
+
+  @media (max-width: 30rem) {
+    columns: 1;
+  }
+}
+
+.database-list {
+  list-style-type: "⛁ ";
+}

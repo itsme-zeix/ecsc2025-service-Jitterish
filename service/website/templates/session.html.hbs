@@ -12,12 +12,4 @@
         </form>
     </div>
 {{/inline}}
-    {{#if usernames}}
-            <div>
-                <h3>Users</h3>
-                {{#each usernames}}
-                    <p>{{this.username}}</p>
-                {{/each}}
-            </div>
-    {{/if}}
 {{> default title="Your Account" pagename="profile"}}

@@ -9,7 +9,10 @@
 <body>
 
 <header data-augmented-ui class="main-menu">
-    <ul class="menu icons"><li><a></a></li></ul>
+    <ul class="menu icons">
+        <li><a></a></li>
+        <li><a></a></li>
+    </ul>
     <ul class="menu center">
         <li {{#if (eq pagename "home") }}class="active"{{/if}}><a href="/">Home</a></li>
         {{#if username}}
@@ -21,6 +24,7 @@
         {{/if}}
     </ul>
     <ul class="menu icons">
+        <li {{#if (eq pagename "customers") }}class="active"{{/if}}><a href="/customers">&#x13020;</a></li>
         <li {{#if (eq pagename "docs") }}class="active"{{/if}}><a href="/docs">&#x1F56E;</a></li>
     </ul>
 </header>
