@@ -1,0 +1,2 @@
+{"username":"demo_community","password_hash":"ac854600d8c9856b01dad90b45ec06b589211723f75037fc255671e034a05887","allow_public_queries":true,"allow_public_kv":false}
+{"username":"demo_enterprise","password_hash":"8df6253497843143779c7d487479c0649c079c109409a335e88a959b4eb9cc95","allow_public_queries":false,"allow_public_kv":true}
