@@ -2,12 +2,13 @@ name: enochecker_test
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  # disabled until runner is fixes
+  #push:
+  #  branches:
+  #    - main
+  #pull_request:
+  #  branches:
+  #    - main
 
 jobs:
   build:
