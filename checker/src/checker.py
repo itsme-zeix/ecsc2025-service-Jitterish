@@ -1,5 +1,4 @@
 import json
-import os
 from contextlib import contextmanager
 from functools import wraps
 from logging import LoggerAdapter
