@@ -24,7 +24,8 @@ int main(int argc, const char* argv[]) {
         return 1;
     }
     auto result = callJitFunction(f, param);
-    printValue(result);
-    std::cout << std::endl;
+    if (!result.is(ValueType::UNDEFINED)) {
+        jit_rt_print(result);
+    }
     return 0;
 }

@@ -4,6 +4,12 @@
 #include <nlohmann/json.hpp>
 #include "jit_values.h"
 
+#define API_FUNCTION __attribute__((visibility ("default"))) __attribute__((used))
+
+extern "C" {
+API_FUNCTION Value jit_rt_print(Value v);
+}
+
 Value jsonToValue(const nlohmann::json &j);
 
 __attribute__((visibility("hidden")))

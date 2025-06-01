@@ -20,8 +20,9 @@ COMPILER: Path = find_compiler()
 DEMO_DIR: Path = ROOT / 'demo'
 
 
-def read_json_lines(f: Path) -> list[Any]:
-    return [json.loads(l) for l in f.read_text().split('\n') if l]
+def read_json_lines(f: Path | str) -> list[Any]:
+    text = f.read_text() if isinstance(f, Path) else f
+    return [json.loads(l) for l in text.split('\n') if l]
 
 
 def compile(code: str, output: Path) -> None:
@@ -87,10 +88,10 @@ class StatementsTestCase(CompileTestCase):
         self.assertEqual('[[1],[1],[]]', self.run_stmt('a=[[], [], []]; a[0][+]=1; a[1]=a[0]; return a;'))
 
     def test_print(self):
-        self.assertEqual('1\n2\nundefined', self.run_stmt('print(1); return print(1+1, 3);'))
+        self.assertEqual('1\n2', self.run_stmt('print(1); return print(1+1, 3);'))
 
     def test_print_nl(self):
-        self.assertEqual('"a\\nb\\r\\nc"\nundefined', self.run_stmt(r'print("a\nb\u000d\u000ac");'))
+        self.assertEqual('"a\\nb\\r\\nc"', self.run_stmt(r'print("a\nb\u000d\u000ac");'))
 
     def test_functions(self):
         code = '''
@@ -147,7 +148,7 @@ class QueriesTestCase(CompileTestCase):
     data1 = read_json_lines(DEMO_DIR / 'data1.ndjson')
 
     def test_simple_query(self):
-        self.assertEqual('[]', self.run_prog('query q on empty;', 'q'))
+        self.assertEqual('', self.run_prog('query q on empty;', 'q'))
 
     def test_demodata_queries(self):
         code = '''
@@ -160,8 +161,8 @@ class QueriesTestCase(CompileTestCase):
         query one_member on data1 filter is_in_team map get_name limit 1;
         query team_points on data1 filter is_in_team map get_points reduce sum; 
         '''
-        self.assertEqual(self.data1, json.loads(self.run_prog(code, 'all_entries')))
-        self.assertEqual('["mkb"]', self.run_last('one_member', 'saarsec'))
+        self.assertEqual(self.data1, read_json_lines(self.run_prog(code, 'all_entries')))
+        self.assertEqual('"mkb"', self.run_last('one_member', 'saarsec'))
         self.assertEqual('200', self.run_last('team_points', 'saarsec'))
 
     def test_privacy(self):
@@ -174,7 +175,7 @@ class QueriesTestCase(CompileTestCase):
 
     def test_failsafe(self):
         result = self.run_prog('query jit_entrypoint on broken;')
-        self.assertEqual('[{"team":"x","points":1,"name":"a"},{"team":"x","points":1,"name":"c"}]', result)
+        self.assertEqual('{"team":"x","points":1,"name":"a"}\n{"team":"x","points":1,"name":"c"}', result)
 
 
 class ExploitsTestCase(CompileTestCase):
@@ -221,7 +222,7 @@ class ExploitsTestCase(CompileTestCase):
         func _ZN11DataStorage8isPublicEv(){ return true; }
         query jit_entrypoint on private1;  // some private collection
         '''
-        self.assertEqual('[{"flag":"SAAR{...}"}]', self.run_prog(code))
+        self.assertEqual('{"flag":"SAAR{...}"}', self.run_prog(code))
 
     # other weaknesses: you can read/write the stack like this:
     # func f(a,b,c,d,e,f,g,h) { h=0; }  func jit_entrypoint() { f(); }

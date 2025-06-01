@@ -1,14 +1,12 @@
 #include "jit_values.h"
+#include "jit_runtime.h"
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include "storage.h"
 
 using namespace nlohmann;
 
-#define API_FUNCTION __attribute__((visibility ("default"))) __attribute__((used))
-
 extern "C" {
-API_FUNCTION Value jit_rt_print(Value v);
 API_FUNCTION Value jit_rt_constant(const char *data, size_t len);
 
 API_FUNCTION Value jit_rt_add(Value v1, Value v2);
@@ -254,7 +252,7 @@ Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, 
         terminate("access denied");
     }
 
-    Value result = reduce ? Value {} : jit_rt_array_new();
+    Value result = Value {};
 
     while (auto jsonEntry = storage.nextEntry()) {
         Value entry = jsonToValue(*jsonEntry);
@@ -267,7 +265,7 @@ Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, 
         if (reduce) {
             result = callJitFunction(reduce, entry, result, param);
         } else {
-            result.data<ArrayData *>()->push_back(entry);
+            jit_rt_print(entry);
         }
         if ((--limit) == 0)
             break;
