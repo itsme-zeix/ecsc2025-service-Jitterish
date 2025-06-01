@@ -184,6 +184,23 @@ class CodegenTestCases(TestCase):
             flg = self._test_func(qry, {coll.name: coll.to_ndjson()})
             # print(flg)
 
+    def test_queries_threaded(self) -> None:
+        executor = ThreadPoolExecutor(max_workers=8)
+        futures = []
+        for _ in range(self.FUNC_ITERATIONS):
+            self.gen = CodeGenerator()
+            seed = self.seed_random()
+            coll = self.gen.collection('FLAG{abc}')
+            qry = self.gen.flag_query(coll)
+            future = executor.submit(self._test_func, qry, {coll.name: coll.to_ndjson()})
+            futures.append((future, seed))
+        for f, s in futures:
+            try:
+                f.result()
+            except:
+                print(f'FAIL with seed {s}')
+                raise
+
     def test_func_query_combinations(self) -> None:
         for _ in range(self.FUNC_ITERATIONS):
             self.gen = CodeGenerator()
