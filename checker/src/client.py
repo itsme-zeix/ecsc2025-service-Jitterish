@@ -92,7 +92,7 @@ class JitterishClient:
         if 'successfully appended' not in response.text:
             raise MumbleException('Failed to append to database')
 
-    async def db_query(self, db: str, code: str, query_name: str, param: Any) -> tuple[list[Any], Any]:
+    async def db_query(self, db: str, code: str, query_name: str, param: Any) -> list[Any]:
         self.logger.info(f'Querying {db} with {query_name}({param})')
         response = await self.post(f'/database/{db}/customquery',
                                    data={'query': code, 'query_name': query_name, 'params': json.dumps(param)})
@@ -104,10 +104,9 @@ class JitterishClient:
         raw_output = [html.unescape(_) for _ in raw_output]
         self.logger.info(f'Query output: {"\n".join(raw_output)}')
         try:
-            output = [json.loads(_) for _ in raw_output]  # TODO how to handle error messages
+            return [json.loads(_) for _ in raw_output]  # TODO how to handle error messages
         except json.JSONDecodeError:
             raise MumbleException('Query output is no valid JSON')
-        return output[:-1], output[-1]
 
     async def api_create(self, database: str, data: Any) -> str:
         response = await self.post(f'/api/{database}/create', json=data)

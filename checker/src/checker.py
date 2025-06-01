@@ -23,7 +23,7 @@ from httpx import AsyncClient
 
 from client import JitterishClient
 from utils import *
-from codegen import CodeGenerator, Context, StringConst, expr_value, Collection, Function
+from codegen import CodeGenerator, Context, StringConst, expr_value, Collection, Function, undefined
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -116,6 +116,7 @@ async def getflag_enterprise(task: GetflagCheckerTaskMessage, logger: LoggerAdap
 
     # key is public?
     keys = await client.api_get(username, 'keys')
+    if not isinstance(keys, list): raise MumbleException("Ill-typed api response (keys)")
     assert_in(key, keys, "Key missing")
 
     # can append to this collection?
@@ -124,12 +125,16 @@ async def getflag_enterprise(task: GetflagCheckerTaskMessage, logger: LoggerAdap
 
     # token auth
     payload = await client.api_get(username, 'value', key, token)
-    assert_equals(payload['flag'], task.flag, "Flag missing")
+    if not isinstance(payload, list) or len(payload) < 1: raise MumbleException("Empty/ill-typed api response")
+    assert_in('flag', payload[0], "Flag missing")
+    assert_equals(payload[0]['flag'], task.flag, "Flag missing")
 
     # user auth
     await client.login(username, password)
     payload = await client.api_get(username, 'value', key)
-    assert_equals(payload['flag'], task.flag, "Flag missing")
+    if not isinstance(payload, list) or len(payload) < 1: raise MumbleException("Empty/ill-typed api response")
+    assert_in('flag', payload[0], "Flag missing")
+    assert_equals(payload[0]['flag'], task.flag, "Flag missing")
 
 
 @checker.putflag(0)
@@ -195,15 +200,18 @@ async def getflag_community(task: GetflagCheckerTaskMessage, logger: LoggerAdapt
         code = CodeGenerator.uglify(code)
     with log_code_on_error(logger, query):
         param = query.params[0].value if query.params else None
-        output, result = await client.db_query(username, code, query.name, param)
-        assert_equals(result, query.value, "Flag missing")  # "expected query result" should already contain the flag
-        assert_in(task.flag, repr(result), "Flag missing")  # but let's double-check to be sure
-        assert_equals(output, query.output, "Query has wrong debug output")
+        output = await client.db_query(username, code, query.name, param)
+        # assumption: query.value (return value) is always undefined and thus omitted
+        assert_equals(output, query.output, "Query has wrong output / flag missing")
+        # "expected query result" should already contain the flag
+        assert_in(task.flag, repr(output), "Flag missing")  # but let's double-check to be sure
 
     with log_code_on_error(logger, function):
         param = function.params[0].value if function.params else None
-        output, result = await client.db_query(username, code, function.name, param)
-        assert_equals(result, function.value, "Wrong function result")
+        output = await client.db_query(username, code, function.name, param)
+        if function.value is not undefined:
+            output, result = output[:-1], output[-1]
+            assert_equals(result, function.value, "Wrong function result")
         assert_equals(output, function.output, "Wrong function output")
 
 
@@ -275,8 +283,10 @@ async def getnoise_community(task: GetnoiseCheckerTaskMessage, logger: LoggerAda
     for f in (function, query):
         with log_code_on_error(logger, f):
             param = f.params[0].value if f.params else None
-            output, result = await client.db_query(database, code, f.name, param)
-            assert_equals(result, f.value, "Query output is wrong")
+            output = await client.db_query(database, code, f.name, param)
+            if f.value is not undefined:
+                output, result = output[:-1], output[-1]
+                assert_equals(result, f.value, "Query result is wrong")
             assert_equals(output, f.output, "Query result is wrong")
 
 
@@ -349,8 +359,8 @@ async def exploit_jit_symbol_override(database: str, logger: LoggerAdapter, sear
         code += f'query hack_{collection} on {collection};'
     all_output = ''
     for collection in collections:
-        _, result = await client.db_query(database, code, f'hack_{collection}', None)
-        all_output += dump_strings(result) + ' '
+        output = await client.db_query(database, code, f'hack_{collection}', None)
+        all_output += dump_strings(output) + ' '
     return searcher.search_flag(all_output)
 
 
@@ -379,8 +389,7 @@ async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSe
         return 0;
     }
     '''.strip()
-    output, result = await client.db_query(database, code, 'hack', None)
-    all_output = dump_strings(output) + ' ' + dump_strings(result)
+    all_output = dump_strings(await client.db_query(database, code, 'hack', None))
     return searcher.search_flag(all_output)
 
 
