@@ -57,7 +57,7 @@ pub(super) async fn post_register(
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Database not reachable"))?;
     let existing_users: Vec<Value> = db
-        .execute_query(&queries.user, "user_by_username", &register.username)
+        .execute(&queries.user, "user_by_username", &register.username, false)
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "User by username query error"))?;
     if !existing_users.is_empty() {

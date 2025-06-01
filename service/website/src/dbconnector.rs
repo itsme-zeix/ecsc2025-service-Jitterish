@@ -74,7 +74,9 @@ impl DbConnection {
         Ok(one(&result)?.clone())
     }
 
-    /// Return all println() results + the return value of a function/query execution
+    /// Return all results from a function/query execution
+    /// query => vector of rows
+    /// function => vector of print() calls + return value
     pub async fn execute<TS: Serialize, TD: DeserializeOwned>(
         self: &mut DbConnection,
         code_ref: &CodeRef,
@@ -93,19 +95,8 @@ impl DbConnection {
         self.recv::<TD>().await
     }
 
-    /// Return the return value of a query execution only (ignoring println)
-    pub async fn execute_query<TS: Serialize, TD: DeserializeOwned + Clone>(
-        self: &mut DbConnection,
-        code_ref: &CodeRef,
-        query: &str,
-        param: &TS,
-    ) -> std::io::Result<Vec<TD>> {
-        let result: Vec<Vec<TD>> = self.execute(code_ref, query, param, false).await?;
-        Ok(one(&result)?.clone())
-    }
-
-    /// Return the return value of a function execution only (ignoring println)
-    pub async fn execute_func<TS: Serialize, TD: DeserializeOwned + Clone>(
+    /// Return the return value of a function execution only (ignoring print)
+    pub async fn execute_one<TS: Serialize, TD: DeserializeOwned + Clone>(
         self: &mut DbConnection,
         code_ref: &CodeRef,
         query: &str,

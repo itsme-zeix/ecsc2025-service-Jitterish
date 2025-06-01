@@ -2,17 +2,17 @@ use crate::dbconnector::DbConnection;
 use crate::models::UserModel;
 use crate::Queries;
 use interface::frontend::UserSession;
-use rocket::serde::json::{json, Json};
-use rocket::serde::{Deserialize, Serialize};
+use rocket::serde::json::Json;
 use rocket::State;
+use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::io::{Error, ErrorKind};
 
 pub async fn get_user(queries: &Queries, name: &str) -> std::io::Result<Option<UserModel>> {
     // TODO we might need a cache here
     let mut db = DbConnection::open("_").await?;
-    let users: Vec<UserModel> = db.execute_query(&queries.user, "user_by_username", &name).await?;
+    let users: Vec<UserModel> = db.execute(&queries.user, "user_by_username", &name, false).await?;
     Ok(users.into_iter().nth(0))
 }
 
@@ -79,7 +79,7 @@ pub async fn api_token(
     let mut db = DbConnection::open(user).await?;
 
     let result: bool = db
-        .execute_func(
+        .execute_one(
             &queries.api,
             "is_authorized",
             &json!({"key": key, "user": session.map(|s| s.username), "token": ""}),
@@ -106,12 +106,13 @@ pub async fn api_get(
 
     let mut db = DbConnection::open(user).await?;
 
-    let result: Value = db
-        .execute_func(
+    let result: Vec<Value> = db
+        .execute(
             &queries.api,
             &format!("get_{}", what),
             &json!({"key": key, "user": session.map(|s| s.username), "token": token}),
+            false,
         )
         .await?;
-    Ok(Json(result))
+    Ok(Json(Value::from(result)))
 }

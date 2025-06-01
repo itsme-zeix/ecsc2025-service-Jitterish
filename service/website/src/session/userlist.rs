@@ -12,11 +12,11 @@ pub async fn userlist(user: Option<UserSession>, queries: &State<Queries>) -> Re
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Database not reachable"))?;
     let public_users: Vec<String> = db
-        .execute_query(&queries.user, "public_users", &json!("null"))
+        .execute(&queries.user, "public_users", &json!("null"), false)
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Could not query public users"))?;
     let api_users: Vec<String> = db
-        .execute_query(&queries.user, "api_users", &json!("null"))
+        .execute(&queries.user, "api_users", &json!("null"), false)
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Could not query public users"))?;
 

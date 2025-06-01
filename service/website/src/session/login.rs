@@ -35,7 +35,7 @@ pub(super) async fn post_login(
         .await
         .map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Database offline"))?;
     let existing_users: Vec<UserModel> = db
-        .execute_query(&queries.user, "user_by_username", &login.username())
+        .execute(&queries.user, "user_by_username", &login.username(), false)
         .await
         .map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Query error"))?;
     let user = one(&existing_users).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Invalid username"))?;
