@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 from typing import Any
 from unittest import TestCase
 
-from .codegen import Expr, CodeGenerator, Context, Function, expr_value
+from .codegen import Expr, CodeGenerator, Context, Function, expr_value, undefined
 
 
 def find_compiler() -> Path:
@@ -68,23 +68,27 @@ class CodegenTestCases(TestCase):
         self.compiler = Compiler()
         self.gen = CodeGenerator()
 
-    def _run_prog(self, *args, **kwargs) -> tuple[list[Any], Any]:
+    def _run_prog(self, *args, **kwargs) -> list[Any]:
         lines = self.compiler.run_prog(*args, **kwargs)
-        raw_result = read_json_lines(lines)
-        return raw_result[:-1], raw_result[-1]
+        return read_json_lines(lines)
 
     def _test_expr(self, expr: Expr) -> None:
-        output, result = self._run_prog(f'func jit_entrypoint() {{ return {expr.expr}; }}')
-        if result != expr.value:
+        output = self._run_prog(f'func jit_entrypoint() {{ return {expr.expr}; }}')
+        if output[-1] != expr.value:
             print(expr.expr)
-            self.assertEqual(expr.value, result, f'output of {expr.expr} is wrong')
-        assert output == []
+            self.assertEqual(expr.value, output[-1], f'output of {expr.expr} is wrong')
+        self.assertEqual(1, len(output))
 
     def _test_func(self, func: Function, collections: dict[str, str]) -> Any:
         try:
             param = None if len(func.params) == 0 else func.params[0].value
-            output, result = self._run_prog(func.code, func.name, param=param, collections=collections)
-            self.assertEqual(expr_value(func.value), result)
+            output = self._run_prog(func.code, func.name, param=param, collections=collections)
+            if func.value is not undefined:
+                result = output[-1]
+                self.assertEqual(expr_value(func.value), result)
+                output = output[:-1]
+            else:
+                result = undefined
             expected_output = expr_value(func.output)
             self.assertEqual(expected_output, output, f'output of {func.name} is wrong')
             return result
@@ -124,8 +128,8 @@ class CodegenTestCases(TestCase):
             expr = gen.generate(ctx)
             exprs.append(expr)
             code += 'print(' + expr.expr + ');\n'
-        code += 'return 0; }'
-        output, result = self._run_prog(code)
+        code += 'return {}[""]; }'
+        output = self._run_prog(code)
         if len(output) != len(exprs):
             raise Exception('Wrong number of output lines')
         for e, o in zip(exprs, output):

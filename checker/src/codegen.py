@@ -11,7 +11,24 @@ from typing import Any, Generator, TypeAlias, Type, get_args, Callable, TypeVar,
 
 Value: TypeAlias = int | str | list | dict | None
 T = TypeVar('T', bound=Hashable)
-T2 = TypeVar('T', bound=Hashable)
+T2 = TypeVar('T2', bound=Hashable)
+
+
+class Undefined:
+    def __str__(self) -> str:
+        return 'undefined'
+
+    def __repr__(self) -> str:
+        return 'undefined'
+
+    def __eq__(self, other: Any) -> bool:
+        return other is undefined
+
+    def __bool__(self) -> bool:
+        return False
+
+
+undefined = Undefined()
 
 
 @dataclass(frozen=True)
@@ -51,13 +68,13 @@ class Function:
     name: str
     code: str
     params: list[Expr]
-    value: Value
+    value: Value | Undefined
     output: list[Value] = field(default_factory=list)
 
     def as_script(self) -> str:
         params = ' '.join(json.dumps(_.value) for _ in self.params)
         code = f'// EXECUTE {self.name} {params}\n\n' + self.code + '\n'
-        code += f'\n// Result: {json.dumps(self.value)}'
+        code += f'\n// Result: {json.dumps(self.value) if self.value is not undefined else "undefined"}'
         for o in self.output:
             code += f'\n// output: {json.dumps(o)}'
         return code
@@ -76,7 +93,7 @@ def expr_value(v: Any) -> Value:
     return v
 
 
-def make_unique(c: Callable[[], T], key: Callable[[T], T2] = id) -> Callable[[], T]:
+def make_unique(c: Callable[[], T], key: Callable[[T], T2] = lambda x: x) -> Callable[[], T]:
     used: set[T2] = set()
 
     @wraps(c)
@@ -255,8 +272,8 @@ class TypedGen(ExprGen, ABC):
         else:
             self.generated_types = (generated_type,)
 
-    def match(self, value: Value) -> bool:
-        return self.generated_types == () or any(type(value) == t for t in self.generated_types)
+    def match(self, value: Value | Undefined) -> bool:
+        return (self.generated_types == () and value is not undefined) or any(type(value) == t for t in self.generated_types)
 
 
 class VarUse(TypedGen):
@@ -465,6 +482,8 @@ class Call(TypedGen):
         with self.gen.depth():
             candidates = [f for f in ctx.funcs.values() if self.match(f.value)]
             f: Function = random.choice(candidates)
+            if f.value is undefined:
+                raise ValueError('no undefined functions supported in calls')
             output: list[Value] = []
             for p in f.params:
                 output += list(p.output)
@@ -763,7 +782,7 @@ class CodeGenerator:
             code += f' limit {l}'
             data = data[:l]
         code += ';'
-        return Function(name, code, [], value=data, output=[])
+        return Function(name, code, params=[], value=undefined, output=data)
 
     @contextmanager
     def depth(self) -> Generator[None, Any, None]:
@@ -848,7 +867,7 @@ def main() -> None:
     print(func.code)
     # print(CodeGenerator.uglify(func.code))
     print(f'// CALL {func.name} {" ".join(json.dumps(_.value) for _ in func.params)}')
-    print(f'// => {json.dumps(func.value)}')
+    print(f'// => {json.dumps(func.value) if func.value is not undefined else "undefined"}')
 
 
 if __name__ == '__main__':
