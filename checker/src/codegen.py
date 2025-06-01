@@ -724,25 +724,24 @@ class CodeGenerator:
 
         ctx = Context()
         # "key"
-        ident_key = self.str_expr.generate(ctx)
+        key_gen = make_unique(lambda: self.str_expr.generate(ctx), lambda expr: expr.value)
+        ident_key = key_gen()
         ident_key_gen = make_unique(lambda: self.str_expr.generate(ctx), lambda expr: expr.value)
         for item in items:
             item[ident_key] = ident_key_gen()
         # "data"
-        flag_key = self.str_expr.generate(ctx)
+        flag_key = key_gen()
         for i, item in enumerate(items):
             item[flag_key] = self.str_expr.generate(ctx) if i > 0 else Expr(json.dumps(flag), flag)
         # more things?
         if random.randint(1, 100) <= 65:
-            k = self.str_expr.generate(ctx)
-            if k.value not in (flag_key.value, ident_key.value):
-                for item in items:
-                    item[k] = self.int_expr.generate(ctx)
+            k = key_gen()
+            for item in items:
+                item[k] = self.int_expr.generate(ctx)
         if random.randint(1, 100) <= 65:
-            k = self.str_expr.generate(ctx)
-            if k.value not in (flag_key.value, ident_key.value):
-                for item in items:
-                    item[k] = self.json_expr(ctx)
+            k = key_gen()
+            for item in items:
+                item[k] = self.json_expr(ctx)
         flag_item = items[0]
         random.shuffle(items)
         return Collection(name, items=items, ident_key=ident_key, flag_key=flag_key, flag_item=flag_item)
