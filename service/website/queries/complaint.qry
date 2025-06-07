@@ -1,0 +1,13 @@
+func get_complaints_about_target(entry, target_user) {
+    if entry["target_user"]["username"] == target_user  return entry;
+}
+
+func get_reported_complaints(entry, reporter) {
+    if entry["reporting_user"]["username"] == reporter return entry;
+}
+
+query get_reports on complaints
+filter get_reported_complaints;
+
+query get_target_complaints on complaints
+filter get_complaints_about_target;

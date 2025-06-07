@@ -1,6 +1,6 @@
 use crate::dbconnector::DbConnection;
-use crate::models::UserModel;
 use crate::Queries;
+use interface::frontend::UserModel;
 use interface::frontend::UserSession;
 use rocket::serde::json::Json;
 use rocket::State;

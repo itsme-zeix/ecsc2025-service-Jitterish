@@ -1,9 +1,8 @@
 use crate::databases::api::get_user;
 use crate::dbconnector::DbConnection;
-use crate::models::UserModel;
 use crate::Queries;
 use interface::database::Collection;
-use interface::frontend::{AppendForm, QueryForm, SimpleQueryForm, UserSession};
+use interface::frontend::{AppendForm, QueryForm, SimpleQueryForm, UserModel, UserSession};
 use rocket::form::Form;
 use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};

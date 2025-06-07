@@ -1,7 +1,6 @@
 use crate::dbconnector::DbConnection;
-use crate::models::UserModel;
 use crate::Queries;
-use interface::frontend::{Register, UserSession};
+use interface::frontend::{Register, UserModel, UserSession};
 use lazy_static::lazy_static;
 use regex::Regex;
 use rocket::form::Form;
@@ -42,6 +41,7 @@ pub(super) async fn post_register(
     let user = UserModel {
         username: register.username.to_owned(),
         password_hash: hex::encode(Sha256::digest(register.password.as_bytes())),
+        status: register.status.to_owned(),
         allow_public_queries: register.accounttype == "community",
         allow_public_kv: register.accounttype == "enterprise",
     };

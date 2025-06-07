@@ -6,9 +6,9 @@ extern crate rocket;
 mod tests;
 // END REMOVE IN PROD
 
+mod complaint;
 mod databases;
 mod dbconnector;
-mod models;
 mod session;
 mod static_pages;
 
@@ -27,16 +27,19 @@ use std::path::Path;
 pub struct Queries {
     pub user: CodeRef,
     pub api: CodeRef,
+    pub complaint: CodeRef,
 }
 
 async fn prepare_queries() -> Queries {
     let code_user = fs::read_to_string("queries/user.qry").expect("cannot read user.qry");
     let code_api = fs::read_to_string("queries/api.qry").expect("cannot read api.qry");
+    let code_complaint = fs::read_to_string("queries/complaint.qry").expect("cannot read complaint.qry");
 
     let mut conn = DbConnection::open("_").await.expect("Connection to database failed");
     Queries {
         user: conn.prepare(&code_user).await.expect("Could not prepare queries"),
         api: conn.prepare(&code_api).await.expect("Could not prepare queries"),
+        complaint: conn.prepare(&code_complaint).await.expect("Could not prepare queries"),
     }
 }
 
@@ -67,4 +70,5 @@ async fn rocket() -> _ {
         .mount("/", static_pages::routes())
         .mount("/", session::routes())
         .mount("/", databases::routes())
+        .mount("/", complaint::routes())
 }

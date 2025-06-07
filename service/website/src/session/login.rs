@@ -1,7 +1,6 @@
 use crate::dbconnector::{one, DbConnection};
-use crate::models::UserModel;
 use crate::Queries;
-use interface::frontend::{Login, UserSession};
+use interface::frontend::{Login, UserModel, UserSession};
 use rocket::form::Form;
 use rocket::http::CookieJar;
 use rocket::request::FlashMessage;
@@ -38,6 +37,7 @@ pub(super) async fn post_login(
         .execute(&queries.user, "user_by_username", &login.username(), false)
         .await
         .map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Query error"))?;
+    println!("Existing users: {:?}", existing_users);
     let user = one(&existing_users).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Invalid username"))?;
     if hex::encode(Sha256::digest(login.password().as_bytes())) != user.password_hash {
         return Err(Flash::error(Redirect::to(uri!(login_page)), "Invalid password"));
