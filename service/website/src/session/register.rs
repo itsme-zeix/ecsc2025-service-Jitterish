@@ -9,7 +9,7 @@ use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
 use rocket::State;
 use rocket_dyn_templates::{Template};
-use serde_json::{Value};
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
 lazy_static! {
@@ -29,6 +29,102 @@ pub fn register_page(flash: Option<FlashMessage<'_>>) -> Template {
     Template::render("register", &flash)
 }
 
+
+fn recover_str(status_in: &str) -> Result<Value, Flash<Redirect>> {
+    // let status_parsed: Value = serde_json::from_str(status_in).map_err(|_| Flash::error(Redirect::to("/"), "Status field could not be parsed!"))?;
+    let status_parsed: Result<Value, _> = serde_json::from_str(status_in);
+
+    if status_parsed.is_err() {
+        let mut chars: Vec<char> = status_in.chars().collect();
+        let tmp = chars.clone();
+        let first = tmp.first();
+        if first.is_none() {
+            return Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"));
+        }
+        let last = chars.pop();
+        if last.is_none() {
+            return Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"));
+        }
+        // if we only have one non-alphanumeric char at start or end,
+        // we can recover with quotes
+        if first.unwrap().is_alphanumeric() || last.unwrap().is_alphanumeric() {
+            let mut quoted = String::from(status_in);
+            quoted.insert(0,'"');
+            quoted.push('"');
+            let n = serde_json::from_str(&quoted);
+            if n.is_err() {
+                return Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"));
+            } else {
+                return Ok(n.unwrap());
+            }
+        } else {
+            // neither start nor end is alphanumeric, we cannot recover
+            return Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"));
+        }
+    } else {
+        Ok(status_parsed.unwrap())
+    }
+}
+    
+
+fn setup_status(status_in: &str) -> Result<Value, Flash<Redirect>> {
+    // we allow two parsing cases: 
+    // supply a string -> transformed to expected json
+    // supply a json -> check and fill missing fields
+    println!("Status: {:?}", status_in);
+    let status_parsed: Result<Value, _> = serde_json::from_str(status_in);
+    let result = if status_parsed.is_err() {
+        recover_str(status_in)?
+    } else {
+        status_parsed.unwrap()
+    };
+    println!("parsed status: {:?}", result);
+
+    let r = match result {
+        Value::String(inner) => {
+            json!({
+                "num_reports": 0,
+                "looking_for_job": false,
+                "current_salary": 0,
+                "custom": inner,
+            })
+        },
+        Value::Object(mut map) => {
+            println!("Map before: {:?}", map);
+            // we allow exactly 3 properties:
+            // num_reports, looking_for_job, current_salary
+            // if they do not exist, we init them 
+            if map.get("num_reports").is_none() {
+                println!("Found no num_reports");
+                map.insert(String::from("num_reports"),json!(0));
+            }
+            if map.get("looking_for_job").is_none() {
+                println!("Found no lfj");
+                map.insert(String::from("looking_for_job"),json!(false));
+            }
+            if map.get("current_salary").is_none() {
+                println!("Found no salary");
+                map.insert(String::from("current_salary"),json!(0));
+            }
+            if map.get("custom").is_none() {
+                println!("Found no custom");
+                map.insert(String::from("custom"),json!(""));
+            }
+            println!("Map after: {:?}", map);
+            json!(map)
+        },
+        _ => {
+            json!({
+                "num_reports": 0,
+                "looking_for_job": false,
+                "current_salary": 0,
+                "custom": String::new(),
+            })
+        },
+    };
+    Ok(r)
+}
+
 // do the registration
 // this means creating a user in the web interface that has all required
 // attributes for creating a user in the actual db
@@ -38,10 +134,11 @@ pub(super) async fn post_register(
     jar: &CookieJar<'_>,
     register: Form<Register<'_>>,
 ) -> Result<Redirect, Flash<Redirect>> {
+    let status = setup_status(register.status)?;
     let user = UserModel {
         username: register.username.to_owned(),
         password_hash: hex::encode(Sha256::digest(register.password.as_bytes())),
-        status: register.status.to_owned(),
+        status: status,
         allow_public_queries: register.accounttype == "community",
         allow_public_kv: register.accounttype == "enterprise",
     };
