@@ -178,14 +178,13 @@ Value jit_rt_getproperty(Value v1, Value v2) {
         return {ValueType::INT, v1.data<StringData *>()->at(v2.integer())};
     }
     if (v1.is(ValueType::ARRAY) && v2.is(ValueType::INT)) {
-        return v1.data<ArrayData *>()->at(v2.integer());
+        auto data = v1.data<ArrayData *>();
+        return v2.integer() < data->size() ? data->at(v2.integer()) : Value{};
     }
     if (v1.is(ValueType::OBJECT)) {
         auto data = v1.data<ObjectData *>();
         auto it = data->find(v2.str());
-        if (it != data->end()) {
-            return it->second;
-        }
+        return it != data->end() ? it->second : Value{};
     }
     return {};
 }

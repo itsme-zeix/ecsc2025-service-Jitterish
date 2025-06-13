@@ -75,7 +75,7 @@ class ExpressionsTestCase(CompileTestCase):
         self.assertEqual('false', self.run_expr('defined 544 == 216'))
 
     def test_undefined(self):
-        for expr in ['0 + []', '{}["a"]']:
+        for expr in ['0 + []', '{}["a"]', '[][0]']:
             self.assertEqual('', self.run_expr(expr))
             self.assertEqual('false', self.run_expr(f'defined ({expr})'))
 
