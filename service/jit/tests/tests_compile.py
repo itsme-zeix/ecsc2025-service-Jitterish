@@ -74,6 +74,11 @@ class ExpressionsTestCase(CompileTestCase):
         self.assertEqual('true', self.run_expr('(!(defined 544 == 216) == (149 < --(-784 + -893)))'))
         self.assertEqual('false', self.run_expr('defined 544 == 216'))
 
+    def test_undefined(self):
+        for expr in ['0 + []', '{}["a"]']:
+            self.assertEqual('', self.run_expr(expr))
+            self.assertEqual('false', self.run_expr(f'defined ({expr})'))
+
 
 class StatementsTestCase(CompileTestCase):
     def test_variables(self):
@@ -142,6 +147,13 @@ class StatementsTestCase(CompileTestCase):
         self.assertEqual('1\n2\ntrue', self.run_prog(base + 'func jit_entrypoint() { return t(1) || f(2); }'))
         self.assertEqual('1\n2\ntrue', self.run_prog(base + 'func jit_entrypoint() { return f(1) || t(2); }'))
         self.assertEqual('1\n2\nfalse', self.run_prog(base + 'func jit_entrypoint() { return f(1) || f(2); }'))
+
+    def test_no_return(self):
+        code = '''
+        func a() { return 1; }
+        func jit_entrypoint() { a(); }
+        '''
+        self.assertEqual('', self.run_prog(code))
 
 
 class QueriesTestCase(CompileTestCase):

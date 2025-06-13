@@ -93,7 +93,7 @@ public:
                 vars.addParam(arg->getText());
         codegen.startFunction(ctx->name->getText(), vars.stackSize());
         compile(ctx->body);
-        codegen.endFunction();
+        codegen.returnFunction(Register::None);
         return Register::None;
     }
 
