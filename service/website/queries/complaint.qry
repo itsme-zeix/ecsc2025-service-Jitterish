@@ -6,6 +6,75 @@ func get_reported_complaints(entry, reporter) {
     if entry["reporting_user"]["username"] == reporter return entry;
 }
 
+func count(entry, acc) {
+    return (acc ?: 0) + 1;
+}
+
+func unique_reportees(entry, result){
+    if !defined result result = {};
+    if !defined result[entry["reporting_user"]["username"]] {
+        result[entry["username"]] = 1;
+        return entry;
+    }
+}
+
+func get_updated_user(entry, target_user) {
+    if entry["username"] == target_user {
+        entry["status"]["num_reports"] = get_num_reports(target_user);
+        return entry;
+    }
+}
+
+
+func get_all_reportees_for_username(entry, username) {
+    if entry["reporting_user"]["username"] == username return entry["target_user"];
+}
+
+
+func deduplicate(entry, acc) {
+    if !defined acc acc={};
+    if !defined acc[entry["target_user"]["username"]] {
+        tmp = entry["target_user"];
+        tmp["status"]["num_reports"] = tmp["status"]["num_reports"] + get_num_reported(tmp["username"]);
+        print(tmp);
+        acc[entry["target_user"]["username"]] = 1;
+    }
+    return acc;
+}
+
+func get_all_users(entry){
+    get_reported_users_helper();
+}
+
+func merge_into_user(entry, acc){
+    if !defined acc acc=entry["reporting_user"];
+}
+
+query get_reported_users on complaints
+reduce get_all_users;
+
+query get_reported_users_helper on complaints
+reduce deduplicate;
+// map get_all_reportees_for_username;
+
+// query get_reported_users on complaints
+// filter unique_reportees 
+// map get_all_reportees_for_username;
+
+
+query get_num_reports on complaints
+filter get_reported_complaints
+reduce count;
+
+query get_num_reported on complaints
+filter get_complaints_about_target
+reduce count;
+
+query get_user_numreports on users
+filter get_updated_user;
+// reduce merge_into_user;
+
+
 query get_reports on complaints
 filter get_reported_complaints;
 

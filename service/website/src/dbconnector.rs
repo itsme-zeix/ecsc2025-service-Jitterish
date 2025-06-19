@@ -41,7 +41,7 @@ impl DbConnection {
             if self.stream.read_line(&mut line).await? <= 0 {
                 return Err(std::io::Error::new(ErrorKind::BrokenPipe, "EOF"));
             }
-            // println!("Decoding line: {:?}", line);
+            println!("Received raw: {:?}", line);
 
             match serde_json::from_str(&line.trim()) {
                 Ok(value ) => {
@@ -85,7 +85,7 @@ impl DbConnection {
                 }
                 Err(e) => {
                     // println!("Error: {:?}, line: {:?}",e, line);
-                    return if line == "OK\n" {
+                    return if line == "OK\n" || !result.is_empty() {
                         // println!("Returning ok");
                         // println!("{:?}", result.len());
                         Ok(result)

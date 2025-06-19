@@ -63,29 +63,32 @@ pub async fn user_down(
             format!("Append failed: {}", e),
         )
     })?;
-    println!("Getting all user complaints");
-    // get all complaints that the current user made
-    let all_user_complaints: Vec<Complaint> = db
-        .execute(&queries.complaint, "get_reports", &user.username, false)
-        .await
-        .map_err(|e| {
-            println!("Returned error: {:?}", e); 
-            Flash::error(Redirect::to("/")
-            , "Get complaints query error")
-        })?;
-    println!("All complaints from this user");
-    for c in all_user_complaints {
-        println!("Complaint: {:?}", c);
-    }
-    println!("Getting all target complaints");
-    // get all complaints about the target user
-    let all_target_complaints: Vec<Complaint> = db
-        .execute(&queries.complaint, "get_target_complaints", &form.target_user, false)
+    println!("##################################");
+    println!("Got a report for {:?}", form.target_user);
+    println!("##################################");
+    // get all reported users. Later only print the length of the list
+    let all_target_complaints: Vec<UserModel> = db
+        // .execute(&queries.complaint, "get_reported_users", &user.username, false)
+        .execute(&queries.complaint, "get_all_users", &user.username, false)
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Get complaints query error"))?;
-    println!("All complaints about this target");
-    for c in all_target_complaints {
-        println!("Complaint: {:?}", c);
-    }
+    // println!("All users that I reported");
+    // for c in all_target_complaints {
+    //     println!("User: {:?}", c);
+    // }
+    println!("I reported {:?} users!", all_target_complaints.len());
+
+    // the previous query returns reported users, letting us deduce the number of reported users 
+    // but we can report a single user multiple times, so the number of reports might differ
+    // we get it via a dedicated query
+    let mut new_user: Vec<UserModel> = db
+        .execute(&queries.complaint, "get_user_numreports", &user.username, false)
+        .await
+        .map_err(|_| Flash::error(Redirect::to("/"), "Get complaints query error"))?;
+    let updated = new_user.pop().expect("Could not update my usermodel!");
+    println!("Updated user: {:?}", updated);
+    // for c in new_user {
+    //     println!("User: {:?}", c);
+    // }
     Ok(Redirect::to(uri!(crate::session::profile::index)))
 }

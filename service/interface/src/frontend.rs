@@ -14,6 +14,7 @@ pub struct Register<'r> {
     pub password: &'r str,
     firstname: &'r str,
     lastname: &'r str,
+    pub status: &'r str,
     pub accounttype: &'r str,
 }
 
@@ -42,8 +43,7 @@ impl<'r> FromRequest<'r> for UserSession {
     type Error = std::convert::Infallible;
 
     async fn from_request(request: &'r Request<'_>) -> request::Outcome<UserSession, Self::Error> {
-        request.cookies().get_private("username")
-            .map(|cookie| UserSession { username: cookie.value().to_owned() })
+        request.cookies().get_private("username") .map(|cookie| UserSession { username: cookie.value().to_owned() })
             .or_forward(Status::Unauthorized)
     }
 }
@@ -51,6 +51,20 @@ impl<'r> FromRequest<'r> for UserSession {
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
 pub struct DbForm<'r> {
     pub db: &'r str,
+}
+
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UserModel {
+    pub username: String, // = database name (at least 3 chars, [A-Za-z0-9_] only, must be unique)
+    pub password_hash: String,
+    pub status: serde_json::Value, 
+
+    // TODO add all the necessary fields for the frontend
+
+    // Permissions for the database
+    pub allow_public_queries: bool, // = anybody can query public collections
+    pub allow_public_kv: bool,      // = anybody can access this with the "kv api"
 }
 
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
@@ -70,4 +84,17 @@ pub struct QueryForm<'r> {
     pub query: &'r str,
     pub query_name: &'r str,
     pub params: &'r str,
+}
+
+
+#[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
+pub struct SupportForm<'r> {
+    pub target_user: &'r str,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Complaint {
+    pub target_user: UserModel,
+    pub reporting_user: UserModel,
+    pub timestamp: String,
 }
