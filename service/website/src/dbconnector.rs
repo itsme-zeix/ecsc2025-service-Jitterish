@@ -83,7 +83,7 @@ impl DbConnection {
                     //     Err(std::io::Error::new(ErrorKind::InvalidData, line.trim()))
                     // }
                 }
-                Err(e) => {
+                Err(_) => {
                     // println!("Error: {:?}, line: {:?}",e, line);
                     return if line == "OK\n" || !result.is_empty() {
                         // println!("Returning ok");
