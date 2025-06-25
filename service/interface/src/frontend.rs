@@ -90,6 +90,7 @@ pub struct QueryForm<'r> {
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
 pub struct SupportForm<'r> {
     pub target_user: &'r str,
+    pub description: &'r str,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -97,4 +98,5 @@ pub struct Complaint {
     pub target_user: UserModel,
     pub reporting_user: UserModel,
     pub timestamp: String,
+    pub description: String,
 }
