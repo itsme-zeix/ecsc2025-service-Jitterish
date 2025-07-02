@@ -42,7 +42,7 @@ pub(super) async fn post_login(
     if hex::encode(Sha256::digest(login.password().as_bytes())) != user.password_hash {
         return Err(Flash::error(Redirect::to(uri!(login_page)), "Invalid password"));
     }
-
-    jar.add_private(("username", user.username.to_owned()));
+    let user = serde_json::to_string(user).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Could not serialize user!"))?;
+    jar.add_private(("username", user));
     Ok(Redirect::to(uri!(crate::session::profile::index)))
 }

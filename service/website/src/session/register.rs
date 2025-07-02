@@ -71,14 +71,12 @@ fn setup_status(status_in: &str) -> Result<Value, Flash<Redirect>> {
     // we allow two parsing cases: 
     // supply a string -> transformed to expected json
     // supply a json -> check and fill missing fields
-    println!("Status: {:?}", status_in);
     let status_parsed: Result<Value, _> = serde_json::from_str(status_in);
     let result = if status_parsed.is_err() {
         recover_str(status_in)?
     } else {
         status_parsed.unwrap()
     };
-    println!("parsed status: {:?}", result);
 
     let r = match result {
         Value::String(inner) => {
@@ -90,27 +88,21 @@ fn setup_status(status_in: &str) -> Result<Value, Flash<Redirect>> {
             })
         },
         Value::Object(mut map) => {
-            println!("Map before: {:?}", map);
             // we allow exactly 3 properties:
             // num_reports, looking_for_job, current_salary
             // if they do not exist, we init them 
             if map.get("num_reports").is_none() {
-                println!("Found no num_reports");
                 map.insert(String::from("num_reports"),json!(0));
             }
             if map.get("looking_for_job").is_none() {
-                println!("Found no lfj");
                 map.insert(String::from("looking_for_job"),json!(false));
             }
             if map.get("current_salary").is_none() {
-                println!("Found no salary");
                 map.insert(String::from("current_salary"),json!(0));
             }
             if map.get("custom").is_none() {
-                println!("Found no custom");
                 map.insert(String::from("custom"),json!(""));
             }
-            println!("Map after: {:?}", map);
             json!(map)
         },
         _ => {
@@ -160,10 +152,21 @@ pub(super) async fn post_register(
     if !existing_users.is_empty() {
         return Err(Flash::error(Redirect::to(uri!(register_page)), "Username already taken."));
     }
-    db.append("users", user)
+    db.append("users", user.clone())
         .await
         .map_err(|e| Flash::error(Redirect::to(uri!(register_page)), format!("Append failed: {}", e)))?;
+    // this has now exactly one match
+    let mut existing_users_new: Vec<Value> = db
+        .execute(&queries.user, "user_by_username", &register.username, false)
+        .await
+        .map_err(|_| Flash::error(Redirect::to("/"), "User by username query error"))?;
+    let tmp = existing_users_new.pop();
+    if let Some(inner) = tmp {
+        let user = serde_json::to_string(&inner).map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "Could not serialize user!"))?;
+        jar.add_private(("username", user));
+        Ok(Redirect::to(uri!(crate::session::profile::index)))
+    } else {
+        return Err(Flash::error(Redirect::to(uri!(register_page)), "User not added to db."));
+    }
 
-    jar.add_private(("username", register.username.to_owned()));
-    Ok(Redirect::to(uri!(crate::session::profile::index)))
 }
