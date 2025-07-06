@@ -136,7 +136,7 @@ async def getflag_enterprise(task: GetflagCheckerTaskMessage, logger: LoggerAdap
     assert_equals(payload[0]['flag'], task.flag, "Flag missing")
 
 
-@checker.putflag(0)
+@checker.putflag(2)
 @handle_invalid_response_exceptions
 async def putflag_community(task: PutflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                             db: ChainDB) -> str:
@@ -169,7 +169,7 @@ async def putflag_community(task: PutflagCheckerTaskMessage, logger: LoggerAdapt
     return username
 
 
-@checker.getflag(0)
+@checker.getflag(2)
 @handle_invalid_response_exceptions
 async def getflag_community(task: GetflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                             db: ChainDB) -> None:
@@ -208,13 +208,16 @@ async def getflag_community(task: GetflagCheckerTaskMessage, logger: LoggerAdapt
     with log_code_on_error(logger, function):
         param = function.params[0].value if function.params else None
         output = await client.db_query(username, code, function.name, param)
+        logger.info(f"## Input: {function.params}")
+        logger.info(f"## Output: {output[:-1]}")
+        logger.info(f"## Result: {output[-1]}")
         if function.value is not undefined:
             output, result = output[:-1], output[-1]
             assert_equals(result, function.value, "Wrong function result")
         assert_equals(output, function.output, "Wrong function output")
 
 
-@checker.putnoise(0)
+@checker.putnoise(2)
 async def putnoise_community(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                              db: ChainDB) -> None:
     """
@@ -240,7 +243,7 @@ async def putnoise_community(task: PutnoiseCheckerTaskMessage, logger: LoggerAda
     await db.set("noise_collection", (username, collection.to_json(), public_value))
 
 
-@checker.getnoise(0)
+@checker.getnoise(2)
 async def getnoise_community(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
                              di: DependencyInjector) -> None:
     try:
@@ -285,11 +288,11 @@ async def getnoise_community(task: GetnoiseCheckerTaskMessage, logger: LoggerAda
             output = await client.db_query(database, code, f.name, param)
             if f.value is not undefined:
                 output, result = output[:-1], output[-1]
-                assert_equals(result, f.value, "Query result is wrong")
-            assert_equals(output, f.output, "Query result is wrong")
+                assert_equals(result, f.value, "Query result is wrong (not undefined)")
+            assert_equals(output, f.output, "Query result is wrong (undefined)")
 
 
-@checker.havoc(0)
+@checker.havoc(2)
 async def havoc(task: HavocCheckerTaskMessage, logger: LoggerAdapter, client: AsyncClient, db: ChainDB,
                 di: DependencyInjector) -> None:
     await client.get('/')
@@ -326,7 +329,7 @@ async def exploit_kv_newline_injection(task: ExploitCheckerTaskMessage, logger: 
     return searcher.search_flag(all_output)
 
 
-@checker.exploit(0)
+@checker.exploit(2)
 async def exploit_jit(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
                       httpclient: AsyncClient) -> bytes | None:
     if not task.attack_info:
@@ -392,9 +395,105 @@ async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSe
     return searcher.search_flag(all_output)
 
 
+@checker.putflag(0)
+@handle_invalid_response_exceptions
+# just register with flag as custom 
+# TODO: we can randomize the register a bit more, with randomly set salary, custom etc
+# TODO we should also randomize account type if possible
+async def putflag_profile(task: PutflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
+                             db: ChainDB) -> str:
+    client = JitterishClient(logger, httpclient)
+
+    username = generate_username()
+    password = generate_password()
+    await client.register(username, password,
+                          generate_random_string(8, False), generate_random_string(8, False),
+                          'enterprise', custom=task.flag)
+    # task.flag
+    # task.task_id flag id?
+    await db.set("profile_account", (username, password))
+    return username
+
+
+@checker.getflag(0)
+@handle_invalid_response_exceptions
+async def getflag_enterprise(task: GetflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
+                             db: ChainDB) -> None:
+    try:
+        username, password = await db.get("profile_account")
+    except KeyError:
+        raise MumbleException("Database info missing")
+
+    client = JitterishClient(logger, httpclient)
+    await client.login(username, password)
+    profile_data = await client.get(f'/session/profile')
+    assert_in(task.flag, profile_data.text, "Flag missing")
+
+
+@checker.putnoise(0)
+async def putnoise_profile(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
+                             db: ChainDB) -> None:
+    # we want to check a few different things:
+    # 1. registering with a json status should still work -> implemented
+    # 2. reporting someone should increase their num reported on the profile page TODO
+    client = JitterishClient(logger, httpclient)
+
+    username = generate_username()
+    password = generate_password()
+    num_reports = None
+    looking_for_job = None
+    current_salary = None
+    custom = None
+    fields = random.choices([True, False], k=4)
+    if fields[0]:
+        num_reports = random.randrange(0,100) 
+    if fields[1]:
+        looking_for_job = (random.randrange(0,2)==1)
+    if fields[2]:
+        current_salary = random.randrange(0,1000000)
+    if fields[3]:
+        # TODO: this could be useful words/combinations
+        custom = generate_username()
+
+    await client.register_raw(username, password,
+                          generate_random_string(8, False), generate_random_string(8, False),
+                          'enterprise', custom, num_reports, looking_for_job, current_salary)
+    # task.flag
+    # task.task_id flag id?
+    await db.set("profile_noise_account", (username, password, num_reports, looking_for_job, current_salary, custom))
+    pass
+
+
+@checker.getnoise(0)
+async def getnoise_profile(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
+                             di: DependencyInjector) -> None:
+    try:
+        username, password, num_reports, looking_for_job, current_salary, custom = await db.get("profile_noise_account")
+    except KeyError:
+        raise MumbleException("Database info missing")
+
+    client = JitterishClient(logger, httpclient)
+    await client.login(username, password)
+    profile_data = await client.get(f'/session/profile')
+    if num_reports:
+        assert_in(str(num_reports), profile_data.text, "Num_reports missing")
+    if looking_for_job:
+        assert_in(str(looking_for_job), profile_data.text, "Looking_for_jobs missing")
+    if current_salary:
+        assert_in(str(current_salary), profile_data.text, "Current_salary missing")
+    if custom:
+        assert_in(custom, profile_data.text, "Custom missing")
+    pass
+
+
+@checker.havoc(0)
+async def havoc(task: HavocCheckerTaskMessage, logger: LoggerAdapter, client: AsyncClient, db: ChainDB,
+                di: DependencyInjector) -> None:
+    pass
+
 if __name__ == "__main__":
     # production: gunicorn -c gunicorn.conf.py "checker:app()"
     import logging
 
     logging.basicConfig(format=f'[%(asctime)s.%(msecs)03d] %(levelname)-9.9s: %(message)s', level=logging.INFO)
-    checker.run(port=8001)
+    checker.run(port=8002)

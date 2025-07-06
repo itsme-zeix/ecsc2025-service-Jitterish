@@ -1,4 +1,6 @@
 import asyncio
+import random
+import json
 import html
 import json
 import logging
@@ -46,18 +48,55 @@ class JitterishClient:
             self.logger.warning(f'Error alerts found on {response.url}: {alerts}')
 
     async def register(self, username: str, password: str, first: str, last: str,
-                       accounttype: Literal['community', 'business', 'enterprise']) -> None:
+                       accounttype: Literal['community', 'business', 'enterprise'], custom: str=None) -> None:
         await self.get('/session/register')
+        status_data = {}
+        status_data["num_reports"] = random.randrange(0,10)
+        status_data["salary"] = random.randrange(0,100000)
+        if custom:
+            status_data["custom"] = custom
         response = await self.post('/session/register', data={
             'username': username, 'password': password,
             'firstname': first, 'lastname': last,
-            'accounttype': accounttype
+            'accounttype': accounttype,
+            'status':json.dumps(status_data)
         }, follow_redirects=True)
         self.log_error_alerts(response)
         if response.url.path != '/session/profile':
             self.logger.warning(f'Unexpected redirect to {response.url} after registration')
             raise MumbleException('Registration failed')
         self.logger.info(f'Registered {username!r} (password {password!r})')
+
+
+    async def register_raw(self, username: str, password: str, first: str, last: str, accounttype: Literal['community',
+                                                                                                           'business',
+                                                                                                           'enterprise'],
+                           custom: str, num_reports: int, looking_for_job: bool, current_salary: int) -> None:
+        await self.get('/session/register')
+        status_data = {}
+        if num_reports is not None:
+            status_data["num_reports"] = num_reports
+        if looking_for_job is not None:
+            status_data["looking_for_job"] = looking_for_job
+        if current_salary is not None:
+            status_data["current_salary"] = current_salary 
+        if custom is not None:
+            status_data["custom"] = custom
+        # only custom gives us a string as input
+        if custom and not num_reports and not looking_for_job and not current_salary:
+            status_data = custom
+        response = await self.post('/session/register', data={
+            'username': username, 'password': password,
+            'firstname': first, 'lastname': last,
+            'accounttype': accounttype,
+            'status':json.dumps(status_data)
+        }, follow_redirects=True)
+        self.log_error_alerts(response)
+        if response.url.path != '/session/profile':
+            self.logger.warning(f'Unexpected redirect to {response.url} after registration')
+            raise MumbleException('Registration failed')
+        self.logger.info(f'Registered {username!r} (password {password!r})')
+
 
     async def login(self, username: str, password: str) -> None:
         await self.get('/session/login')

@@ -56,11 +56,11 @@ class DemoRunner:
         put_response = await self.run(task)
         task = GetflagCheckerTaskMessage(flag=flag, related_round_id=1, **params)
         await self.run(task)
-        task = ExploitCheckerTaskMessage(flag_regex=r'FLAG\{.+?\}',
-                                         flag_hash=sha256(flag.encode()).hexdigest(),
-                                         attack_info=put_response.attack_info,
-                                         **params)
-        await self.run(task)
+        # task = ExploitCheckerTaskMessage(flag_regex=r'FLAG\{.+?\}',
+        #                                  flag_hash=sha256(flag.encode()).hexdigest(),
+        #                                  attack_info=put_response.attack_info,
+        #                                  **params)
+        # await self.run(task)
         #'''
 
         await self.run(PutnoiseCheckerTaskMessage(**params))
