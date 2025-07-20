@@ -111,6 +111,17 @@ class JitterishClient:
             raise MumbleException('Registration failed')
         self.logger.info(f'Logged in as {username!r} (password {password!r})')
 
+    async def logout(self) -> None:
+        await self.post('/session/logout', follow_redirects=True)
+
+    # assumes that reporter is logged in
+    async def report(self, username, reason) -> Response:
+        response = await self.post('/support', data={
+            'target_user': username, 'description': reason,
+        }, follow_redirects=True)
+        self.log_error_alerts(response)
+        return response
+
     async def list_customers(self) -> dict[str, list[str]]:
         response = await self.get('/customers')
         return {
@@ -161,6 +172,8 @@ class JitterishClient:
         response = await self.get(f'/api/{database}/{what}/{key}', params={'token': token} if token else {})
         self.logger.info(f'KV fetched {what} on {key} => {response.json()}')
         return response.json()
+
+
 
 
 async def main() -> None:
