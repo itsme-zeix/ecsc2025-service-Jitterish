@@ -87,6 +87,11 @@ h1 {
     @include utils.marker-start();
     @include utils.marker-end();
   }
+
+  .logo {
+    height: 3.2rem;
+    vertical-align: bottom;
+  }
 }
 
 h2 {
