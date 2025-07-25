@@ -3,8 +3,7 @@
 
 
 # 1. Build Rust Application
-# TODO switch to trixie as soon as images are available
-FROM rust:bookworm AS builder-rust
+FROM rust:trixie AS builder-rust
 COPY interface /src/interface
 COPY website/Cargo.* /src/website/
 COPY website/src /src/website/src

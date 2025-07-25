@@ -2,7 +2,7 @@ use crate::databases::api::get_user;
 use crate::dbconnector::DbConnection;
 use crate::Queries;
 use interface::database::Collection;
-use interface::frontend::{AppendForm, QueryForm, SimpleQueryForm, UserModel, UserSession};
+use interface::frontend::{AppendForm, QueryForm, UserModel, UserSession};
 use rocket::form::Form;
 use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};
@@ -29,7 +29,7 @@ async fn database_page_basics(
         .await
         .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "Cannot fetch user"))?;
     let db = db.ok_or_else(|| Flash::error(Redirect::to(format!("/database/{}", database)), "No such db"))?;
-    let user: UserModel  = serde_json::from_str(&user.username)
+    let user: UserModel = serde_json::from_str(&user.username)
         .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "User decode error"))?;
     let user_owns_db = db.username == user.username;
     if !db.allow_public_queries && !user_owns_db {
@@ -55,7 +55,6 @@ async fn database_page_basics(
 }
 
 // the basic interaction page for databases
-// TODO: we do not want to return an error here, as it appears as 500
 #[get("/database/<database>")]
 pub async fn database_page(
     queries: &State<Queries>,
@@ -64,7 +63,7 @@ pub async fn database_page(
     user: UserSession,
 ) -> Result<Template, Flash<Redirect>> {
     let ctx = database_page_basics(queries, database, &user).await?;
-    let model: UserModel  = serde_json::from_str(&user.username)
+    let model: UserModel = serde_json::from_str(&user.username)
         .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "User decode error"))?;
 
     Ok(Template::render(
@@ -81,58 +80,6 @@ pub async fn database_page(
                 query_name: "q",
                 params: "{}",
             },
-            queries: ["test", "test2", "a","b","c"],  // TODO
-        },
-    ))
-}
-
-// TODO not used in UI for now
-// endpoint for predefined queries
-#[post("/database/<database>/query", data = "<form>")]
-pub async fn database_query(
-    queries: &State<Queries>,
-    flash: Option<FlashMessage<'_>>,
-    database: &str,
-    user: UserSession,
-    form: Form<SimpleQueryForm<'_>>,
-) -> Result<Template, Flash<Redirect>> {
-    let user: UserModel  = serde_json::from_str(&user.username)
-        .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "User decode error"))?;
-    // TODO use ctx or remove
-    println!("Queries: {:?}", queries);
-    let cr = &queries.user;
-    let params: Value = serde_json::from_str(form.params)
-        .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "Invalid JSON"))?;
-    let mut err: Option<String> = None;
-    let mut msgs: Vec<String> = Vec::new();
-    let mut conn = DbConnection::open(database)
-        .await
-        .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "Database offline"))?;
-    // TODO use privileged access if necessary
-    match conn.execute::<Value, Value>(cr, form.query_name, &params, false).await {
-        Ok(result) => {
-            for e in &result {
-                msgs.push(
-                    serde_json::to_string(&e).map_err(|_| {
-                        Flash::error(Redirect::to(format!("/database/{}", database)), "DB returned invalid JSON")
-                    })?,
-                )
-            }
-        }
-        Err(e) => {
-            err = Some(format!("{}", e));
-        }
-    }
-    Ok(Template::render(
-        "database",
-        context! {
-            flash: flash,
-            username: user.username,
-            database: database,
-            queries: ["test", "a","b","c"],  // TODO
-            form: form.into_inner(),
-            err: err,
-            msgs: msgs,
         },
     ))
 }
@@ -145,7 +92,7 @@ pub async fn database_append(
     user: UserSession,
     form: Form<AppendForm<'_>>,
 ) -> Result<Template, Flash<Redirect>> {
-    let model: UserModel  = serde_json::from_str(&user.username)
+    let model: UserModel = serde_json::from_str(&user.username)
         .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "User decode error"))?;
     let mut ctx = database_page_basics(queries, database, &user).await?;
     if !ctx.user_owns_db {
@@ -183,7 +130,6 @@ pub async fn database_append(
             collections: ctx.collections,
             db: ctx.db,
             user_owns_db: ctx.user_owns_db,
-            queries: ["test", "a","b","c"],
             form: form.into_inner(),
             err: ctx.err,
             msgs: ctx.msgs,
@@ -192,8 +138,6 @@ pub async fn database_append(
 }
 
 // query is a read, everyone can do that on all public tables
-// apparently, this function creates a new query
-// how do I use existing ones?
 #[post("/database/<database>/customquery", data = "<form>")]
 pub async fn database_query_custom(
     queries: &State<Queries>,
@@ -202,7 +146,7 @@ pub async fn database_query_custom(
     user: UserSession,
     form: Form<QueryForm<'_>>,
 ) -> Result<Template, Flash<Redirect>> {
-    let model: UserModel  = serde_json::from_str(&user.username)
+    let model: UserModel = serde_json::from_str(&user.username)
         .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "User decode error"))?;
     let mut ctx = database_page_basics(queries, database, &user).await?;
 
@@ -242,7 +186,6 @@ pub async fn database_query_custom(
             collections: ctx.collections,
             db: ctx.db,
             user_owns_db: ctx.user_owns_db,
-            queries: ["test", "a","b","c"],  // TODO
             form: form.into_inner(),
             err: ctx.err,
             msgs: ctx.msgs,

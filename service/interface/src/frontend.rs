@@ -60,8 +60,6 @@ pub struct UserModel {
     pub password_hash: String,
     pub status: serde_json::Value, 
 
-    // TODO add all the necessary fields for the frontend
-
     // Permissions for the database
     pub allow_public_queries: bool, // = anybody can query public collections
     pub allow_public_kv: bool,      // = anybody can access this with the "kv api"
@@ -71,12 +69,6 @@ pub struct UserModel {
 pub struct AppendForm<'r> {
     pub collection: &'r str,
     pub data: &'r str,
-}
-
-#[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
-pub struct SimpleQueryForm<'r> {
-    pub query_name: &'r str,
-    pub params: &'r str,
 }
 
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]

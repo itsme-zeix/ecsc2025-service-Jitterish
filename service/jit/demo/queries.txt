@@ -1,4 +1,5 @@
-// TODO dummy entrypoint for test - fire some queries
+// REMOVE IN PROD
+// dummy entrypoint for test - fire some queries
 func jit_entrypoint() {
     print(all_entries());
     print(my_team_members("saarsec"));

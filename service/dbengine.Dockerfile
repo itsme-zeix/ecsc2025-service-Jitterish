@@ -29,8 +29,7 @@ RUN --mount=type=cache,id=cache-cpp,target=/build,sharing=locked \
 
 
 # 2. Build Rust
-# TODO switch to trixie as soon as images are available
-FROM rust:bookworm AS builder-rust
+FROM rust:trixie AS builder-rust
 COPY dbengine /src/dbengine
 COPY interface /src/interface
 RUN --mount=type=cache,id=cache-rust-engine,target=/src/dbengine/target,sharing=locked \
