@@ -3,11 +3,11 @@ extern crate rocket;
 
 mod complaint;
 mod databases;
-mod dbconnector;
+mod db_connector;
 mod session;
 mod static_pages;
 
-use crate::dbconnector::DbConnection;
+use crate::db_connector::DbConnection;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use interface::database::CodeRef;

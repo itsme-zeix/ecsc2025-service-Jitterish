@@ -5,7 +5,7 @@ use rocket::{
 };
 use rocket_dyn_templates::{context, Template};
 
-use crate::{dbconnector::DbConnection, Queries};
+use crate::{db_connector::DbConnection, Queries};
 
 #[get("/support")]
 pub async fn support<'a>(
@@ -33,6 +33,7 @@ pub async fn support<'a>(
         .map_err(|_| Flash::error(Redirect::to("/"), "Get complaints query error 2"))?
         .pop()
         .ok_or(Flash::error(Redirect::to("/"), "Could not update my usermodel!"))?;
+    // update user session
     jar.remove_private("user");
     let user_json = serde_json::to_string(&updated_user).map_err(|_| Flash::error(Redirect::to("/"), "User encode error"))?;
     jar.add_private(("user", user_json));

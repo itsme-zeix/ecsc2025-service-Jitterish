@@ -1,4 +1,4 @@
-use crate::dbconnector::{one, DbConnection};
+use crate::db_connector::{one, DbConnection};
 use crate::Queries;
 use interface::frontend::{Login, UserModel, UserSession};
 use rocket::form::Form;

@@ -25,11 +25,9 @@ func get_updated_user(entry, target_user) {
     }
 }
 
-
 func get_all_reportees_for_username(entry, username) {
     if entry["reporting_user"]["username"] == username return entry["target_user"];
 }
-
 
 func deduplicate_targets(entry, acc) {
     if !defined acc acc={};
@@ -50,18 +48,9 @@ func merge_into_user(entry, acc){
     if !defined acc acc=entry["reporting_user"];
 }
 
-// query get_reported_users on complaints
-// reduce get_all_users;
-
 query get_reported_users_helper on complaints
 filter get_reported_complaints
 reduce deduplicate_targets;
-// map get_all_reportees_for_username;
-
-// query get_reported_users on complaints
-// filter unique_reportees 
-// map get_all_reportees_for_username;
-
 
 query get_num_reports on complaints
 filter get_reported_complaints
@@ -73,8 +62,6 @@ reduce count;
 
 query get_user_numreports on users
 filter get_updated_user;
-// reduce merge_into_user;
-
 
 query get_reports on complaints
 filter get_reported_complaints;

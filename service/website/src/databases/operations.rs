@@ -1,5 +1,5 @@
 use crate::databases::api::get_user;
-use crate::dbconnector::DbConnection;
+use crate::db_connector::DbConnection;
 use crate::Queries;
 use interface::database::Collection;
 use interface::frontend::{AppendForm, QueryForm, UserModel, UserSession};
@@ -52,7 +52,6 @@ async fn database_page_basics(
     })
 }
 
-// the basic interaction page for databases
 #[get("/database/<database>")]
 pub async fn database_page(
     queries: &State<Queries>,
@@ -131,7 +130,6 @@ pub async fn database_append(
     ))
 }
 
-// query is a read, everyone can do that on all public tables
 #[post("/database/<database>/customquery", data = "<form>")]
 pub async fn database_query_custom(
     queries: &State<Queries>,

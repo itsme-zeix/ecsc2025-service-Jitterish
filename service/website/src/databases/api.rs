@@ -1,4 +1,4 @@
-use crate::dbconnector::DbConnection;
+use crate::db_connector::DbConnection;
 use crate::Queries;
 use interface::frontend::UserModel;
 use interface::frontend::UserSession;

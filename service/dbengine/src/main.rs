@@ -110,5 +110,3 @@ async fn main() -> Result<(), Box<dyn Error>> {
     eprintln!("Server terminated.");
     Ok(())
 }
-
-// docker run --security-opt apparmor=unconfined --cap-add SYS_ADMIN --rm --name tmp -it -v .:/app -w /app -e RUST_BACKTRACE=1 debian:trixie target/debug/engine-playground

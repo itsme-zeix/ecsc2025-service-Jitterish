@@ -38,8 +38,6 @@ fn find_compiler() -> PathBuf {
 
 lazy_static! {
     static ref sandbox_mutex: tokio::sync::Mutex<i32> = tokio::sync::Mutex::new(0i32);
-    // pub static ref compiler_path: PathBuf = path::absolute("/home/simeon/Documents/CTF/ecsc2025-service-Jitterish/jit-playground/build/").unwrap();
-    // pub static ref compiler_path: PathBuf = path::absolute("../jit-playground/cmake-build-debug/").unwrap();
     pub static ref compiler_path: PathBuf = find_compiler();
 }
 
