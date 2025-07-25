@@ -66,7 +66,7 @@ async fn command(
         }
 
         Command::Append { collection, data } => {
-            db::append(current_database.as_str(), collection, &data)?;
+            db::append(current_database.as_str(), collection, &data).await?;
         }
 
         Command::Prepare { code } => {

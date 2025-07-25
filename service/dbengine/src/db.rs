@@ -9,11 +9,13 @@ use std::io::ErrorKind::InvalidInput;
 use std::io::Write;
 use std::os::fd::BorrowedFd;
 use std::path::{absolute, Path, PathBuf};
+use tokio::sync::Mutex;
 
 lazy_static! {
     static ref base_data: PathBuf = absolute(Path::new("./data")).unwrap();
     static ref base_queries: PathBuf = absolute(Path::new("./queries")).unwrap();
     static ref COLLECTION_REGEX: Regex = Regex::new(r"^\w{2,32}$").unwrap();
+    static ref write_lock: Mutex<i32> = Mutex::const_new(0);
 }
 
 pub fn dir(database: &str) -> PathBuf {
@@ -42,12 +44,14 @@ pub fn list_collections(database: &str) -> std::io::Result<Vec<String>> {
     Ok(vec)
 }
 
-pub fn append<T: Serialize>(database: &str, collection: &str, data: &T) -> std::io::Result<()> {
+pub async fn append<T: Serialize>(database: &str, collection: &str, data: &T) -> std::io::Result<()> {
     if !COLLECTION_REGEX.is_match(collection) {
         return Err(std::io::Error::new(InvalidInput, "Invalid collection name."));
     }
     let dir = dir(database);
     create_dir_all(&dir)?;
+
+    let _lock = write_lock.lock().await;
     let mut file = OpenOptions::new()
         .create(true)
         .write(true)
