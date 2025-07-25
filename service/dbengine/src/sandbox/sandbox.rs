@@ -1,4 +1,3 @@
-use crate::sandbox::async_unshare::wait_async;
 use lazy_static::lazy_static;
 use nix::libc::{RLIMIT_AS, RLIMIT_CPU, RLIMIT_NICE, RLIMIT_NOFILE, RLIMIT_NPROC, RLIMIT_RSS};
 use nix::unistd::{getgid, getuid};
@@ -9,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
 use tokio::time::timeout;
-use unshare::{GidMap, Namespace, UidMap};
+use unshare::{GidMap, Namespace, UidMap, wait_async};
 
 const COMPILER_PATH_CANDIDATES: [&str; 4] = ["/app/compiler", "../jit/cmake-build-debug", "../jit/build", "../jit"];
 
