@@ -26,10 +26,6 @@ pub async fn userlist(user: Option<UserSession>, queries: &State<Queries>) -> Re
         .execute(&queries.user, "api_users", &json!("null"), false)
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Could not query public users"))?;
-    let private_users: Vec<String> = db
-        .execute(&queries.user, "private_users", &json!("null"), false)
-        .await
-        .map_err(|_| Flash::error(Redirect::to("/"), "Could not query public users"))?;
 
     Ok(Template::render(
         "customers",
@@ -37,7 +33,6 @@ pub async fn userlist(user: Option<UserSession>, queries: &State<Queries>) -> Re
             username: decoded.map(|u| u.username),
             public_users: public_users,
             api_users: api_users,
-            private_users: private_users,  // TODO this might not scale!
         },
     ))
 }
