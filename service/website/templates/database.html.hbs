@@ -43,7 +43,7 @@
                     {{/each}}
                 </select>
                 <input type="hidden" name="query_name" value="q">
-                <input type="hidden" name="params" value="{{form.params}}">
+                <input type="hidden" name="params" value="{{#if form.params}}{{form.params}}{{else}}{}{{/if}}">
                 <p><input data-augmented-ui type="submit" value="run query"></p>
             </form>
         {{else}}
@@ -60,7 +60,7 @@
             <label for="query_name">query_name</label>
             <input type="text" name="query_name" id="query_name" value="{{form.query_name}}">
             <label for="params">params</label>
-            <input type="text" name="params" id="params" value="{{form.params}}">
+            <input type="text" name="params" id="params" value="{{#if form.params}}{{form.params}}{{else}}{}{{/if}}">
             <p><input data-augmented-ui type="submit" value="run custom query"></p>
         </form>
     </div>
