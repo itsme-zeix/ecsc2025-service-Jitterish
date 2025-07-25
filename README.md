@@ -1,5 +1,5 @@
-Jitterish
-=========
+JitterishDB
+===========
 
 Authors:
 
@@ -15,7 +15,7 @@ Categories:
 Overview
 --------
 
-Jitterish is the best cloud storage your company could possibly rent!
+JitterishDB is the best cloud storage your company could possibly rent!
 
 It is a storage service with a web frontend. You can store data and retrieve it again. Data access is via JIT-compiled queries.
 
