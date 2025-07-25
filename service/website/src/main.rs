@@ -1,11 +1,6 @@
 #[macro_use]
 extern crate rocket;
 
-// BEGIN REMOVE IN PROD
-#[cfg(test)]
-mod tests;
-// END REMOVE IN PROD
-
 mod complaint;
 mod databases;
 mod dbconnector;

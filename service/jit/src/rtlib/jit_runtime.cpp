@@ -234,7 +234,6 @@ Value jit_rt_defined(Value v) {
 }
 
 int jit_rt_bool(Value v) {
-    // fprintf(stdout, "[debug] jit_rt_bool 0x%lx => %d\n", v.raw(), v.is_true());
     return v.is_true();
 }
 
