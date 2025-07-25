@@ -69,6 +69,19 @@ ul.menu {
         }
       }
     }
+
+    a.logo {
+      display: block;
+      height: 150%;
+      margin-top: -15%;
+      margin-bottom: -35%;
+
+      /* webpackIgnore: true */
+      background-image: url("/static/img/jitterish-transparent.webp");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+    }
   }
 
   &.icons li {
