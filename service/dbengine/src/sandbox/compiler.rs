@@ -33,7 +33,7 @@ pub async fn compile<P: AsRef<Path>>(code: &str, output: P) -> Result<(), Box<dy
         OpenOptions::new().mode(0o755).create(true).write(true).open(&output)?,
     ));
 
-    let mut child = run_sandboxed::<&str>(cmd, None, None, Duration::from_millis(1000), 750).await?;
+    let mut child = run_sandboxed::<&str>(cmd, None, None, Duration::from_millis(1000), 1024).await?;
     check_exit_status(child.wait()?).map_err(|e| {
         let msg = read_to_string(&output);
         let _ = remove_file(output);
