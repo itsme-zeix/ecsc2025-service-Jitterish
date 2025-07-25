@@ -60,7 +60,7 @@ async fn test_run_ls_1() {
     assert_eq!(0, code);
     assert!(output.contains(" bin"));
     assert!(output.contains(" data"));
-    assert!(output.contains(" proc"));
+    // assert!(output.contains(" proc"));
     assert!(output.contains(" tmp"));
     assert!(!output.contains(" srv"));
     assert!(!output.contains(" var"));
@@ -85,6 +85,7 @@ async fn test_run_ip_link() {
 
 #[tokio::test]
 async fn test_run_file_descriptors() {
+    // fails because we do not share /proc anymore
     let (code, output) = run_cmd("ls -l /proc/1/fd | wc -l").await.unwrap();
     assert_eq!(0, code);
     assert_eq!("4\n", output); // 0-2 + header line
@@ -117,6 +118,7 @@ async fn test_run_touch() {
 
 #[tokio::test]
 async fn test_run_mount() {
+    // does not work anymore - we cannot call "mount" in jail
     let (code, output) = run_cmd("mount").await.unwrap();
     assert_eq!(0, code);
     println!("{}", output);
@@ -129,6 +131,7 @@ async fn test_run_mount() {
 
 #[tokio::test]
 async fn test_run_ps_aux() {
+    // does not work anymore - no /proc means no "ps"
     let (code, output) = run_cmd("ps -aux | wc -l").await.unwrap();
     assert_eq!(0, code);
     assert_eq!("4\n", output); // 0-2 + header line

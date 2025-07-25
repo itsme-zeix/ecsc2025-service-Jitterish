@@ -108,8 +108,6 @@ pub async fn run_sandboxed<P: AsRef<Path>>(
         cmd.fakeroot_mount_file(path::absolute(executable)?, "/app/executable", true);
     }
 
-    // TODO file descriptors should be ok
-
     let guard = sandbox_mutex.lock().await;
     let mut child = cmd.spawn().map_err(|e| format!("spawn {}", e))?;
     drop(guard);
