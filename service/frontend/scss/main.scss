@@ -140,8 +140,16 @@ input {
   list-style-type: "⛁ ";
 }
 
+.text-primary {
+  color: vars.$primary;
+}
+
 .text-secondary {
   color: vars.$secondary;
+}
+
+.text-error {
+  color: vars.$error;
 }
 
 .stats {

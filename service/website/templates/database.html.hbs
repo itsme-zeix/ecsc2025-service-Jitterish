@@ -16,7 +16,7 @@
             {{#each collections}}
                 <li data-role="collection">{{this.name}}</li>
             {{else}}
-                this database is empty
+                <p class="text-primary">This database is empty.</p>
             {{/each}}
         </ul>
     </div>
@@ -34,18 +34,21 @@
                 {{/each}}
             </div>
         {{/if}}
-        <p>You can read all public databases.</p>
-        <form action="/database/{{database}}/customquery" method="post" accept-charset="utf-8">
-            <select name="query" id="query">
-                {{#each collections}}
-                    <option value="query q on {{this.name}};">{{this.name}}</option>
-                {{/each}}
-            </select>
-            <input type="hidden" name="query_name" value="q">
-            <label for="params">params</label>
-            <input type="text" name="params" id="params" value="{}"><!-- TODO not really useful for now? -->
-            <p><input data-augmented-ui type="submit" value="run query"></p>
-        </form>
+        <p>You can read all public collections.</p>
+        {{#if collections}}
+            <form action="/database/{{database}}/customquery" method="post" accept-charset="utf-8">
+                <select name="query" id="query">
+                    {{#each collections}}
+                        <option value="query q on {{this.name}};">{{this.name}}</option>
+                    {{/each}}
+                </select>
+                <input type="hidden" name="query_name" value="q">
+                <input type="hidden" name="params" value="{{form.params}}">
+                <p><input data-augmented-ui type="submit" value="run query"></p>
+            </form>
+        {{else}}
+            <p class="text-error">This database is empty.</p>
+        {{/if}}
     </div>
 
 
