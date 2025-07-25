@@ -7,6 +7,7 @@ cd /service
 find . -name "*_test.rs" -type f -delete
 rm -rf jit/demo
 rm -rf jit/tests
+rm -rf jit/README.md
 rm -rf frontend
 rm -f website/src/tests.rs
 sed -i "/BEGIN REMOVE IN PROD/,/END REMOVE IN PROD/d" dbengine/src/sandbox/sandbox.rs

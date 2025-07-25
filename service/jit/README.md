@@ -16,3 +16,5 @@ Try out (defines 2 queries against sample dataset and runs them):
 Code statistics: `scc -v --exclude-dir generated src`
 
 Tests: `cd tests ; python3 tests_compile.py`
+
+REMOVE IN PROD

@@ -74,7 +74,6 @@ target_sources(jit
 		FILE_SET CXX_MODULES FILES
 		src/codegen/CodegenContext.cppm
 		src/codegen/Compiler.cppm
-		src/JitRunner.cppm
 )
 
 target_link_libraries(jit_rt PRIVATE nlohmann_json::nlohmann_json)

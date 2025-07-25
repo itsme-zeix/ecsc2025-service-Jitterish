@@ -2,7 +2,6 @@
 #include <filesystem>
 
 import CodegenContext;
-import JitRunner;
 import Compiler;
 
 
@@ -25,7 +24,6 @@ void assemble(std::string code, std::string output) {
     cmd += " -L" + runtime_path + " -Wl,-rpath," + runtime_path;
     cmd += " -ljit_rt";
     cmd += " " + assembly_file + " -o \"" + output + "\"";
-    // std::cerr << cmd << std::endl;
     int rc = system(cmd.c_str());
     if (rc != 0)
         throw std::runtime_error("cc failed");
@@ -47,46 +45,24 @@ void file_to_stdout(std::string filename) {
     std::cout << ifs.rdbuf();
 }
 
-int demo_main(int argc, const char *argv[]) {
-    std::string program = R"(func jit_entrypoint() { return 1; })";
-    if (argc > 1) {
-        program = load_file(argv[1]);
-    }
-
-    std::cout << "\n----------------------------------------" << std::endl << std::endl;
-
-    auto assembly = compile_string(program);
-    std::cout << assembly << std::endl;
-    assemble(assembly, "./output.so");
-
-
-    std::cout << "\n----------------------------------------" << std::endl << std::endl;
-    JitRunner::run("./output.so");
-
-    return 0;
-}
-
-int real_main(int argc, const char *argv[]) {
-    if (argc != 3) {
-        std::cerr << "USAGE: " << argv[0] << " <INPUT> <OUTPUT>" << std::endl;
-        return 1;
-    }
-
-    auto program = load_file(argv[1]);
-    auto assembly = compile_string(program);
-    std::string output = argv[2];
-    if (output == "-") {
-        assemble(assembly, "/tmp/tmp.so");
-        file_to_stdout("/tmp/tmp.so");
-    } else {
-        assemble(assembly, output);
-    }
-    return 0;
-}
-
 int main(int argc, const char *argv[]) {
     try {
-        return real_main(argc, argv);
+        if (argc != 3) {
+            std::cerr << "USAGE: " << argv[0] << " <INPUT> <OUTPUT>" << std::endl;
+            return 1;
+        }
+
+        auto program = load_file(argv[1]);
+        auto assembly = compile_string(program);
+        std::string output = argv[2];
+        if (output == "-") {
+            assemble(assembly, "/tmp/tmp.so");
+            file_to_stdout("/tmp/tmp.so");
+        } else {
+            assemble(assembly, output);
+        }
+        return 0;
+
     } catch (const std::runtime_error &e) {
         std::cerr << e.what() << std::endl;
         std::cout << e.what() << std::endl;

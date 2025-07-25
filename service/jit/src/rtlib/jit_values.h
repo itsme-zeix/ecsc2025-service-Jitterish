@@ -1,5 +1,5 @@
-#ifndef JIT_PLAYGROUND_JIT_VALUES_H
-#define JIT_PLAYGROUND_JIT_VALUES_H
+#ifndef RTLIB_JIT_VALUES_H
+#define RTLIB_JIT_VALUES_H
 
 #include <cstdint>
 #include <string>
@@ -92,4 +92,4 @@ typedef Value (*JitFunction)(...);
 
 #define callJitFunction(f, ...) f(0, 0, 0, 0, 0, 0, __VA_ARGS__)
 
-#endif //JIT_PLAYGROUND_JIT_VALUES_H
+#endif //RTLIB_JIT_VALUES_H

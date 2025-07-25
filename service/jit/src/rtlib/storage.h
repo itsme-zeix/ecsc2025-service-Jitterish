@@ -1,5 +1,5 @@
-#ifndef JIT_PLAYGROUND_STORAGE_H
-#define JIT_PLAYGROUND_STORAGE_H
+#ifndef RTLIB_STORAGE_H
+#define RTLIB_STORAGE_H
 
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -19,4 +19,4 @@ public:
     std::optional<json> nextEntry();
 };
 
-#endif //JIT_PLAYGROUND_STORAGE_H
+#endif //RTLIB_STORAGE_H
