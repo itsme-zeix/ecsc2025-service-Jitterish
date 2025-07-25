@@ -1,15 +1,13 @@
-use interface::frontend::{UserModel, UserSession};
+use interface::frontend::{UserSession};
 use rocket::{response::{Flash, Redirect}};
 
 use rocket_dyn_templates::{context, Template};
 
 
 #[get("/session/profile")]
-pub(super) fn index(user: UserSession) -> Result<Template, Flash<Redirect>> {
-    let model: UserModel  = serde_json::from_str(&user.username)
-        .map_err(|_| Flash::error(Redirect::to("/"), "User decode error"))?;
+pub(super) fn index(session: UserSession) -> Result<Template, Flash<Redirect>> {
     // we know that the status is always 4 fields
-    match model.status {
+    match session.user.status {
         serde_json::Value::Object(map) => {
             let num_reports  = map.get("num_reports").ok_or(Flash::error(Redirect::to("/"), "User decode error"))?;
             let num_reports = if let serde_json::Value::Number(inner) = num_reports {
@@ -39,7 +37,7 @@ pub(super) fn index(user: UserSession) -> Result<Template, Flash<Redirect>> {
             Ok(Template::render(
                 "profile",
                 context! {
-                    username: model.username,
+                    username: session.user.username,
                     num_reports: num_reports,
                     looking_for_jobs: looking_for_jobs,
                     current_salary: current_salary,

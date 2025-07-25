@@ -10,7 +10,7 @@ use rocket_dyn_templates::{context, Template};
 use sha2::{Digest, Sha256};
 
 #[get("/session/login")]
-pub(super) fn login(_user: UserSession) -> Redirect {
+pub(super) fn login(_session: UserSession) -> Redirect {
     Redirect::to(uri!(crate::session::profile::index))
 }
 
@@ -37,12 +37,11 @@ pub(super) async fn post_login(
         .execute(&queries.user, "user_by_username", &login.username(), false)
         .await
         .map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Query error"))?;
-    println!("Existing users: {:?}", existing_users);
     let user = one(&existing_users).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Invalid username"))?;
     if hex::encode(Sha256::digest(login.password().as_bytes())) != user.password_hash {
         return Err(Flash::error(Redirect::to(uri!(login_page)), "Invalid password"));
     }
     let user = serde_json::to_string(user).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Could not serialize user!"))?;
-    jar.add_private(("username", user));
+    jar.add_private(("user", user));
     Ok(Redirect::to(uri!(crate::session::profile::index)))
 }

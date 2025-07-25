@@ -23,15 +23,13 @@ struct DatabasePageContext {
 async fn database_page_basics(
     queries: &State<Queries>,
     database: &str,
-    user: &UserSession,
+    session: &UserSession,
 ) -> Result<DatabasePageContext, Flash<Redirect>> {
     let db = get_user(queries, database)
         .await
         .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "Cannot fetch user"))?;
     let db = db.ok_or_else(|| Flash::error(Redirect::to(format!("/database/{}", database)), "No such db"))?;
-    let user: UserModel = serde_json::from_str(&user.username)
-        .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "User decode error"))?;
-    let user_owns_db = db.username == user.username;
+    let user_owns_db = db.username == session.user.username;
     if !db.allow_public_queries && !user_owns_db {
         return Err(Flash::error(Redirect::to("/"), "Not authorized"));
     }
@@ -60,17 +58,15 @@ pub async fn database_page(
     queries: &State<Queries>,
     flash: Option<FlashMessage<'_>>,
     database: &str,
-    user: UserSession,
+    session: UserSession,
 ) -> Result<Template, Flash<Redirect>> {
-    let ctx = database_page_basics(queries, database, &user).await?;
-    let model: UserModel = serde_json::from_str(&user.username)
-        .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "User decode error"))?;
+    let ctx = database_page_basics(queries, database, &session).await?;
 
     Ok(Template::render(
         "database",
         context! {
             flash: flash,
-            username: model.username,
+            username: session.user.username,
             database: database,
             collections: ctx.collections,
             db: ctx.db,
@@ -89,12 +85,10 @@ pub async fn database_append(
     queries: &State<Queries>,
     flash: Option<FlashMessage<'_>>,
     database: &str,
-    user: UserSession,
+    session: UserSession,
     form: Form<AppendForm<'_>>,
 ) -> Result<Template, Flash<Redirect>> {
-    let model: UserModel = serde_json::from_str(&user.username)
-        .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "User decode error"))?;
-    let mut ctx = database_page_basics(queries, database, &user).await?;
+    let mut ctx = database_page_basics(queries, database, &session).await?;
     if !ctx.user_owns_db {
         return Err(Flash::error(
             Redirect::to(format!("/database/{}", database)),
@@ -125,7 +119,7 @@ pub async fn database_append(
         "database",
         context! {
             flash: flash,
-            username: model.username,
+            username: session.user.username,
             database: database,
             collections: ctx.collections,
             db: ctx.db,
@@ -143,12 +137,10 @@ pub async fn database_query_custom(
     queries: &State<Queries>,
     flash: Option<FlashMessage<'_>>,
     database: &str,
-    user: UserSession,
+    session: UserSession,
     form: Form<QueryForm<'_>>,
 ) -> Result<Template, Flash<Redirect>> {
-    let model: UserModel = serde_json::from_str(&user.username)
-        .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "User decode error"))?;
-    let mut ctx = database_page_basics(queries, database, &user).await?;
+    let mut ctx = database_page_basics(queries, database, &session).await?;
 
     match ctx.conn.prepare(&form.query).await {
         Ok(code_ref) => match serde_json::from_str::<Value>(form.params) {
@@ -181,7 +173,7 @@ pub async fn database_query_custom(
         "database",
         context! {
             flash: flash,
-            username: model.username,
+            username: session.user.username,
             database: database,
             collections: ctx.collections,
             db: ctx.db,
@@ -194,8 +186,8 @@ pub async fn database_query_custom(
 }
 
 #[get("/database/<database>/script")]
-pub async fn database_script(queries: &State<Queries>, database: &str, user: UserSession) -> Result<String, Flash<Redirect>> {
-    let ctx = database_page_basics(queries, database, &user).await?;
+pub async fn database_script(queries: &State<Queries>, database: &str, session: UserSession) -> Result<String, Flash<Redirect>> {
+    let ctx = database_page_basics(queries, database, &session).await?;
     if !ctx.db.allow_public_kv {
         return Err(Flash::error(
             Redirect::to(format!("/database/{}", database)),

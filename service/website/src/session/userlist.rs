@@ -1,20 +1,13 @@
 use crate::dbconnector::DbConnection;
 use crate::Queries;
-use interface::frontend::{UserModel, UserSession};
+use interface::frontend::{UserSession};
 use rocket::response::{Flash, Redirect};
 use rocket::State;
 use rocket_dyn_templates::{context, Template};
 use serde_json::json;
 
 #[get("/customers")]
-pub async fn userlist(user: Option<UserSession>, queries: &State<Queries>) -> Result<Template, Flash<Redirect>> {
-    let decoded = if let Some(inner) = user {
-        let model: UserModel  = serde_json::from_str(&inner.username)
-            .map_err(|_| Flash::error(Redirect::to("/"), "User decode error"))?;
-        Some(model)
-    } else {
-        None
-    };
+pub async fn userlist(session: Option<UserSession>, queries: &State<Queries>) -> Result<Template, Flash<Redirect>> {
     let mut db = DbConnection::open("_")
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Database not reachable"))?;
@@ -30,7 +23,7 @@ pub async fn userlist(user: Option<UserSession>, queries: &State<Queries>) -> Re
     Ok(Template::render(
         "customers",
         context! {
-            username: decoded.map(|u| u.username),
+            username: session.map(|session| session.user.username),
             public_users: public_users,
             api_users: api_users,
         },

@@ -19,7 +19,7 @@ lazy_static! {
 
 // if we are registered (that is, we have a user), redirect to index instead
 #[get("/session/register")]
-pub(super) fn register(_user: UserSession) -> Redirect {
+pub(super) fn register(_session: UserSession) -> Redirect {
     Redirect::to(uri!(crate::session::profile::index))
 }
 
@@ -157,7 +157,7 @@ pub(super) async fn post_register(
         .map_err(|_| Flash::error(Redirect::to("/"), "User by username query error"))?;
     if let Some(new_user) = existing_users_new.pop() {
         let user = serde_json::to_string(&new_user).map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "Could not serialize user!"))?;
-        jar.add_private(("username", user));
+        jar.add_private(("user", user));
         Ok(Redirect::to(uri!(crate::session::profile::index)))
     } else {
         Err(Flash::error(Redirect::to(uri!(register_page)), "User not added to db."))

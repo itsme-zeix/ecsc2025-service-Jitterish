@@ -58,7 +58,7 @@ pub async fn api_create(
         KvEntry {
             key: key.as_str(),
             value: value.into_inner(),
-            owner: session.as_ref().map(|s| s.username.as_str()),
+            owner: session.as_ref().map(|s| s.user.username.as_str()),
         },
     )
     .await?;
@@ -82,7 +82,7 @@ pub async fn api_token(
         .execute_one(
             &queries.api,
             "is_authorized",
-            &json!({"key": key, "user": session.map(|s| s.username), "token": ""}),
+            &json!({"key": key, "user": session.map(|s| s.user.username), "token": ""}),
         )
         .await?;
 
@@ -110,7 +110,7 @@ pub async fn api_get(
         .execute(
             &queries.api,
             &format!("get_{}", what),
-            &json!({"key": key, "user": session.map(|s| s.username), "token": token}),
+            &json!({"key": key, "user": session.map(|s| s.user.username), "token": token}),
             false,
         )
         .await?;

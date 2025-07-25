@@ -11,18 +11,16 @@ use crate::{dbconnector::DbConnection, Queries};
 pub async fn support<'a>(
     queries: &State<Queries>,
     flash: Option<FlashMessage<'_>>,
-    user: UserSession,
+    session: UserSession,
     jar: &CookieJar<'a>
 ) -> Result<Template, Flash<Redirect>> {
-    let user: UserModel  = serde_json::from_str(&user.username)
-        .map_err(|_| Flash::error(Redirect::to("/"), "User decode error"))?;
     let mut db = DbConnection::open("_")
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Database not reachable"))?;
 
     // get all reported users
     let all_target_complaints: Vec<UserModel> = db
-        .execute(&queries.complaint, "get_reported_users", &user.username, false)
+        .execute(&queries.complaint, "get_reported_users", &session.user.username, false)
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Get complaints query error 1"))?;
 
@@ -30,19 +28,19 @@ pub async fn support<'a>(
     // but we can report a single user multiple times, so the number of reports might differ.
     // we get it via a dedicated query
     let updated_user: UserModel = db
-        .execute(&queries.complaint, "get_user_numreports", &user.username, false)
+        .execute(&queries.complaint, "get_user_numreports", &session.user.username, false)
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Get complaints query error 2"))?
         .pop()
         .ok_or(Flash::error(Redirect::to("/"), "Could not update my usermodel!"))?;
-    jar.remove_private("username");
+    jar.remove_private("user");
     let user_json = serde_json::to_string(&updated_user).map_err(|_| Flash::error(Redirect::to("/"), "User encode error"))?;
-    jar.add_private(("username", user_json));
+    jar.add_private(("user", user_json));
     Ok(Template::render(
         "complaints",
         context! {
             flash: flash,
-            username: user.username,
+            username: session.user.username,
             user: updated_user,
             reported_targets: all_target_complaints.len(),
         },
@@ -57,11 +55,9 @@ pub async fn no_auth_support() -> Redirect {
 #[post("/support", data = "<form>")]
 pub async fn save_complaint(
     queries: &State<Queries>,
-    user: UserSession,
+    session: UserSession,
     form: Form<SupportForm<'_>>,
 ) -> Result<Flash<Redirect>, Flash<Redirect>> {
-    let model: UserModel  = serde_json::from_str(&user.username)
-        .map_err(|_| Flash::error(Redirect::to("/"), "User decode error"))?;
     // open db connection
     let mut db = DbConnection::open("_")
         .await
@@ -77,7 +73,7 @@ pub async fn save_complaint(
 
     // now get the actual usermodel of the current user
     let mut logged_in_user: Vec<UserModel> = db
-        .execute(&queries.user, "user_by_username", &model.username, false)
+        .execute(&queries.user, "user_by_username", &session.user.username, false)
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "User by username query error"))?;
         // we know the query has limit 1, so there will be exactly one report

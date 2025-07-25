@@ -1,6 +1,10 @@
-use rocket::{http::Status, outcome::IntoOutcome, request::{self, FromRequest}, FromForm, Request};
+use rocket::{
+    http::Status,
+    outcome::IntoOutcome,
+    request::{self, FromRequest},
+    FromForm, Request,
+};
 use serde::{Deserialize, Serialize};
-
 
 #[derive(FromForm, Serialize, Deserialize, Debug)]
 pub struct Query<'r> {
@@ -21,7 +25,7 @@ pub struct Register<'r> {
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
 pub struct Login<'r> {
     username: &'r str,
-    password: &'r str
+    password: &'r str,
 }
 
 impl Login<'_> {
@@ -33,17 +37,19 @@ impl Login<'_> {
     }
 }
 
-#[derive(Debug)]
-pub struct UserSession {
-    pub username: String,
-}
-
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for UserSession {
     type Error = std::convert::Infallible;
 
     async fn from_request(request: &'r Request<'_>) -> request::Outcome<UserSession, Self::Error> {
-        request.cookies().get_private("username") .map(|cookie| UserSession { username: cookie.value().to_owned() })
+        request
+            .cookies()
+            .get_private("user")
+            .and_then(|cookie| {
+                serde_json::from_str(&cookie.value())
+                    .map(|user| UserSession { user })
+                    .ok()
+            })
             .or_forward(Status::Unauthorized)
     }
 }
@@ -53,16 +59,20 @@ pub struct DbForm<'r> {
     pub db: &'r str,
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UserModel {
     pub username: String, // = database name (at least 3 chars, [A-Za-z0-9_] only, must be unique)
     pub password_hash: String,
-    pub status: serde_json::Value, 
+    pub status: serde_json::Value,
 
     // Permissions for the database
     pub allow_public_queries: bool, // = anybody can query public collections
     pub allow_public_kv: bool,      // = anybody can access this with the "kv api"
+}
+
+#[derive(Debug)]
+pub struct UserSession {
+    pub user: UserModel,
 }
 
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
@@ -77,7 +87,6 @@ pub struct QueryForm<'r> {
     pub query_name: &'r str,
     pub params: &'r str,
 }
-
 
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
 pub struct SupportForm<'r> {
