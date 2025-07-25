@@ -20,13 +20,11 @@ pub async fn support<'a>(
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Database not reachable"))?;
 
-    // get all reported users. Later only print the length of the list
+    // get all reported users
     let all_target_complaints: Vec<UserModel> = db
-        // .execute(&queries.complaint, "get_reported_users", &user.username, false)
         .execute(&queries.complaint, "get_reported_users", &user.username, false)
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Get complaints query error 1"))?;
-    // println!("User {:?} reported {:?} users!", user.username, all_target_complaints.len());
 
     // the previous query returns reported users, letting us deduce the number of reported users,
     // but we can report a single user multiple times, so the number of reports might differ.
@@ -37,10 +35,9 @@ pub async fn support<'a>(
         .map_err(|_| Flash::error(Redirect::to("/"), "Get complaints query error 2"))?
         .pop()
         .ok_or(Flash::error(Redirect::to("/"), "Could not update my usermodel!"))?;
-    // println!("Updated user: {:?}", updated_user);
     jar.remove_private("username");
-    let ser = serde_json::to_string(&updated_user).map_err(|_| Flash::error(Redirect::to("/"), "User encode error"))?;
-    jar.add_private(("username", ser));
+    let user_json = serde_json::to_string(&updated_user).map_err(|_| Flash::error(Redirect::to("/"), "User encode error"))?;
+    jar.add_private(("username", user_json));
     Ok(Template::render(
         "complaints",
         context! {
@@ -70,7 +67,6 @@ pub async fn save_complaint(
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Database not reachable"))?;
     // get the user to report
-    println!("Getting target user {:?}", form.target_user);
     let target_user: UserModel = db
         .execute(&queries.user, "user_by_username", &form.target_user, false)
         .await
@@ -80,7 +76,6 @@ pub async fn save_complaint(
         .ok_or(Flash::error(Redirect::to(uri!(support)), "Database does not exist!"))?;
 
     // now get the actual usermodel of the current user
-    println!("Getting logged in user user {:?}", model.username);
     let mut logged_in_user: Vec<UserModel> = db
         .execute(&queries.user, "user_by_username", &model.username, false)
         .await
@@ -89,20 +84,15 @@ pub async fn save_complaint(
     let logged_in_user = logged_in_user
         .pop()
         .ok_or(Flash::error(Redirect::to(uri!(support)), "Your account is missing!"))?;
-    // println!("Complaint, reporter: {:?}, target: {:?}", logged_in_user, target_user);
-    let time = Utc::now();
     let complaint = Complaint {
         reporting_user: logged_in_user,
         target_user: target_user,
-        timestamp: time.to_rfc3339(),
+        timestamp: Utc::now().to_rfc3339(),
         description: form.description.to_string(),
     };
     db.append("complaints", complaint)
         .await
         .map_err(|e| Flash::error(Redirect::to(uri!(support)), format!("Append failed: {}", e)))?;
-    println!("##################################");
-    println!("Got a report for {:?}", form.target_user);
-    println!("##################################");
     Ok(Flash::success(
         Redirect::to(uri!(support)),
         "your complaint has been submitted, we'll get back to you soon.", // TODO add LLM to generate replies

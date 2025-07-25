@@ -2,12 +2,16 @@
     <h1>Your Account</h1>
 
     <div data-augmented-ui="" class="main-card">
-        <p>Logged in with user &quot;{{ username }}&quot;.</p>
-        <p>Your stats:</p>
-        <p>Number of reports: &quot;{{ num_reports }}&quot;.</p>
-        <p>Looking for job: &quot;{{ looking_for_jobs }}&quot;.</p>
-        <p>Current salary: &quot;{{ current_salary }}&quot;.</p>
-        <p>Custom: &quot;{{ custom }}&quot;.</p>
+        <p>Logged in with user <span class="text-secondary">&quot;{{ username }}&quot;</span>.</p>
+
+        <div class="stats"><strong>{{num_reports}}</strong> reports filed</div>
+        {{# if looking_for_jobs }}
+            <div class="stats"><strong>looking</strong> for a job</div>
+        {{else}}
+            <div class="stats"><strong>not</strong> looking for a job</div>
+        {{/if}}
+        <div class="stats"><strong>{{ current_salary }}$</strong> current salary</div>
+        <div class="stats"><strong>{{ custom }}</strong> custom info</div>
 
         <br>
         <a data-augmented-ui href="/database/{{username}}" class="btn btn-secondary">Manage DB</a>

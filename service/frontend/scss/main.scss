@@ -139,3 +139,23 @@ input {
 .database-list {
   list-style-type: "⛁ ";
 }
+
+.text-secondary {
+  color: vars.$secondary;
+}
+
+.stats {
+  padding: .1rem .25rem;
+  margin: .5rem 0;
+
+  &:before {
+    content: "›";
+    margin-right: .25rem;
+    color: vars.$primary;
+  }
+
+  strong {
+    color: vars.$secondary;
+    margin-right: .25rem;
+  }
+}

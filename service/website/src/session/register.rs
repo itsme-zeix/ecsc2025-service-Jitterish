@@ -36,30 +36,25 @@ fn recover_str(status_in: &str) -> Result<Value, Flash<Redirect>> {
 
     if status_parsed.is_err() {
         let mut chars: Vec<char> = status_in.chars().collect();
-        let tmp = chars.clone();
-        let first = tmp.first();
-        if first.is_none() {
-            return Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"));
-        }
+        let first = chars.first().cloned();
         let last = chars.pop();
-        if last.is_none() {
+        if first.is_none() || last.is_none() {
             return Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"));
         }
-        // if we only have one non-alphanumeric char at start or end,
-        // we can recover with quotes
+        // if we only have one non-alphanumeric char at start or end, we can recover with quotes
         if first.unwrap().is_alphanumeric() || last.unwrap().is_alphanumeric() {
             let mut quoted = String::from(status_in);
             quoted.insert(0,'"');
             quoted.push('"');
             let n = serde_json::from_str(&quoted);
             if n.is_err() {
-                return Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"));
+                Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"))
             } else {
-                return Ok(n.unwrap());
+                Ok(n.unwrap())
             }
         } else {
             // neither start nor end is alphanumeric, we cannot recover
-            return Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"));
+            Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"))
         }
     } else {
         Ok(status_parsed.unwrap())
@@ -160,13 +155,12 @@ pub(super) async fn post_register(
         .execute(&queries.user, "user_by_username", &register.username, false)
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "User by username query error"))?;
-    let tmp = existing_users_new.pop();
-    if let Some(inner) = tmp {
-        let user = serde_json::to_string(&inner).map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "Could not serialize user!"))?;
+    if let Some(new_user) = existing_users_new.pop() {
+        let user = serde_json::to_string(&new_user).map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "Could not serialize user!"))?;
         jar.add_private(("username", user));
         Ok(Redirect::to(uri!(crate::session::profile::index)))
     } else {
-        return Err(Flash::error(Redirect::to(uri!(register_page)), "User not added to db."));
+        Err(Flash::error(Redirect::to(uri!(register_page)), "User not added to db."))
     }
 
 }
