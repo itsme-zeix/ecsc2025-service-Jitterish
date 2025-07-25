@@ -10,7 +10,6 @@ Categories:
 
 - Pwn
 - Misc
-- ?
 
 Overview
 --------
@@ -60,7 +59,7 @@ Rough idea is to have at least one flag stores per component (so at least 3 in t
 
 The first flag store is an account with a private and a public table (account type: community). 
 Attackers can run JIT code against the public table but not the private table.
-Bypassing the JIT limits (or RCE) give access to the private table.
+Bypassing the JIT limits (or RCE) gives access to the private table.
 
 ### Flag Store 2
 
@@ -69,7 +68,8 @@ There's a (pre-defined) API script bound to these accounts, which allows append 
 
 ### Flag Store 3
 
-Some user data in the system account's tables. Email address, or an additional table. Details tbd...
+A user with a flag in its "custom" profile data.
+
 
 Vulnerabilities
 ---------------
@@ -110,16 +110,14 @@ There's a collection including authentication data, so we can authenticate ourse
 - Patchability: easy
 - Categories: misc
 
-### Flag Store 3, Vuln 1 (sth in Web Frontend)
+### Flag Store 3, Vuln 1 (protocol desync)
 
-tbd.
-Maybe a typical misc/web vulnerability, or some vulnerable queries in our own jitted language.
-And we still have a protocol desync in our communication which might exploit sth.
-Whatever feels natural in the chosen web framework.
-- Difficulty: tbd, maybe easy to medium
-- Discoverability: ?
-- Patchability: ?
-- Categories: misc or web
+You can desync the protocol between website and engine if the jit outputs invalid data (e.g., `undefined`).
+Triggering the desync on the complaints endpoint allows you to load other user's data to your session.
+- Difficulty: medium to hard
+- Discoverability: hard
+- Patchability: easy
+- Categories: misc
 
 
 Patches
@@ -136,11 +134,13 @@ Replace `RawValue` with `Value`, either in engine or website.
 
 ### Flag Store 3, Vuln 1
 
-TBD.
+Properly handle connection errors, or typecheck user registration.
 
 ## Current status
 
-- Service playable, with flag store 3 missing.
+- Service ready and playable.
+- Checkers ready and tested.
+- Exploits working.
 
 
 Work Packages
@@ -254,14 +254,14 @@ gantt
     section WP 3: Frontend
         WP 3.1 Frontend Prototype                   :done, singlechar_wp31, after start, 65d
         WP 3.2 Backend integration                  :done, singlechar_wp33, after singlechar_wp31 mkb_wp11, 30d
-        WP 3.3 Web Flagstore                        :active, singlechar_wp32, after singlechar_wp31, 60d
+        WP 3.3 Web Flagstore                        :done, singlechar_wp32, after singlechar_wp31, 60d
         WP 3.4 Frontend Styling                     :done, singlechar_wp34, after singlechar_wp33, 14d
         Fixing Frontend                             :crit, after ctftest, until end
     section WP 4: Checker & Setup
         WP 4.1 Dockerize                            :done, both_wp40, after mkb_wp11 mkb_wp22 singlechar_wp31, 30d
         WP 4.1 Service Interaction                  :done, both_wp41, after mkb_wp13 mkb_wp22 both_wp40, 14d
         WP 4.2 Code Generation                      :done, both_wp42, after both_wp41, 14d
-        WP 4.3 Exploits                             :both_wp43, after mkb_wp13 mkb_wp23, 14d
+        WP 4.3 Exploits                             :done, both_wp43, after mkb_wp13 mkb_wp23, 14d
         Fixing Checker                              :crit, after ctftest, until end
     section Milestones
         Start                                       :milestone, crit, start, 2025-02-21, 0d
