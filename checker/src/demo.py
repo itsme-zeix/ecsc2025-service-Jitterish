@@ -43,7 +43,7 @@ class DemoRunner:
             'team_id': 1,
             'team_name': 'test',
             'current_round_id': 1,
-            'variant_id': 2,
+            'variant_id': 0,
             'timeout': 30000,
             'round_length': 120,
             'task_chain_id': '',
@@ -63,9 +63,10 @@ class DemoRunner:
         await self.run(task)
         #'''
 
-        await self.run(PutnoiseCheckerTaskMessage(**params))
-        await self.run(GetnoiseCheckerTaskMessage(related_round_id=1, **params))
-        await self.run(HavocCheckerTaskMessage(**params))
+        if params['variant_id'] < 2:
+            await self.run(PutnoiseCheckerTaskMessage(**params))
+            await self.run(GetnoiseCheckerTaskMessage(related_round_id=1, **params))
+            await self.run(HavocCheckerTaskMessage(**params))
 
         self.report()
 

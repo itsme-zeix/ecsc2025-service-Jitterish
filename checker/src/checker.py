@@ -354,7 +354,7 @@ async def getflag_profile(task: GetflagCheckerTaskMessage, logger: LoggerAdapter
     assert_in(task.flag, profile_data.text, "Flag missing")
 
 
-async def register_random_account(client, db, req_num_reports=False, req_lfj=False, req_salary=False, req_custom=False):
+async def register_random_account(client, random_num_reports=True):
     """
     Register a random "business" account (that will not show up on the user list)
     """
@@ -365,13 +365,13 @@ async def register_random_account(client, db, req_num_reports=False, req_lfj=Fal
     current_salary = None
     custom = None
     fields = random.choices([True, False], k=4)
-    if fields[0] or req_num_reports:
+    if fields[0] and random_num_reports:
         num_reports = random.randrange(0, 100)
-    if fields[1] or req_lfj:
+    if fields[1]:
         looking_for_job = (random.randrange(0, 2) == 1)
-    if fields[2] or req_salary:
+    if fields[2]:
         current_salary = random.randrange(0, 1000000)
-    if fields[3] or req_custom:
+    if fields[3]:
         # TODO: this could be useful words/combinations
         custom = ' '.join(generate_username() for _ in range(random.randint(1, 10)))
 
@@ -389,7 +389,7 @@ async def putnoise_profile(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapt
     # TODO if a single client registers multiple times, is this fingerprintable?
     # check here that registering with a json status still works
     client = JitterishClient(logger, httpclient)
-    username, password, num_reports, looking_for_job, current_salary, custom = await register_random_account(client, db)
+    username, password, num_reports, looking_for_job, current_salary, custom = await register_random_account(client)
     await client.logout()
     await db.set("profile_noise_account", (username, password, num_reports, looking_for_job, current_salary, custom))
 
@@ -434,17 +434,17 @@ async def havoc_check_user_accounts(task: HavocCheckerTaskMessage, logger: Logge
     # register the victims
     for _ in range(0, actual_num_reports):
         client = JitterishClient(logger, httpclient)
-        target_username, _, _, _, _, _ = await register_random_account(client, db)
+        target_username, _, _, _, _, _ = await register_random_account(client)
         victims.append(target_username)
         await client.logout()
+        client.client.cookies.clear()
 
     # register the reporter
     client = JitterishClient(logger, httpclient)
-    await register_random_account(client, db, req_num_reports=True)
+    await register_random_account(client, random_num_reports=False)
     # report the victims
     for v in victims:
-        l = random.randint(4, 16)
-        reason = generate_random_string(l, False)
+        reason = generate_random_string(random.randint(4, 16), False)
         await client.report(v, reason)
     # after report, the profile num reports entry should match the number of reports we issued
     response = await client.get('/session/profile')
@@ -452,26 +452,27 @@ async def havoc_check_user_accounts(task: HavocCheckerTaskMessage, logger: Logge
     assert_in(f'<strong>{actual_num_reports}</strong>', response.text,
               f"num_reports wrong, expected {actual_num_reports}")
     await client.logout()
-    pass
 
 
-async def signup_broken(client):
+async def signup_broken(client: JitterishClient):
     username = generate_username()
     password = generate_password()
     data = {"username": username, "password": password, "firstname": "script", "lastname": "script",
             "status": '{"num_reports":[]}', "accounttype": "business"}
     await client.post('/session/register', data=data, follow_redirects=True)
     await client.logout()
+    client.client.cookies.clear()
     return username
 
 
-async def signup_useless(client):
+async def signup_useless(client: JitterishClient):
     username = generate_username()
     password = generate_password()
     await client.register(username, password,
                           generate_random_string(8, False), generate_random_string(8, False),
                           'business')
     await client.logout()
+    client.client.cookies.clear()
     return username
 
 
