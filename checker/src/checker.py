@@ -1,4 +1,5 @@
 import json
+import random
 from contextlib import contextmanager
 from functools import wraps
 from logging import LoggerAdapter
@@ -27,13 +28,14 @@ from codegen import CodeGenerator, Context, StringConst, expr_value, Collection,
 T = TypeVar("T")
 P = ParamSpec("P")
 
-checker = Enochecker("Jitterish", 8000)
+checker = Enochecker("JitterishDB", 8000)
 app = lambda: checker.app
 
 """
 === VARIANTS ===
 0 = community, private collections, pwn the jit
-1 = enterprise, private DB with public API, pwn the storage format
+1 = business, flag in profile, pwn the communication protocol with the support feature
+2 = enterprise, private DB with public API, pwn the storage format
 """
 
 
@@ -294,7 +296,7 @@ async def getnoise_community(task: GetnoiseCheckerTaskMessage, logger: LoggerAda
 
 @checker.havoc(1)
 async def havoc_check_static_pages(task: HavocCheckerTaskMessage, logger: LoggerAdapter, client: AsyncClient, db: ChainDB,
-                di: DependencyInjector) -> None:
+                                   di: DependencyInjector) -> None:
     await client.get('/')
     await client.get('/docs')
 
@@ -397,10 +399,9 @@ async def exploit_jit_rce(database: str, logger: LoggerAdapter, searcher: FlagSe
 
 @checker.putflag(0)
 @handle_invalid_response_exceptions
-# just register with flag as custom 
-# TODO: we can randomize the register a bit more, with randomly set salary, custom etc
 async def putflag_profile(task: PutflagCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                           db: ChainDB) -> str:
+    """Create a user with the flag in its "custom" profile field"""
     client = JitterishClient(logger, httpclient)
 
     username = generate_username()
@@ -444,7 +445,10 @@ async def getflag_profile(task: GetflagCheckerTaskMessage, logger: LoggerAdapter
     assert_in(task.flag, profile_data.text, "Flag missing")
 
 
-async def register_raw_wrapper(client, db, req_num_reports=False, req_lfj=False, req_salary=False, req_custom=False):
+async def register_random_account(client, db, req_num_reports=False, req_lfj=False, req_salary=False, req_custom=False):
+    """
+    Register a random "business" account (that will not show up on the user list)
+    """
     username = generate_username()
     password = generate_password()
     num_reports = None
@@ -460,30 +464,29 @@ async def register_raw_wrapper(client, db, req_num_reports=False, req_lfj=False,
         current_salary = random.randrange(0, 1000000)
     if fields[3] or req_custom:
         # TODO: this could be useful words/combinations
-        custom = generate_username()
-    account_type = random.choice(['enterprise', 'community', 'business'])
+        custom = ' '.join(generate_username() for _ in range(random.randint(1, 10)))
 
     await client.register_raw(username, password, generate_random_string(8, False), generate_random_string(8, False),
-                              account_type, custom, num_reports, looking_for_job, current_salary)
+                              'business', custom, num_reports, looking_for_job, current_salary)
     # task.flag
     # task.task_id flag id?
-    return (username, password, num_reports, looking_for_job, current_salary, custom)
+    return username, password, num_reports, looking_for_job, current_salary, custom
 
 
 @checker.putnoise(0)
+@handle_invalid_response_exceptions
 async def putnoise_profile(task: PutnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient,
                            db: ChainDB) -> None:
     # TODO if a single client registers multiple times, is this fingerprintable?
     # check here that registering with a json status still works
     client = JitterishClient(logger, httpclient)
-    username, password, num_reports, looking_for_job, current_salary, custom = await register_raw_wrapper(client, db)
+    username, password, num_reports, looking_for_job, current_salary, custom = await register_random_account(client, db)
     await client.logout()
     await db.set("profile_noise_account", (username, password, num_reports, looking_for_job, current_salary, custom))
 
-    pass
-
 
 @checker.getnoise(0)
+@handle_invalid_response_exceptions
 async def getnoise_profile(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
                            di: DependencyInjector) -> None:
     try:
@@ -508,12 +511,11 @@ async def getnoise_profile(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapt
         assert_in(custom, profile_data.text, "Custom missing")
     await client.logout()
 
-    pass
-
 
 @checker.havoc(0)
+@handle_invalid_response_exceptions
 async def havoc_check_user_accounts(task: HavocCheckerTaskMessage, logger: LoggerAdapter, httpclient: AsyncClient, db: ChainDB,
-                di: DependencyInjector) -> None:
+                                    di: DependencyInjector) -> None:
     # we need to test the num_reports increment, as the update does not persist after a logout
     actual_num_reports = random.randint(1, 3)
     victims = []
@@ -521,14 +523,13 @@ async def havoc_check_user_accounts(task: HavocCheckerTaskMessage, logger: Logge
     # register the victims
     for _ in range(0, actual_num_reports):
         client = JitterishClient(logger, httpclient)
-        target_username, _, _, _, _, _ = await register_raw_wrapper(client, db)
+        target_username, _, _, _, _, _ = await register_random_account(client, db)
         victims.append(target_username)
         await client.logout()
 
     # register the reporter
     client = JitterishClient(logger, httpclient)
-    username, password, num_reports, looking_for_job, current_salary, custom = await register_raw_wrapper(client, db,
-                                                                                                          req_num_reports=True)
+    await register_random_account(client, db, req_num_reports=True)
     # report the victims
     for v in victims:
         l = random.randint(4, 16)

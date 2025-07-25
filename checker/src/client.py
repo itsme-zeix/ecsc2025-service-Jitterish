@@ -68,9 +68,8 @@ class JitterishClient:
         self.logger.info(f'Registered {username!r} (password {password!r})')
 
 
-    async def register_raw(self, username: str, password: str, first: str, last: str, accounttype: Literal['community',
-                                                                                                           'business',
-                                                                                                           'enterprise'],
+    async def register_raw(self, username: str, password: str, first: str, last: str,
+                           accounttype: Literal['community', 'business', 'enterprise'],
                            custom: str, num_reports: int, looking_for_job: bool, current_salary: int) -> None:
         await self.get('/session/register')
         status_data = {}
