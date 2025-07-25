@@ -12,11 +12,24 @@
 @import "tiers";  // "tiers" on register page
 @import "docs";  // "docs" page only
 
+@font-face {
+    font-family: 'SAIBA-45';
+    font-style: normal;
+    font-weight: 400;
+    src: local('SAIBA-45'), url('https://fonts.cdnfonts.com/s/108519/SAIBA-45.woff') format('woff');
+}
+@font-face {
+    font-family: 'SAIBA-45-Outline';
+    font-style: normal;
+    font-weight: 400;
+    src: local('SAIBA-45-Outline'), url('https://fonts.cdnfonts.com/s/108519/SAIBA-45-Outline.woff') format('woff');
+}
+
 :root {
   --sans-font: Titillium Web, "Segoe UI Web (West European)", Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif;
 
   color-scheme: dark;
-  --bg: #212121;
+  --bg: #181b1f;
   --accent-bg: #{vars.$accent-bg};
   --text: #dcdcdc;
   --text-light: #{vars.$text-light}; // #ababab;
@@ -55,9 +68,10 @@ p {
 
 h1 {
   color: vars.$primary;
-  font-weight: 400;
+  font-weight: 300;
   font-variant: small-caps;
   text-shadow: 0 0 .4rem color.adjust(vars.$primary, $lightness: -10%);
+  font-family: 'SAIBA-45', var(--sans-font);
 
   text-align: center;
 
@@ -65,7 +79,8 @@ h1 {
     display: block;
     margin-top: .5rem;
     font-size: 1.5rem;
-    font-weight: 300;
+    font-weight: bold;
+    font-family: 'SAIBA-45-Outline', var(--sans-font);
     color: color.adjust(vars.$primary, $lightness: -10%);
     text-shadow: none;
 
