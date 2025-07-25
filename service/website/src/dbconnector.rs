@@ -43,37 +43,15 @@ impl DbConnection {
             }
 
             match serde_json::from_str(&line.trim()) {
-                Ok(value ) => {
-                    // If a query returns something, we have values in the array
-                    // otherwise its empty
-                    // TODO REALLY???
-                    /*
-                    if let Value::Array(response) = value {
-                        println!("MATCH ARRAY: {:?}", &response);
-                        for v in response {
-                            match serde_json::from_value(v) {
-                                Ok(t) => {
-                                    result.push(t);
-                                },
-                                Err(e) => {
-                                    println!("Match error: {:?}", e);
-                                },
-                            }
-                            // serde_json::from_value(value).ok().map(|t| result.push(t));
-                        }
-                    // for all non-query db communication, we need to have a different parsing
-                    } else {
-                        println!("MATCH NOT ARRAY: {:?}", &value);
-                     */
-                        match serde_json::from_value(value) {
-                            Ok(t) => {
-                                result.push(t);
-                            },
-                            Err(e) => {
-                                println!("Conversion error: {:?}", e);
-                            },
-                        }
-                    //}
+                Ok(value) => {
+                    match serde_json::from_value(value) {
+                        Ok(t) => {
+                            result.push(t);
+                        },
+                        Err(e) => {
+                            println!("Conversion error: {:?}", e);
+                        },
+                    }
                 }
                 Err(_) => {
                     return if line == "OK\n" || !result.is_empty() {
