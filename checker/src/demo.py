@@ -43,7 +43,7 @@ class DemoRunner:
             'team_id': 1,
             'team_name': 'test',
             'current_round_id': 1,
-            'variant_id': 0,
+            'variant_id': 2,
             'timeout': 30000,
             'round_length': 120,
             'task_chain_id': '',

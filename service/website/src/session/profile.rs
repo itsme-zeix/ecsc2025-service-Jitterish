@@ -37,7 +37,7 @@ pub(super) fn index(user: UserSession) -> Result<Template, Flash<Redirect>> {
             }?;
 
             Ok(Template::render(
-                "session",
+                "profile",
                 context! {
                     username: model.username,
                     num_reports: num_reports,

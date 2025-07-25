@@ -36,7 +36,7 @@ app = lambda: checker.app
 0 = community, private collections, pwn the jit
 1 = business, flag in profile, pwn the communication protocol with the support feature
 2 = enterprise, private DB with public API, pwn the storage format
-(exploits are off-by-one because flagstore 0 has two (0+1))
+(3) = second exploit for 0
 """
 
 
@@ -268,7 +268,7 @@ async def exploit_jit_symbol_override(task: ExploitCheckerTaskMessage, logger: L
     return searcher.search_flag(all_output)
 
 
-@checker.exploit(1)
+@checker.exploit(3)
 async def exploit_jit_rce(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
                           httpclient: AsyncClient) -> bytes | None:
     """this exploit does NOT work with a debug build of libjit_rt. Use the release/minsizerel builds."""
@@ -411,11 +411,13 @@ async def getnoise_profile(task: GetnoiseCheckerTaskMessage, logger: LoggerAdapt
     # logger.info(profile_data.text)
     # logger.info(f"Num reports: {num_reports_1},lfj: {looking_for_job_1},current salary: {current_salary_1},custom: {custom_1},reporter: {is_reporter_1}")
     if num_reports:
-        assert_in(str(num_reports), profile_data.text, "Num_reports missing")
-    if looking_for_job:
-        assert_in(str(looking_for_job).lower(), profile_data.text, "Looking_for_jobs missing")
+        assert_in(f'<strong>{num_reports}</strong>', profile_data.text, "num_reports missing")
+    if looking_for_job is True:
+        assert_in('<strong>looking</strong> for a job', profile_data.text, "looking_for_jobs missing")
+    elif looking_for_job is False:
+        assert_in('<strong>not</strong> looking for a job', profile_data.text, "looking_for_jobs missing")
     if current_salary:
-        assert_in(str(current_salary), profile_data.text, "Current_salary missing")
+        assert_in(f'<strong>{current_salary}$</strong>', profile_data.text, "current_salary missing")
     if custom:
         assert_in(custom, profile_data.text, "Custom missing")
     await client.logout()
@@ -448,7 +450,7 @@ async def havoc_check_user_accounts(task: HavocCheckerTaskMessage, logger: Logge
     response = await client.get('/session/profile')
     # the actual number of reports set during profile creation does not matter, the db counts the real reports
     assert_in(f'<strong>{actual_num_reports}</strong>', response.text,
-              f"Num_reports wrong, expected {actual_num_reports} to be in {response.text}")
+              f"num_reports wrong, expected {actual_num_reports}")
     await client.logout()
     pass
 
@@ -473,7 +475,7 @@ async def signup_useless(client):
     return username
 
 
-@checker.exploit(2)
+@checker.exploit(1)
 async def exploit_desync(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
                          httpclient: AsyncClient) -> bytes | None:
     target_user = task.attack_info
@@ -573,7 +575,7 @@ async def getflag_enterprise(task: GetflagCheckerTaskMessage, logger: LoggerAdap
     assert_equals(payload[0]['flag'], task.flag, "Flag missing")
 
 
-@checker.exploit(3)
+@checker.exploit(2)
 async def exploit_kv_newline_injection(task: ExploitCheckerTaskMessage, logger: LoggerAdapter, searcher: FlagSearcher,
                                        httpclient: AsyncClient) -> bytes | None:
     if not task.attack_info:

@@ -41,20 +41,18 @@ impl DbConnection {
             if self.stream.read_line(&mut line).await? <= 0 {
                 return Err(std::io::Error::new(ErrorKind::BrokenPipe, "EOF"));
             }
-            println!("Received raw: {:?}", line);
 
             match serde_json::from_str(&line.trim()) {
                 Ok(value ) => {
-                    // println!("Got value {:?}", value);
                     // If a query returns something, we have values in the array
                     // otherwise its empty
+                    // TODO REALLY???
+                    /*
                     if let Value::Array(response) = value {
+                        println!("MATCH ARRAY: {:?}", &response);
                         for v in response {
-                            let tmp = serde_json::from_value(v);
-                            // println!("tmp is ok: {:?}", tmp.is_ok());
-                            match tmp {
+                            match serde_json::from_value(v) {
                                 Ok(t) => {
-                                    // println!("Got t");
                                     result.push(t);
                                 },
                                 Err(e) => {
@@ -65,32 +63,22 @@ impl DbConnection {
                         }
                     // for all non-query db communication, we need to have a different parsing
                     } else {
-                        let tmp = serde_json::from_value(value);
-                        // println!("tmp is ok: {:?}", tmp.is_ok());
-                        match tmp {
+                        println!("MATCH NOT ARRAY: {:?}", &value);
+                     */
+                        match serde_json::from_value(value) {
                             Ok(t) => {
-                                // println!("Got t");
                                 result.push(t);
                             },
                             Err(e) => {
-                                println!("Match error: {:?}", e);
+                                println!("Conversion error: {:?}", e);
                             },
                         }
-                        // serde_json::from_value(value).ok().map(|t| result.push(t));
-                    }
-                    // else {
-                    //     println!("Error: for some reason, db did not return an array!");
-                    //     Err(std::io::Error::new(ErrorKind::InvalidData, line.trim()))
-                    // }
+                    //}
                 }
                 Err(_) => {
-                    // println!("Error: {:?}, line: {:?}",e, line);
                     return if line == "OK\n" || !result.is_empty() {
-                        // println!("Returning ok");
-                        // println!("{:?}", result.len());
                         Ok(result)
                     } else {
-                        // println!("Found error");
                         Err(std::io::Error::new(ErrorKind::InvalidData, line.trim()))
                     }
                 }
