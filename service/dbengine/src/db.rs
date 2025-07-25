@@ -1,17 +1,19 @@
 use crate::sandbox::compiler;
 use lazy_static::lazy_static;
+use regex::Regex;
 use serde::Serialize;
+use serde_json::value::RawValue;
 use sha2::{Digest, Sha256};
 use std::fs::{create_dir_all, read_dir, OpenOptions};
 use std::io::ErrorKind::InvalidInput;
 use std::io::Write;
 use std::os::fd::BorrowedFd;
 use std::path::{absolute, Path, PathBuf};
-use serde_json::value::RawValue;
 
 lazy_static! {
     static ref base_data: PathBuf = absolute(Path::new("./data")).unwrap();
     static ref base_queries: PathBuf = absolute(Path::new("./queries")).unwrap();
+    static ref COLLECTION_REGEX: Regex = Regex::new(r"^\w{2,32}$").unwrap();
 }
 
 pub fn dir(database: &str) -> PathBuf {
@@ -41,6 +43,9 @@ pub fn list_collections(database: &str) -> std::io::Result<Vec<String>> {
 }
 
 pub fn append<T: Serialize>(database: &str, collection: &str, data: &T) -> std::io::Result<()> {
+    if !COLLECTION_REGEX.is_match(collection) {
+        return Err(std::io::Error::new(InvalidInput, "Invalid collection name."));
+    }
     let dir = dir(database);
     create_dir_all(&dir)?;
     let mut file = OpenOptions::new()
@@ -66,7 +71,14 @@ pub async fn prepare_query(code: &str) -> std::io::Result<String> {
     Ok(code_ref)
 }
 
-pub async fn execute_query(database: &str, code_ref: &str, query: &str, param: &RawValue, privileged: bool, output: BorrowedFd<'_>) -> std::io::Result<()> {
+pub async fn execute_query(
+    database: &str,
+    code_ref: &str,
+    query: &str,
+    param: &RawValue,
+    privileged: bool,
+    output: BorrowedFd<'_>,
+) -> std::io::Result<()> {
     let obj = query_object(code_ref);
     let dir = dir(database);
     create_dir_all(&dir)?;

@@ -13,7 +13,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
 lazy_static! {
-    static ref USERNAME_REGEX: Regex = Regex::new(r"^\w{3,}$").unwrap();
+    static ref USERNAME_REGEX: Regex = Regex::new(r"^\w{3,32}$").unwrap();
     static ref PASSWORD_REGEX: Regex = Regex::new(r"^.{8,}$").unwrap();
 }
 
