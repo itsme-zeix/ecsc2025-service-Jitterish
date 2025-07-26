@@ -1,5 +1,8 @@
 @use 'sass:color';
 
+$bg: #181b1f;
+$text: #dcdcdc;
+
 $primary: #2beded;
 $secondary: #f2f279;
 $primary-hover: color.adjust($primary, $lightness:20%);

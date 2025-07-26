@@ -29,9 +29,9 @@
   --sans-font: Titillium Web, "Segoe UI Web (West European)", Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif;
 
   color-scheme: dark;
-  --bg: #181b1f;
+  --bg: #{vars.$bg};
   --accent-bg: #{vars.$accent-bg};
-  --text: #dcdcdc;
+  --text: #{vars.$text};
   --text-light: #{vars.$text-light}; // #ababab;
   --accent: #{vars.$primary}; // #ffb300;
   --accent-hover: #{vars.$primary-hover}; // #ffe099;
