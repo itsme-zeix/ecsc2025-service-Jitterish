@@ -31,7 +31,6 @@ echo "Cleanup query cache..."
 rm data/db-engine-queries/*.so
 
 echo "Starting service..."
-docker restart jitterish-engine-1
 docker start jitterish-website-1
 
 echo DONE
