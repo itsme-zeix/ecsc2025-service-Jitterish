@@ -1,5 +1,6 @@
 import json
 import random
+import re
 from contextlib import contextmanager
 from functools import wraps
 from logging import LoggerAdapter
@@ -126,7 +127,9 @@ async def getflag_community(task: GetflagCheckerTaskMessage, logger: LoggerAdapt
 
     client = JitterishClient(logger, httpclient)
     customers = (await client.list_customers())['community']
-    assert_in(username, customers, f"Customer {username} missing in customer list")
+    if username not in customers:
+        logger.info(f'{username} not in {customers}')
+        raise MumbleException(f"Customer {username} missing in customer list")
 
     # login
     await client.login(username, password)
@@ -441,16 +444,20 @@ async def havoc_check_user_accounts(task: HavocCheckerTaskMessage, logger: Logge
 
     # register the reporter
     client = JitterishClient(logger, httpclient)
-    await register_random_account(client, random_num_reports=False)
+    username, _, _, _, _, _ = await register_random_account(client, random_num_reports=False)
     # report the victims
+    response = None
     for v in victims:
         reason = generate_random_string(random.randint(4, 16), False)
-        await client.report(v, reason)
+        response = await client.report(v, reason)
+    if response and not response.url.path.endswith('/'):
+        await client.get('/support')
     # after report, the profile num reports entry should match the number of reports we issued
     response = await client.get('/session/profile')
     # the actual number of reports set during profile creation does not matter, the db counts the real reports
-    assert_in(f'<strong>{actual_num_reports}</strong>', response.text,
-              f"num_reports wrong, expected {actual_num_reports}")
+    if f'<strong>{actual_num_reports}</strong>' not in response.text:
+        logger.info(f'User {username} profile: ' + str(re.findall(r'<strong>.*?</strong>', response.text)))
+        raise MumbleException(f"num_reports wrong, expected {actual_num_reports}")
     await client.logout()
 
 
@@ -551,7 +558,9 @@ async def getflag_enterprise(task: GetflagCheckerTaskMessage, logger: LoggerAdap
 
     client = JitterishClient(logger, httpclient)
     customers = (await client.list_customers())['enterprise']
-    assert_in(username, customers, f"Customer {username} missing in customer list")
+    if username not in customers:
+        logger.info(f'{username} not in {customers}')
+        raise MumbleException(f"Customer {username} missing in customer list")
 
     # key is public?
     keys = await client.api_get(username, 'keys')

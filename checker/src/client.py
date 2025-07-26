@@ -40,7 +40,7 @@ class JitterishClient:
         return response
 
     def find_error_alerts(self, text: str) -> list[str]:
-        return re.findall('class="alert alert-error"(.*?)</div>', text)
+        return re.findall('class="alert alert-error".*?>(.*?)(?:</div>|</p>)', text)
 
     def log_error_alerts(self, response: Response) -> None:
         alerts = self.find_error_alerts(response.text)
@@ -109,7 +109,7 @@ class JitterishClient:
             raise MumbleException('Login failed (username/password not accepted)')
         if response.url.path != '/session/profile':
             self.logger.warning(f'Unexpected redirect to {response.url} after login')
-            raise MumbleException('Registration failed')
+            raise MumbleException('Login failed')
         self.logger.info(f'Logged in as {username!r} (password {password!r})')
 
     async def logout(self) -> None:
@@ -125,6 +125,7 @@ class JitterishClient:
 
     async def list_customers(self) -> dict[str, list[str]]:
         response = await self.get('/customers')
+        self.log_error_alerts(response)
         return {
             'community': re.findall(r'href="/database/(\w+)"', response.text),
             'enterprise': re.findall(r'href="/api/(\w+)/keys/all"', response.text)
