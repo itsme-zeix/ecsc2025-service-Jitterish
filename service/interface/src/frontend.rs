@@ -19,7 +19,7 @@ pub struct Register<'r> {
     firstname: &'r str,
     lastname: &'r str,
     pub status: &'r str,
-    pub accounttype: &'r str,
+    pub account_type: &'r str,
 }
 
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]

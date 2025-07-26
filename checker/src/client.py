@@ -48,7 +48,7 @@ class JitterishClient:
             self.logger.warning(f'Error alerts found on {response.url}: {alerts}')
 
     async def register(self, username: str, password: str, first: str, last: str,
-                       accounttype: Literal['community', 'business', 'enterprise'], custom: str=None) -> None:
+                       account_type: Literal['community', 'business', 'enterprise'], custom: str=None) -> None:
         await self.get('/session/register')
         status_data = {}
         status_data["num_reports"] = random.randrange(0,10)
@@ -58,7 +58,7 @@ class JitterishClient:
         response = await self.post('/session/register', data={
             'username': username, 'password': password,
             'firstname': first, 'lastname': last,
-            'accounttype': accounttype,
+            'account_type': account_type,
             'status':json.dumps(status_data)
         }, follow_redirects=True)
         self.log_error_alerts(response)
@@ -69,7 +69,7 @@ class JitterishClient:
 
 
     async def register_raw(self, username: str, password: str, first: str, last: str,
-                           accounttype: Literal['community', 'business', 'enterprise'],
+                           account_type: Literal['community', 'business', 'enterprise'],
                            custom: str, num_reports: int, looking_for_job: bool, current_salary: int) -> None:
         await self.get('/session/register')
         status_data = {}
@@ -87,7 +87,7 @@ class JitterishClient:
         response = await self.post('/session/register', data={
             'username': username, 'password': password,
             'firstname': first, 'lastname': last,
-            'accounttype': accounttype,
+            'account_type': account_type,
             'status':json.dumps(status_data)
         }, follow_redirects=True)
         self.log_error_alerts(response)

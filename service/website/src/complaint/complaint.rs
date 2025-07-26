@@ -6,12 +6,13 @@ use rocket::{
 use rocket_dyn_templates::{context, Template};
 
 use crate::{db_connector::DbConnection, Queries};
+use crate::session::login::update_session;
 
 #[get("/support")]
 pub async fn support<'a>(
     queries: &State<Queries>,
     flash: Option<FlashMessage<'_>>,
-    session: UserSession,
+    mut session: UserSession,
     jar: &CookieJar<'a>
 ) -> Result<Template, Flash<Redirect>> {
     let mut db = DbConnection::open("_")
@@ -34,15 +35,14 @@ pub async fn support<'a>(
         .pop()
         .ok_or(Flash::error(Redirect::to("/"), "Could not update my usermodel!"))?;
     // update user session
-    jar.remove_private("user");
-    let user_json = serde_json::to_string(&updated_user).map_err(|_| Flash::error(Redirect::to("/"), "User encode error"))?;
-    jar.add_private(("user", user_json));
+    session.user.status = updated_user.status.clone();
+    update_session(jar, &session.user)?;
     Ok(Template::render(
         "complaints",
         context! {
             flash: flash,
             username: session.user.username,
-            user: updated_user,
+            user_status: session.user.status,
             reported_targets: all_target_complaints.len(),
         },
     ))

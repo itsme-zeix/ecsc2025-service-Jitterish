@@ -11,6 +11,7 @@ use rocket::State;
 use rocket_dyn_templates::{Template};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use crate::session::login::update_session;
 
 lazy_static! {
     static ref USERNAME_REGEX: Regex = Regex::new(r"^\w{3,32}$").unwrap();
@@ -125,8 +126,8 @@ pub(super) async fn post_register(
         username: register.username.to_owned(),
         password_hash: hex::encode(Sha256::digest(register.password.as_bytes())),
         status,
-        allow_public_queries: register.accounttype == "community",
-        allow_public_kv: register.accounttype == "enterprise",
+        allow_public_queries: register.account_type == "community",
+        allow_public_kv: register.account_type == "enterprise",
     };
 
     if !USERNAME_REGEX.is_match(&register.username) {
@@ -150,13 +151,12 @@ pub(super) async fn post_register(
         .await
         .map_err(|e| Flash::error(Redirect::to(uri!(register_page)), format!("Append failed: {}", e)))?;
     // this has now exactly one match
-    let mut existing_users_new: Vec<Value> = db
+    let mut existing_users_new: Vec<UserModel> = db
         .execute(&queries.user, "user_by_username", &register.username, false)
         .await
         .map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "User by username query error"))?;
     if let Some(new_user) = existing_users_new.pop() {
-        let user = serde_json::to_string(&new_user).map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "Could not serialize user!"))?;
-        jar.add_private(("user", user));
+        update_session(jar, &new_user)?;
         Ok(Redirect::to(uri!(crate::session::profile::index)))
     } else {
         Err(Flash::error(Redirect::to(uri!(register_page)), "User not added to db."))

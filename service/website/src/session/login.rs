@@ -24,6 +24,13 @@ pub(super) fn login_page(flash: Option<FlashMessage<'_>>) -> Template {
     )
 }
 
+pub fn update_session(jar: &CookieJar, user: &UserModel) -> Result<(), Flash<Redirect>> {
+    jar.remove_private("user");
+    let user = serde_json::to_string(user).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Could not serialize user!"))?;
+    jar.add_private(("user", user));
+    Ok(())
+}
+
 #[post("/session/login", data = "<login>")]
 pub(super) async fn post_login(
     queries: &State<Queries>,
@@ -41,7 +48,6 @@ pub(super) async fn post_login(
     if hex::encode(Sha256::digest(login.password().as_bytes())) != user.password_hash {
         return Err(Flash::error(Redirect::to(uri!(login_page)), "Invalid password"));
     }
-    let user = serde_json::to_string(user).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Could not serialize user!"))?;
-    jar.add_private(("user", user));
+    update_session(jar, user)?;
     Ok(Redirect::to(uri!(crate::session::profile::index)))
 }

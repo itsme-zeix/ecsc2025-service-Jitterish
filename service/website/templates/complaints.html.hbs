@@ -21,8 +21,8 @@
     </div>
 
     <div data-augmented-ui class="content-card-2">
-        <p>You have {{user.status.num_reports}} open support tickets on {{reported_targets}} databases.</p>
-        {{#if user.status.num_reports}}<p>We'll get back to you soon.</p>{{/if}}
+        <p>You have <strong class="text-secondary">{{user_status.num_reports}}</strong> open support tickets on {{reported_targets}} databases.</p>
+        {{#if user_status.num_reports}}<p>We'll get back to you soon.</p>{{/if}}
     </div>
 {{/inline}}
 {{> default title="Support" pagename="support"}}

