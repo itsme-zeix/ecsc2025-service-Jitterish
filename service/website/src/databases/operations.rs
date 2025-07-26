@@ -1,4 +1,4 @@
-use crate::databases::api::get_user;
+use crate::databases::api::{get_database_permissions};
 use crate::db_connector::DbConnection;
 use crate::Queries;
 use interface::database::Collection;
@@ -12,8 +12,8 @@ use serde_json::Value;
 use std::fs;
 
 struct DatabasePageContext {
-    db: UserModel,
     user_owns_db: bool,
+    allow_public_kv: bool,
     conn: DbConnection,
     collections: Vec<Collection>,
     err: Option<String>,
@@ -25,13 +25,11 @@ async fn database_page_basics(
     database: &str,
     session: &UserSession,
 ) -> Result<DatabasePageContext, Flash<Redirect>> {
-    let db = get_user(queries, database)
-        .await
-        .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "Cannot fetch user"))?;
-    let db = db.ok_or_else(|| Flash::error(Redirect::to(format!("/database/{}", database)), "No such db"))?;
-    let user_owns_db = db.username == session.user.username;
-    if !db.allow_public_queries && !user_owns_db {
-        return Err(Flash::error(Redirect::to("/"), "Not authorized"));
+    let (allow_public_queries, allow_public_kv) = get_database_permissions(queries, database).await
+        .map_err(|_| Flash::error(Redirect::to("/"), "Cannot check database permissions"))?;
+    let user_owns_db = database == session.user.username;
+    if !allow_public_queries && !user_owns_db {
+        return Err(Flash::error(Redirect::to("/"), "Not authorized or no such db"));
     }
 
     let mut conn = DbConnection::open(database)
@@ -43,8 +41,8 @@ async fn database_page_basics(
         .map_err(|_| Flash::error(Redirect::to(format!("/database/{}", database)), "Cannot list collections"))?;
 
     Ok(DatabasePageContext {
-        db,
         user_owns_db,
+        allow_public_kv,
         conn,
         collections,
         err: None,
@@ -68,7 +66,7 @@ pub async fn database_page(
             username: session.user.username,
             database: database,
             collections: ctx.collections,
-            db: ctx.db,
+            allow_public_kv: ctx.allow_public_kv,
             user_owns_db: ctx.user_owns_db,
             form: QueryForm{
                 query: "query q on XXX;",
@@ -121,7 +119,7 @@ pub async fn database_append(
             username: session.user.username,
             database: database,
             collections: ctx.collections,
-            db: ctx.db,
+            allow_public_kv: ctx.allow_public_kv,
             user_owns_db: ctx.user_owns_db,
             form: form.into_inner(),
             err: ctx.err,
@@ -174,7 +172,7 @@ pub async fn database_query_custom(
             username: session.user.username,
             database: database,
             collections: ctx.collections,
-            db: ctx.db,
+            allow_public_kv: ctx.allow_public_kv,
             user_owns_db: ctx.user_owns_db,
             form: form.into_inner(),
             err: ctx.err,
@@ -186,7 +184,7 @@ pub async fn database_query_custom(
 #[get("/database/<database>/script")]
 pub async fn database_script(queries: &State<Queries>, database: &str, session: UserSession) -> Result<String, Flash<Redirect>> {
     let ctx = database_page_basics(queries, database, &session).await?;
-    if !ctx.db.allow_public_kv {
+    if !ctx.allow_public_kv {
         return Err(Flash::error(
             Redirect::to(format!("/database/{}", database)),
             "No script attached",

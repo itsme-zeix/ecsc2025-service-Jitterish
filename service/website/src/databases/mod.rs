@@ -1,5 +1,6 @@
 pub mod api;
 mod operations;
+mod cache;
 
 pub fn routes() -> Vec<rocket::Route> {
     routes![

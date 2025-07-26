@@ -8,19 +8,26 @@ use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use std::io::{Error, ErrorKind};
+use crate::databases::cache::USER_CACHE;
 
-pub async fn get_user(queries: &Queries, name: &str) -> std::io::Result<Option<UserModel>> {
-    // TODO we might need a cache here
-    let mut db = DbConnection::open("_").await?;
-    let users: Vec<UserModel> = db.execute(&queries.user, "user_by_username", &name, false).await?;
-    Ok(users.into_iter().nth(0))
+pub async fn get_database_permissions(queries: &Queries, name: &str) -> std::io::Result<(bool, bool)> {
+    match USER_CACHE.get(name).await {
+        Some(x) => Ok(x),
+        None => {
+            let mut db = DbConnection::open("_").await?;
+            let users: Vec<UserModel> = db.execute(&queries.user, "user_by_username", &name, false).await?;
+            let (allow_public_queries, allow_public_kv) = users
+                .into_iter().nth(0)
+                .map(|user| (user.allow_public_queries, user.allow_public_kv))
+                .unwrap_or((false, false));
+            USER_CACHE.set(name, allow_public_queries, allow_public_kv).await;
+            Ok((allow_public_queries, allow_public_kv))
+        }
+    }
 }
 
 async fn check_kv_user(queries: &Queries, name: &str) -> std::io::Result<()> {
-    let allowed = get_user(queries, name)
-        .await?
-        .map(|user| user.allow_public_kv)
-        .unwrap_or(false);
+    let allowed = get_database_permissions(queries, name).await?.1;
     if !allowed {
         Err(Error::new(ErrorKind::Other, "no such database"))
     } else {
