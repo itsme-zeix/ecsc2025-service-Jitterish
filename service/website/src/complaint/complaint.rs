@@ -1,5 +1,4 @@
-use chrono::Utc;
-use interface::frontend::{Complaint, SupportForm, UserModel, UserSession};
+use interface::frontend::{now, Complaint, SupportForm, UserModel, UserSession};
 use rocket::{
     form::Form, http::CookieJar, request::FlashMessage, response::{Flash, Redirect}, State
 };
@@ -84,7 +83,7 @@ pub async fn save_complaint(
     let complaint = Complaint {
         reporting_user: logged_in_user,
         target_user: target_user,
-        timestamp: Utc::now().to_rfc3339(),
+        ts: now(),
         description: form.description.to_string(),
     };
     db.append("complaints", complaint)

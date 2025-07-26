@@ -1,3 +1,4 @@
+use std::time::{SystemTime, UNIX_EPOCH};
 use rocket::{
     http::Status,
     outcome::IntoOutcome,
@@ -63,6 +64,7 @@ pub struct DbForm<'r> {
 pub struct UserModel {
     pub username: String, // = database name (at least 3 chars, [A-Za-z0-9_] only, must be unique)
     pub password_hash: String,
+    pub ts: u64,
     pub status: serde_json::Value,
 
     // Permissions for the database
@@ -98,6 +100,10 @@ pub struct SupportForm<'r> {
 pub struct Complaint {
     pub target_user: UserModel,
     pub reporting_user: UserModel,
-    pub timestamp: String,
+    pub ts: u64,
     pub description: String,
+}
+
+pub fn now() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
 }
