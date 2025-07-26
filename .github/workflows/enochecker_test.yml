@@ -26,10 +26,14 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install enochecker_test
+    - name: "[DEBUG] versions"
+      run: |
+        docker version && docker compose version
     - name: Cleanup source (meta scripts)
       run: |
         cd service
-        docker compose -f ../meta/docker-compose.override.yml --project-directory . run --rm cleanup-source
+        docker compose -f ../meta/docker-compose.override.yml --project-directory . run --rm cleanup-source || \
+        COMPOSE_FILE=../meta/docker-compose.override.yml docker compose --project-directory . run --rm cleanup-source
     - name: start service
       run: |
         cd service
