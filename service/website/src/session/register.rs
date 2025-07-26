@@ -38,7 +38,7 @@ fn recover_str(status_in: &str) -> Result<Value, Flash<Redirect>> {
         let first = chars.first().cloned();
         let last = chars.pop();
         if first.is_none() || last.is_none() {
-            return Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"));
+            return Err(Flash::error(Redirect::to(uri!(register_page)), "Status field could not be parsed!"));
         }
         // if we only have one non-alphanumeric char at start or end, we can recover with quotes
         if first.unwrap().is_alphanumeric() || last.unwrap().is_alphanumeric() {
@@ -47,13 +47,13 @@ fn recover_str(status_in: &str) -> Result<Value, Flash<Redirect>> {
             quoted.push('"');
             let n = serde_json::from_str(&quoted);
             if n.is_err() {
-                Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"))
+                Err(Flash::error(Redirect::to(uri!(register_page)), "Status field could not be parsed!"))
             } else {
                 Ok(n.unwrap())
             }
         } else {
             // neither start nor end is alphanumeric, we cannot recover
-            Err(Flash::error(Redirect::to("/"), "Status field could not be parsed!"))
+            Err(Flash::error(Redirect::to(uri!(register_page)), "Status field could not be parsed!"))
         }
     } else {
         Ok(status_parsed.unwrap())
@@ -138,11 +138,11 @@ pub(super) async fn post_register(
 
     let mut db = DbConnection::open("_")
         .await
-        .map_err(|_| Flash::error(Redirect::to("/"), "Database not reachable"))?;
+        .map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "Database not reachable"))?;
     let existing_users: Vec<Value> = db
         .execute(&queries.user, "user_by_username", &register.username, false)
         .await
-        .map_err(|_| Flash::error(Redirect::to("/"), "User by username query error"))?;
+        .map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "User by username query error"))?;
     if !existing_users.is_empty() {
         return Err(Flash::error(Redirect::to(uri!(register_page)), "Username already taken."));
     }
@@ -153,7 +153,7 @@ pub(super) async fn post_register(
     let mut existing_users_new: Vec<Value> = db
         .execute(&queries.user, "user_by_username", &register.username, false)
         .await
-        .map_err(|_| Flash::error(Redirect::to("/"), "User by username query error"))?;
+        .map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "User by username query error"))?;
     if let Some(new_user) = existing_users_new.pop() {
         let user = serde_json::to_string(&new_user).map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "Could not serialize user!"))?;
         jar.add_private(("user", user));
