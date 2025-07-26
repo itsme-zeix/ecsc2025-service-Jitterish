@@ -10,23 +10,11 @@ func count(entry, acc) {
     return (acc ?: 0) + 1;
 }
 
-func unique_reportees(entry, result){
-    if !defined result result = {};
-    if !defined result[entry["reporting_user"]["username"]] {
-        result[entry["username"]] = 1;
-        return entry;
-    }
-}
-
 func get_updated_user(entry, target_user) {
     if entry["username"] == target_user {
         entry["status"]["num_reports"] = get_num_reports(target_user) ?: 0;
         return entry;
     }
-}
-
-func get_all_reportees_for_username(entry, username) {
-    if entry["reporting_user"]["username"] == username return entry["target_user"];
 }
 
 func deduplicate_targets(entry, acc) {
@@ -44,10 +32,6 @@ func get_reported_users(reporter_username) {
     get_reported_users_helper(reporter_username);
 }
 
-func merge_into_user(entry, acc){
-    if !defined acc acc=entry["reporting_user"];
-}
-
 query get_reported_users_helper on complaints
 filter get_reported_complaints
 reduce deduplicate_targets;
@@ -62,9 +46,3 @@ reduce count;
 
 query get_user_numreports on users
 filter get_updated_user;
-
-query get_reports on complaints
-filter get_reported_complaints;
-
-query get_target_complaints on complaints
-filter get_complaints_about_target;
