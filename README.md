@@ -1,6 +1,8 @@
 JitterishDB
 ===========
 
+![](jitterishdb.png)
+
 Authors:
 
 - mkb (Markus Bauer)
