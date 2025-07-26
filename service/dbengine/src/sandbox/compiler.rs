@@ -62,6 +62,6 @@ pub async fn run<P: AsRef<Path>>(
     cmd.stdin(Stdio::null());
     cmd.stdout(Stdio::dup_file(&output)?);
 
-    let mut child = run_sandboxed(cmd, Some(binary), Some(directory), Duration::from_millis(250), 32).await?;
+    let mut child = run_sandboxed(cmd, Some(binary), Some(directory), Duration::from_millis(250), 96).await?;
     check_exit_status(child.wait()?)
 }
