@@ -7,7 +7,7 @@ set -e
 # USAGE: run on vulnbox, not in docker.
 
 # retain the latest $NUM users
-NUM=512
+NUM=750
 # retain data directories for 120min
 TIME=120
 

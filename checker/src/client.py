@@ -64,7 +64,6 @@ class JitterishClient:
         self.log_error_alerts(response)
         if response.url.path != '/session/profile':
             self.logger.warning(f'Unexpected redirect to {response.url} after registration of {username}')
-            self.logger.info(self.find_error_alerts(response.text))
             raise MumbleException('Registration failed')
         self.logger.info(f'Registered {username!r} (password {password!r})')
 
