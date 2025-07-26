@@ -1,13 +1,17 @@
 use crate::sandbox::compiler;
+use interface::frontend::now;
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::Serialize;
 use serde_json::value::RawValue;
+use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::fs::{create_dir_all, read_dir, OpenOptions};
+use std::fs::{create_dir_all, read_dir, rename, OpenOptions};
+use std::io;
 use std::io::ErrorKind::InvalidInput;
-use std::io::Write;
+use std::io::{BufRead, Seek, SeekFrom, Write};
 use std::os::fd::BorrowedFd;
+use std::os::unix::fs::MetadataExt;
 use std::path::{absolute, Path, PathBuf};
 use tokio::sync::Mutex;
 
@@ -90,5 +94,44 @@ pub async fn execute_query(
     if let Err(e) = compiler::run(obj, dir, query, param.as_str(), privileged, output).await {
         return Err(std::io::Error::new(InvalidInput, format!("run error {}", e)));
     }
+    Ok(())
+}
+
+/// Remove all expired entries from a collection
+pub async fn cleanup(database: &str, collection: &str) -> std::io::Result<()> {
+    let filename = dir(database).join(format!("{}.ndjson", collection));
+    let deadline = now() - 30 * 60;
+    let _lock = write_lock.lock().await;
+
+    let file = OpenOptions::new().read(true).write(true).open(&filename)?;
+    let size = file.metadata()?.size();
+    if size < 512 * 1024 {
+        return Ok(());
+    }
+
+    // find newest entry within the deadline
+    let mut new_start_pos = 0;
+    let mut reader = io::BufReader::new(file);
+    for line in (&mut reader).lines().map_while(Result::ok) {
+        let ts = serde_json::from_str(line.as_str())
+            .ok()
+            .and_then(|obj: Value| obj["ts"].as_u64())
+            .unwrap_or(0);
+        if ts >= deadline {
+            break;
+        }
+        new_start_pos += (line.len() as u64) + 1;
+    }
+
+    // remove old entries (if it's worth it)
+    if 128 * 1024 < new_start_pos && new_start_pos < size {
+        let tmp_filename = dir(database).join(".tmp.ndjson");
+        let mut tmp_file = OpenOptions::new().write(true).create(true).truncate(true).open(&tmp_filename)?;
+        reader.seek(SeekFrom::Start(new_start_pos))?;
+        io::copy(&mut reader, &mut tmp_file)?;
+        rename(tmp_filename, filename)?;
+        println!("cleanup removed {} bytes from {}/{}.ndjson", new_start_pos, database, collection);
+    }
+
     Ok(())
 }

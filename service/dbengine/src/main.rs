@@ -1,17 +1,19 @@
 mod db;
 mod sandbox;
 
-use crate::db::execute_query;
+use crate::db::{cleanup, execute_query};
+use crate::sandbox::sandbox::compiler_path;
 use interface::database::{CodeRef, Collection, Command};
 use serde::Serialize;
 use std::error::Error;
 use std::io::ErrorKind;
 use std::os::fd::AsFd;
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::time::sleep;
 use tokio::{select, signal};
 use tokio_util::sync::CancellationToken;
-use crate::sandbox::sandbox::compiler_path;
 
 async fn write_json<T: Serialize>(stream: &mut BufReader<TcpStream>, data: &T) -> std::io::Result<()> {
     let data = serde_json::to_vec(data)?;
@@ -97,16 +99,34 @@ async fn server(cancel: CancellationToken) -> std::io::Result<()> {
     }
 }
 
+async fn cleanup_loop() {
+    loop {
+        for collection in ["users", "complaints"] {
+            if let Err(e) = cleanup("_", collection).await {
+                eprintln!("cleanup of _/{}.ndjson failed: {:?}", collection, e);
+            }
+        }
+
+        sleep(Duration::from_secs(120)).await;
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    println!("Compiler path: {}", compiler_path.to_str().unwrap());
-
+    eprintln!("Compiler path: {}", compiler_path.to_str().unwrap());
     let token = CancellationToken::new();
-    let handle = tokio::spawn(server(token.clone()));
-    signal::ctrl_c().await?;
+    let cleanup_handle = tokio::spawn(cleanup_loop());
+    let mut server_handle = tokio::spawn(server(token.clone()));
+
+    select! {
+        _ = signal::ctrl_c() => {}
+        _ = &mut server_handle => {}
+    }
+
     eprintln!("Shutting down...");
     token.cancel();
-    handle.await?.expect("Error waiting for termination signal");
+    cleanup_handle.abort();
+    server_handle.await?.expect("Error waiting for termination signal");
     eprintln!("Server terminated.");
     Ok(())
 }
