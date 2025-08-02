@@ -39,23 +39,24 @@ query team_points on data1 filter is_in_team map get_points reduce sum;
 ### Database engine
 
 - Receives queries from users
-- talks to the JIT to compile the query language
-- database engine can write data
+- Invokes the JIT to compile the query language
+- Invokes the compiled queries within a context
+- Only the database engine can write data
 
 ### JIT Compiler
 
 - Produces executable files from user code
-- Compiled files can only read data (maybe limited to some users)
+- Compiled files can only read data (of one user)
 
 
 Flag Stores
 -----------
 
-Flag stores are not fully determined yet and subject to change.
+In general, we store data in user databases or the user profile (which is just a database of the system account. 
 
-In general, we envision most flag stores as fields in a user profile. There are private and public data tables, and there are various different vulnerabilities in each part that allow access to different fields of the profile/users.
+The rough idea is to have at least one flag stores per component (so at least 3 in total, frontend, db engine, jit).
 
-Rough idea is to have at least one flag stores per component (so at least 3 in total, frontend, db engine, jit)
+We give out the username of each flag store as attack info / flag ID.
 
 ### Flag Store 1
 
@@ -65,12 +66,12 @@ Bypassing the JIT limits (or RCE) gives access to the private table.
 
 ### Flag Store 2
 
-An account with only private tables, but pre-defined queries that everybody can trigger (account type: enterprise).
-There's a (pre-defined) API script bound to these accounts, which allows append and limited query operations.
+A user with a flag in its "custom" profile data (account type: business).
 
 ### Flag Store 3
 
-A user with a flag in its "custom" profile data.
+An account with only private tables, but pre-defined queries that everybody can trigger (account type: enterprise).
+There's a (pre-defined, fixed) API script bound to these accounts, which allows append and limited query operations.
 
 
 Vulnerabilities
@@ -78,11 +79,14 @@ Vulnerabilities
 
 ### Flag Store 1, Vuln 1 (RCE in JIT Compiler output)
 
-There'll be at least one vuln that gives you RCE when running the jitted query.
-Current WIP approach, might change: 
+RCE in jitted queries: You can link against libc functions (`system` here).
+The JIT language never stores pointers in registers, but certain runtime functions (`jit_rt_equal` here) can leave a valid pointer in $rdi. 
 ```
-func jit_rt_constant(){}
-func jit_entrypoint() { system("sh"); }
+func hack() {
+    "cat *.ndjson" == "cat *.ndjson";
+    system();
+    return 0;
+}
 ```
 
 - Difficulty: medium to hard
@@ -92,7 +96,8 @@ func jit_entrypoint() { system("sh"); }
 
 ### Flag Store 1, Vuln 2 (Override symbols in JIT Compiler runtime)
 
-You can override permission checks in the runtime library, by re-defining their internal symbols. WIP approach:
+You can override permission checks in the runtime library by re-defining their internal symbols.
+Symbols in the compiled binary have precedence over imported symbols from the library.
 ```
 func _ZN11DataStorage8isPublicEv(){ return true; }
 ```
@@ -102,21 +107,21 @@ func _ZN11DataStorage8isPublicEv(){ return true; }
 - Patchability: easy
 - Categories: pwn
 
-### Flag Store 2, Vuln 1 (newline injection in database storage format)
-
-Both website and database engine use serde's `RawValue` to pass json from API to database storage, which preserves formatting.
-If we append a value which includes a newline, we break the engine's ndjson storage format, which allows us to write arbirary data to a collection.
-There's a collection including authentication data, so we can authenticate ourselves for any stored data.
-- Difficulty: medium
-- Discoverability: hard
-- Patchability: easy
-- Categories: misc
-
-### Flag Store 3, Vuln 1 (protocol desync)
+### Flag Store 2, Vuln 1 (protocol desync)
 
 You can desync the protocol between website and engine if the jit outputs invalid data (e.g., `undefined`).
-Triggering the desync on the complaints endpoint allows you to load other user's data to your session.
+Triggering the desync on the complaints endpoint allows you to load another user's data to your session.
 - Difficulty: medium to hard
+- Discoverability: hard
+- Patchability: medium
+- Categories: misc
+
+### Flag Store 3, Vuln 1 (newline injection in database storage format)
+
+Both website and database engine use serde's `RawValue` to pass json from API to database storage, which preserves formatting.
+If we append a value which includes a newline, we break the engine's ndjson storage format, which allows us to write arbitrary data to a collection.
+There's a collection including authentication data, so we can authenticate ourselves for any stored data.
+- Difficulty: medium
 - Discoverability: hard
 - Patchability: easy
 - Categories: misc
@@ -128,15 +133,17 @@ Patches
 ### Flag Store 1, Vuln 1 + 2
 
 Prefix all jitted functions with something, both in calls and in function definitions.
-If you want to be super safe you can also check the number of arguments, but imho that's not exploitable.
+If you want to be super safe, you can also check the number of arguments, but imho that's not exploitable.
 
 ### Flag Store 2, Vuln 1
 
-Replace `RawValue` with `Value`, either in engine or website.
+Properly handle connection errors, or typecheck user registration.
+Or open a new connection per query.
 
 ### Flag Store 3, Vuln 1
 
-Properly handle connection errors, or typecheck user registration.
+Replace `RawValue` with `Value`, either in engine or website.
+
 
 ## Current status
 
