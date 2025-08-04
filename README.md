@@ -6,7 +6,7 @@ JitterishDB
 Authors:
 
 - mkb (Markus Bauer)
-- SingleChar (Simeon Hoff)
+- SingleChar (Simeon Hoffmann)
 
 Categories:
 
@@ -52,9 +52,9 @@ query team_points on data1 filter is_in_team map get_points reduce sum;
 Flag Stores
 -----------
 
-In general, we store data in user databases or the user profile (which is just a database of the system account. 
+In general, we store data in user databases or the user profile (which is just a database of the system account). 
 
-The rough idea is to have at least one flag stores per component (so at least 3 in total, frontend, db engine, jit).
+We have ~one flag store per component (so 3 in total, frontend, db engine, jit).
 
 We give out the username of each flag store as attack info / flag ID.
 
@@ -66,7 +66,8 @@ Bypassing the JIT limits (or RCE) gives access to the private table.
 
 ### Flag Store 2
 
-A user with a flag in its "custom" profile data (account type: business).
+A user with a flag in its "custom" profile data (account type: business). 
+As the flag is part of the profile, it is in the user db and not in a private table.
 
 ### Flag Store 3
 
