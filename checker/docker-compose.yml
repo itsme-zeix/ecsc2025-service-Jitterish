@@ -12,6 +12,9 @@ services:
       - MONGO_PASSWORD=jitterish_checker
     depends_on:
       - jitterish-mongo
+    restart: unless-stopped
+    ulimits:
+      nofile: 65535
 
   jitterish-mongo:
     container_name: jitterish-mongo
@@ -24,6 +27,7 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: jitterish_checker
       MONGO_INITDB_ROOT_PASSWORD: jitterish_checker
+    restart: unless-stopped
 
 networks:
   default:
