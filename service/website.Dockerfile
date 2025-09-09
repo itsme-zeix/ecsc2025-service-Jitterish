@@ -3,7 +3,7 @@
 
 
 # 1. Build Rust Application
-FROM rust:trixie AS builder-rust
+FROM rust:trixie@sha256:1ca9500fa119fe67cc67de86fe0ce8c77d747bfb541d227cd6eca463d29cc454 AS builder-rust
 COPY interface /src/interface
 COPY website/Cargo.* /src/website/
 COPY website/src /src/website/src
@@ -19,7 +19,7 @@ RUN --mount=type=cache,id=cache-rust-website,target=/src/website/target,sharing=
 
 
 # 2. Build runtime container
-FROM debian:trixie AS runtime
+FROM debian:trixie@sha256:833c135acfe9521d7a0035a296076f98c182c542a2b6b5a0fd7063d355d696be AS runtime
 
 COPY --from=builder-rust /output/website /app/website/
 COPY website/queries /app/website/queries

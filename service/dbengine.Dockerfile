@@ -3,7 +3,7 @@
 
 
 # 0. Compilation/runtime basics: working C/C++ compiler with support for C++ modules
-FROM debian:trixie AS basis
+FROM debian:trixie@sha256:833c135acfe9521d7a0035a296076f98c182c542a2b6b5a0fd7063d355d696be AS basis
 RUN apt-get update && \
     apt-get install -y clang-18 clang-tools-18 lld-18 nano htop wget curl && \
     apt-get clean && \
@@ -29,7 +29,7 @@ RUN --mount=type=cache,id=cache-cpp,target=/build,sharing=locked \
 
 
 # 2. Build Rust
-FROM rust:trixie AS builder-rust
+FROM rust:trixie@sha256:1ca9500fa119fe67cc67de86fe0ce8c77d747bfb541d227cd6eca463d29cc454 AS builder-rust
 COPY dbengine /src/dbengine
 COPY interface /src/interface
 RUN --mount=type=cache,id=cache-rust-engine,target=/src/dbengine/target,sharing=locked \
