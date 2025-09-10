@@ -4,7 +4,13 @@
 
 # 0. Compilation/runtime basics: working C/C++ compiler with support for C++ modules
 FROM debian:trixie@sha256:833c135acfe9521d7a0035a296076f98c182c542a2b6b5a0fd7063d355d696be AS basis
-RUN apt-get update && \
+ENV DEBIAN_FRONTEND=noninteractive
+ADD https://raw.githubusercontent.com/reproducible-containers/repro-sources-list.sh/39fbf150e3a5062d4c6b9a241f25af133e7cb6f0/repro-sources-list.sh /var/lib/repro-sources-list.sh
+RUN \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    bash /var/lib/repro-sources-list.sh && \
+    apt-get update && \
     apt-get install -y clang-18 clang-tools-18 lld-18 nano htop wget curl && \
     apt-get clean && \
     update-alternatives --install /usr/bin/cc cc /usr/bin/clang-18 100 && \
