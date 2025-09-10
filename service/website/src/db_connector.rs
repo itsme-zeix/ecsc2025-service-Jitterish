@@ -43,16 +43,14 @@ impl DbConnection {
             }
 
             match serde_json::from_str(&line.trim()) {
-                Ok(value) => {
-                    match serde_json::from_value(value) {
-                        Ok(t) => {
-                            result.push(t);
-                        },
-                        Err(e) => {
-                            println!("Conversion error: {:?}", e);
-                        },
+                Ok(value) => match serde_json::from_value(value) {
+                    Ok(t) => {
+                        result.push(t);
                     }
-                }
+                    Err(e) => {
+                        println!("Conversion error: {:?}", e);
+                    }
+                },
                 Err(_) => {
                     return if line == "OK\n" || !result.is_empty() {
                         Ok(result)
@@ -81,9 +79,6 @@ impl DbConnection {
         Ok(one(&result)?.clone())
     }
 
-    /// Return all results from a function/query execution
-    /// query => vector of rows
-    /// function => vector of print() calls + return value
     pub async fn execute<TS: Serialize, TD: DeserializeOwned>(
         self: &mut DbConnection,
         code_ref: &CodeRef,
@@ -102,7 +97,6 @@ impl DbConnection {
         self.recv::<TD>().await
     }
 
-    /// Return the return value of a function execution only (ignoring print)
     pub async fn execute_one<TS: Serialize, TD: DeserializeOwned + Clone>(
         self: &mut DbConnection,
         code_ref: &CodeRef,

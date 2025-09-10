@@ -56,7 +56,6 @@ fn get_secret_key() -> Result<String, Box<dyn Error>> {
 async fn rocket() -> _ {
     let queries = prepare_queries().await;
     let secret_key = get_secret_key().expect("failed to get secret key");
-    println!("Query refs: {:?}", &queries);
     rocket::build()
         .configure(rocket::Config::figment().merge(("secret_key", secret_key)))
         .manage(queries)

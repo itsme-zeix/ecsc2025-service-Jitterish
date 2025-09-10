@@ -1,3 +1,4 @@
+use crate::databases::cache::USER_CACHE;
 use crate::db_connector::DbConnection;
 use crate::Queries;
 use interface::frontend::UserModel;
@@ -8,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
 use serde_json::{json, Value};
 use std::io::{Error, ErrorKind};
-use crate::databases::cache::USER_CACHE;
 
 pub async fn get_database_permissions(queries: &Queries, name: &str) -> std::io::Result<(bool, bool)> {
     match USER_CACHE.get(name).await {
@@ -17,7 +17,8 @@ pub async fn get_database_permissions(queries: &Queries, name: &str) -> std::io:
             let mut db = DbConnection::open("_").await?;
             let users: Vec<UserModel> = db.execute(&queries.user, "user_by_username", &name, false).await?;
             let (allow_public_queries, allow_public_kv) = users
-                .into_iter().nth(0)
+                .into_iter()
+                .nth(0)
                 .map(|user| (user.allow_public_queries, user.allow_public_kv))
                 .unwrap_or((false, false));
             USER_CACHE.set(name, allow_public_queries, allow_public_kv).await;

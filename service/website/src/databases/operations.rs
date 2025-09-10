@@ -1,4 +1,4 @@
-use crate::databases::api::{get_database_permissions};
+use crate::databases::api::get_database_permissions;
 use crate::db_connector::DbConnection;
 use crate::Queries;
 use interface::database::Collection;
@@ -25,7 +25,8 @@ async fn database_page_basics(
     database: &str,
     session: &UserSession,
 ) -> Result<DatabasePageContext, Flash<Redirect>> {
-    let (allow_public_queries, allow_public_kv) = get_database_permissions(queries, database).await
+    let (allow_public_queries, allow_public_kv) = get_database_permissions(queries, database)
+        .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Cannot check database permissions"))?;
     let user_owns_db = database == session.user.username;
     if !allow_public_queries && !user_owns_db {
@@ -182,7 +183,11 @@ pub async fn database_query_custom(
 }
 
 #[get("/database/<database>/script")]
-pub async fn database_script(queries: &State<Queries>, database: &str, session: UserSession) -> Result<String, Flash<Redirect>> {
+pub async fn database_script(
+    queries: &State<Queries>,
+    database: &str,
+    session: UserSession,
+) -> Result<String, Flash<Redirect>> {
     let ctx = database_page_basics(queries, database, &session).await?;
     if !ctx.allow_public_kv {
         return Err(Flash::error(

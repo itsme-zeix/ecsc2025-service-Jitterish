@@ -1,6 +1,6 @@
 use crate::db_connector::DbConnection;
 use crate::Queries;
-use interface::frontend::{UserSession};
+use interface::frontend::UserSession;
 use rocket::response::{Flash, Redirect};
 use rocket::State;
 use rocket_dyn_templates::{context, Template};

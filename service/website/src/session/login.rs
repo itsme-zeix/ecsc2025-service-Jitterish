@@ -26,7 +26,8 @@ pub(super) fn login_page(flash: Option<FlashMessage<'_>>) -> Template {
 
 pub fn update_session(jar: &CookieJar, user: &UserModel) -> Result<(), Flash<Redirect>> {
     jar.remove_private("user");
-    let user = serde_json::to_string(user).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Could not serialize user!"))?;
+    let user =
+        serde_json::to_string(user).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Could not serialize user!"))?;
     jar.add_private(("user", user));
     Ok(())
 }

@@ -1,5 +1,8 @@
-use interface::frontend::{UserSession};
-use rocket::{request::FlashMessage, response::{Flash, Redirect}};
+use interface::frontend::UserSession;
+use rocket::{
+    request::FlashMessage,
+    response::{Flash, Redirect},
+};
 use rocket_dyn_templates::{context, Template};
 
 #[get("/")]
