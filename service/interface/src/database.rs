@@ -18,7 +18,7 @@ pub enum Command<'r> {
         code_ref: &'r str,
         query: &'r str,
         param: Box<RawValue>,
-        privileged: bool,  // true = can access private collections
+        privileged: bool,
     },
 }
 

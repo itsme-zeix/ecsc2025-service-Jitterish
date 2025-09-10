@@ -1,4 +1,3 @@
-use std::time::{SystemTime, UNIX_EPOCH};
 use rocket::{
     http::Status,
     outcome::IntoOutcome,
@@ -6,6 +5,7 @@ use rocket::{
     FromForm, Request,
 };
 use serde::{Deserialize, Serialize};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(FromForm, Serialize, Deserialize, Debug)]
 pub struct Query<'r> {
@@ -62,14 +62,13 @@ pub struct DbForm<'r> {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UserModel {
-    pub username: String, // = database name (at least 3 chars, [A-Za-z0-9_] only, must be unique)
+    pub username: String,
     pub password_hash: String,
     pub ts: u64,
     pub status: serde_json::Value,
 
-    // Permissions for the database
-    pub allow_public_queries: bool, // = anybody can query public collections
-    pub allow_public_kv: bool,      // = anybody can access this with the "kv api"
+    pub allow_public_queries: bool, 
+    pub allow_public_kv: bool,     
 }
 
 #[derive(Debug)]
@@ -105,5 +104,8 @@ pub struct Complaint {
 }
 
 pub fn now() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
 }
