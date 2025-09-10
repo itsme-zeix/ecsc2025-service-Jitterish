@@ -97,7 +97,6 @@ pub async fn execute_query(
     Ok(())
 }
 
-/// Remove all expired entries from a collection
 pub async fn cleanup(database: &str, collection: &str) -> std::io::Result<()> {
     let filename = dir(database).join(format!("{}.ndjson", collection));
     let deadline = now() - 30 * 60;
@@ -109,7 +108,6 @@ pub async fn cleanup(database: &str, collection: &str) -> std::io::Result<()> {
         return Ok(());
     }
 
-    // find newest entry within the deadline
     let mut new_start_pos = 0;
     let mut reader = io::BufReader::new(file);
     for line in (&mut reader).lines().map_while(Result::ok) {
@@ -123,14 +121,16 @@ pub async fn cleanup(database: &str, collection: &str) -> std::io::Result<()> {
         new_start_pos += (line.len() as u64) + 1;
     }
 
-    // remove old entries (if it's worth it)
     if 128 * 1024 < new_start_pos && new_start_pos < size {
         let tmp_filename = dir(database).join(".tmp.ndjson");
-        let mut tmp_file = OpenOptions::new().write(true).create(true).truncate(true).open(&tmp_filename)?;
+        let mut tmp_file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&tmp_filename)?;
         reader.seek(SeekFrom::Start(new_start_pos))?;
         io::copy(&mut reader, &mut tmp_file)?;
         rename(tmp_filename, filename)?;
-        println!("cleanup removed {} bytes from {}/{}.ndjson", new_start_pos, database, collection);
     }
 
     Ok(())

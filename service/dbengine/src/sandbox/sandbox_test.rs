@@ -13,8 +13,7 @@ async fn run_cmd_with_params(
     let mut cmd = unshare::Command::new("/bin/sh");
     cmd.arg("-c").arg(s);
     cmd.stdout(unshare::Stdio::piped());
-    let mut child =
-        run_sandboxed(cmd, executable, data_dir, Duration::from_millis(350), 64).await?;
+    let mut child = run_sandboxed(cmd, executable, data_dir, Duration::from_millis(350), 64).await?;
     let result = child.wait()?;
 
     let mut buffer = String::new();
@@ -41,10 +40,7 @@ async fn test_run_simple() {
 async fn test_run_id() {
     let (code, output) = run_cmd("id").await.unwrap();
     assert_eq!(0, code);
-    assert_eq!(
-        "uid=0(root) gid=99999 Gruppen=99999,65534(nogroup)\n",
-        output
-    );
+    assert_eq!("uid=0(root) gid=99999 Gruppen=99999,65534(nogroup)\n", output);
 }
 
 #[tokio::test]
@@ -95,7 +91,6 @@ async fn test_run_file_descriptors() {
 async fn test_run_ulimit() {
     let (code, output) = run_cmd("ulimit -aH").await.unwrap();
     assert_eq!(0, code);
-    // println!("{}", output);
     assert!(output.contains("memory(kbytes)       65536"));
     assert!(output.contains("vmemory(kbytes)      65536"));
     assert!(output.contains("nofiles              32"));
@@ -118,7 +113,6 @@ async fn test_run_touch() {
 
 #[tokio::test]
 async fn test_run_mount() {
-    // does not work anymore - we cannot call "mount" in jail
     let (code, output) = run_cmd("mount").await.unwrap();
     assert_eq!(0, code);
     println!("{}", output);
@@ -146,10 +140,9 @@ async fn test_run_getpcaps() {
 
 #[tokio::test]
 async fn test_run_executable() {
-    let (code, output) = run_cmd_with_params("/app/executable", Some("/usr/bin/id"), None).await.unwrap();
+    let (code, output) = run_cmd_with_params("/app/executable", Some("/usr/bin/id"), None)
+        .await
+        .unwrap();
     assert_eq!(0, code);
-    assert_eq!(
-        "uid=0(root) gid=99999 Gruppen=99999,65534(nogroup)\n",
-        output
-    );
+    assert_eq!("uid=0(root) gid=99999 Gruppen=99999,65534(nogroup)\n", output);
 }

@@ -3,12 +3,12 @@ use nix::libc::{RLIMIT_AS, RLIMIT_CPU, RLIMIT_NICE, RLIMIT_NOFILE, RLIMIT_NPROC,
 use nix::unistd::{getgid, getuid};
 use std::env::current_exe;
 use std::ffi::OsStr;
-use std::{env, path};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
+use std::{env, path};
 use tokio::time::timeout;
-use unshare::{GidMap, Namespace, UidMap, wait_async};
+use unshare::{wait_async, GidMap, Namespace, UidMap};
 
 const COMPILER_PATH_CANDIDATES: [&str; 4] = ["/app/compiler", "../jit/cmake-build-debug", "../jit/build", "../jit"];
 
@@ -45,12 +45,11 @@ pub async fn run_sandboxed<P: AsRef<Path>>(
     executable: Option<P>,
     data_folder: Option<P>,
     runtime: Duration,
-    memory: u64, // in megabytes
+    memory: u64,
 ) -> Result<unshare::Child, Box<dyn std::error::Error>> {
     let my_uid = getuid();
     let my_gid = getgid();
 
-    // Namespaces limit access to system (no network etc)
     cmd.unshare(&[
         Namespace::User,
         Namespace::Mount,
@@ -77,7 +76,6 @@ pub async fn run_sandboxed<P: AsRef<Path>>(
     cmd.uid(0);
     cmd.gid(99999);
 
-    // Resource limits
     cmd.set_rlimit(RLIMIT_NOFILE, 32);
     cmd.set_rlimit(RLIMIT_CPU, 1);
     cmd.set_rlimit(RLIMIT_NPROC, 5);
@@ -85,7 +83,6 @@ pub async fn run_sandboxed<P: AsRef<Path>>(
     cmd.set_rlimit(RLIMIT_RSS, memory * 1024 * 1024);
     cmd.set_rlimit(RLIMIT_NICE, 0);
 
-    // Filesystem limits
     cmd.fakeroot_enable("/dev/shm/sandbox_root");
     cmd.fakeroot_mount("/bin", "/bin", true);
     cmd.fakeroot_mount("/etc", "/etc", true);
@@ -93,7 +90,6 @@ pub async fn run_sandboxed<P: AsRef<Path>>(
     cmd.fakeroot_mount("/lib64", "/lib64", true);
     cmd.fakeroot_mount("/usr", "/usr", true);
     cmd.fakeroot_filesystem("tmpfs", "/tmp");
-    // cmd.fakeroot_filesystem("proc", "/proc");  // not possible in docker
     cmd.fakeroot_mount(compiler_path.as_path(), "/app/compiler", true);
     if let Some(data_folder) = data_folder {
         cmd.fakeroot_mount(path::absolute(data_folder)?, "/data", true);
@@ -111,7 +107,6 @@ pub async fn run_sandboxed<P: AsRef<Path>>(
 
     let wait_result = timeout(runtime, wait_async(&mut child)).await;
     if let Err(_) = wait_result {
-        // timeout
         child.kill()?;
         wait_async(&mut child).await?;
     }
