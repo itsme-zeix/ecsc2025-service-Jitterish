@@ -18,7 +18,7 @@ services:
 
   jitterish-mongo:
     container_name: jitterish-mongo
-    image: mongo
+    image: mongo@sha256:f4367b45782bf9538cdd83e661b37a09891646bf63a6bc5d1d5980c61dd6d3e9
     command: mongod --port 27017
     volumes:
       - ./data:/data/db
