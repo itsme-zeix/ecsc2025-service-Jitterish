@@ -52,12 +52,10 @@ protected:
     }
 
     std::any aggregateResult(std::any aggregate, std::any nextResult) override {
-        // default visitor methods should just pass through any used register
         auto r1 = any_cast<Register>(aggregate);
         auto r2 = any_cast<Register>(nextResult);
         if (r1 == Register::None) return r2;
         if (r2 == Register::None) return r1;
-        // we must handle all cases with multiple used registers manually
         throw std::runtime_error("not implemented");
     }
 
@@ -239,7 +237,7 @@ public:
         for (size_t i = 0; i < ctx->STRING_LITERAL().size(); i++) {
             auto value = compile(ctx->expr(i));
             auto key = codegen.constantFromJson(ctx->STRING_LITERAL(i)->getText());
-            codegen.out << "movq " << obj << ", " << Register::RDI << "\n";  // keep register "obj" allocated
+            codegen.out << "movq " << obj << ", " << Register::RDI << "\n";  
             codegen.releaseRegister(codegen.callRuntime("jit_rt_setproperty", Register::RDI, key, value));
         }
         return obj;

@@ -27,10 +27,10 @@ typedef std::unordered_map<std::string, Value> ObjectData;
 
 struct Value {
 private:
-    uint64_t container; // 8bit type + 56bit data
+    uint64_t container; 
 
 public:
-    inline Value() : container(0) {}  // "undefined"
+    inline Value() : container(0) {}  
 
     template<class T>
     inline Value(ValueType type, T data) : container(((uint64_t) type) | (DATA_MASK & (uint64_t) data)) {}

@@ -6,7 +6,6 @@ import Compiler;
 
 
 std::string runtime_library_path() {
-    // libjit_rt is in the same directory as the compiler binary
     return std::filesystem::absolute(program_invocation_name).parent_path().string();
 }
 
@@ -18,7 +17,6 @@ void assemble(std::string code, std::string output) {
     f << code;
     f.close();
 
-    // or: clang-18 -fuse-ld=lld
     std::string cmd = "cc";
     cmd += " -fPIC -g -pie -Wl,-export-dynamic";
     cmd += " -L" + runtime_path + " -Wl,-rpath," + runtime_path;

@@ -7,10 +7,6 @@ module;
 
 export module CodegenContext;
 
-// runtime call arguments: RDI, RSI, RDX, RCX, R8, R9
-// callee saves RBX, RSP, RBP, and R12–R15
-// caller saves rax, rcx, rdx, ...
-
 export enum Register {
     None = 0,
     RAX,
@@ -95,7 +91,7 @@ public:
     void end() {}
 
     void startFunction(std::string name, int stackSize) {
-        if (stackSize % 16 == 0) stackSize += 8; // align stack on 16byte boundary
+        if (stackSize % 16 == 0) stackSize += 8;
         out << ".globl " << name << "\n";
         out << ".p2align 4\n";
         out << ".type " << name << ", @function\n";
@@ -137,7 +133,6 @@ public:
                 result.push((Register) i);
             }
         }
-        // keep stack aligned 16byte
         if (result.size() % 2 == 1) {
             out << "pushq " << Register::RDI << "\n";
             result.push(Register::RDI);
@@ -170,7 +165,6 @@ public:
     Register call(std::string name) {
         out << "call " << name << "\n";
 
-        // result register is rax by default, unless already taken
         auto result = Register::RAX;
         if (registerTaken[Register::RAX]) {
             result = takeRegister();
@@ -235,9 +229,9 @@ public:
     }
 
     void labelToRegister(const std::string &label, Register reg) {
-        if (label.contains("@GOTPCREL")) { // function symbols
+        if (label.contains("@GOTPCREL")) { 
             out << "movq " << label << "(%rip), " << reg << "\n";
-        } else { // local string symbols
+        } else { 
             out << "leaq " << label << "(%rip), " << reg << "\n";
         }
     }
