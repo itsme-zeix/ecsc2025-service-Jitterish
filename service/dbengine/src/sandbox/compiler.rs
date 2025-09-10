@@ -24,7 +24,7 @@ pub async fn compile<P: AsRef<Path>>(code: &str, output: P) -> Result<(), Box<dy
 
     let memfd = memfd_create(CString::new(b"code").unwrap().as_c_str(), MemFdCreateFlag::MFD_CLOEXEC)?;
     write(memfd.as_fd(), &code.as_bytes())?;
-    lseek(memfd.as_raw_fd(), 0, Whence::SeekSet)?;
+    lseek(memfd.as_fd(), 0, Whence::SeekSet)?;
     cmd.stdin(Stdio::from_file(memfd));
 
     cmd.stdout(Stdio::from_file(
