@@ -179,7 +179,7 @@ class JitterishClient:
 
 async def main() -> None:
     logging.basicConfig(format=f'[%(asctime)s.%(msecs)03d] %(levelname)-9.9s: %(message)s', level=logging.INFO)
-    aclient = AsyncClient(base_url='http://localhost:8000')
+    aclient = AsyncClient(base_url='http://localhost:9400')
     client = JitterishClient(logging.LoggerAdapter(logging.getLogger('main')), aclient)
     await client.register('test', 'test', 'First', 'Last', 'community')
 

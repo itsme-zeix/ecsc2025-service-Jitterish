@@ -29,7 +29,7 @@ from codegen import CodeGenerator, Context, StringConst, expr_value, Collection,
 T = TypeVar("T")
 P = ParamSpec("P")
 
-checker = Enochecker("JitterishDB", 8000)
+checker = Enochecker("JitterishDB", 9400)
 app = lambda: checker.app
 
 """

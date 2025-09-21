@@ -5,6 +5,6 @@ RUN pip install -r requirements.txt
 
 ADD src .
 
-EXPOSE 8001
+EXPOSE 8400
 
 CMD ["gunicorn", "-c", "gunicorn.conf.py", "checker:app()"]

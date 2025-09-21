@@ -3,7 +3,7 @@ services:
     container_name: jitterish-checker
     build: .
     ports:
-      - "8001:8001"
+      - "8400:8400"
     environment:
       - MONGO_ENABLED=1
       - MONGO_HOST=jitterish-mongo

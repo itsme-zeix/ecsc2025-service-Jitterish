@@ -53,6 +53,6 @@ docker compose up
 cd ../checker
 docker compose up
 
-enochecker_test -a localhost -p 8001 -A 172.22.0.1
+enochecker_test -a localhost -p 8400 -A 172.22.0.1
 ```
 

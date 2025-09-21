@@ -23,7 +23,7 @@ services:
     volumes:
       - ./data/website:/app/website/data
     ports:
-      - "8000:8000"
+      - "9400:9400"
     environment:
       DB: "dbengine:9999"
     depends_on:

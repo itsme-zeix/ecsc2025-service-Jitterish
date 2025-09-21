@@ -30,6 +30,6 @@ COPY website/Rocket.toml /app/website/
 WORKDIR /app/website
 
 ENV ROCKET_ADDRESS=0.0.0.0
-ENV ROCKET_PORT=8000
+ENV ROCKET_PORT=9400
 
 CMD ["/app/website/website"]
