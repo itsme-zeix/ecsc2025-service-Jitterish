@@ -14,7 +14,7 @@ RUN --mount=type=cache,id=cache-rust-website,target=/src/website/target,sharing=
     --mount=type=cache,target=/usr/local/cargo/registry/ \
     mkdir output && \
     cd /src/website && \
-    cargo build --release && \
+    cargo build -j 2 --release && \
     cp target/release/website /output/
 
 

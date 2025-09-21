@@ -30,7 +30,7 @@ COPY jit /src/
 RUN --mount=type=cache,id=cache-cpp,target=/build,sharing=locked \
     cd /build && \
     cmake ../src -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel && \
-    ninja jit && \
+    ninja -j 2 jit && \
     cp jit *.so /output/
 
 
@@ -44,7 +44,7 @@ RUN --mount=type=cache,id=cache-rust-engine,target=/src/dbengine/target,sharing=
     --mount=type=cache,target=/usr/local/cargo/registry/ \
     mkdir -p /output && \
     cd /src/dbengine && \
-    cargo build --release && \
+    cargo build -j 2 --release && \
     cp target/release/dbengine /output/
 
 
