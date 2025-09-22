@@ -17,7 +17,7 @@ fi
 docker-compose up -d jitterish-mongo
 
 export MONGO_HOST=localhost
-export MONGO_PORT=27017
+export MONGO_PORT=8401
 export MONGO_USER=jitterish_checker
 export MONGO_PASSWORD=jitterish_checker
 

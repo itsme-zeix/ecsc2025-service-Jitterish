@@ -7,7 +7,7 @@ services:
     environment:
       - MONGO_ENABLED=1
       - MONGO_HOST=jitterish-mongo
-      - MONGO_PORT=27017
+      - MONGO_PORT=8401
       - MONGO_USER=jitterish_checker
       - MONGO_PASSWORD=jitterish_checker
     depends_on:
@@ -19,11 +19,11 @@ services:
   jitterish-mongo:
     container_name: jitterish-mongo
     image: mongo@sha256:f4367b45782bf9538cdd83e661b37a09891646bf63a6bc5d1d5980c61dd6d3e9
-    command: mongod --port 27017
+    command: mongod --port 8401
     volumes:
       - ./data:/data/db
     ports:
-      - "27017:27017"
+      - "8401:8401"
     environment:
       MONGO_INITDB_ROOT_USERNAME: jitterish_checker
       MONGO_INITDB_ROOT_PASSWORD: jitterish_checker
