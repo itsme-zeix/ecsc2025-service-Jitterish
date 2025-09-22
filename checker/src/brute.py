@@ -7,7 +7,7 @@ from client import JitterishClient
 
 
 async def x():
-    aclient = AsyncClient(base_url='http://localhost:8401')
+    aclient = AsyncClient(base_url='http://localhost:9400')
     client = JitterishClient(logging.LoggerAdapter(logging.getLogger('main')), aclient)
     await client.login('kUTnWmynIDlh', 'n9gGVJNjEbtV8dso')
     await client.logout()

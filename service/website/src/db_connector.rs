@@ -18,7 +18,7 @@ pub fn one<T>(vec: &Vec<T>) -> std::io::Result<&T> {
 
 impl DbConnection {
     pub async fn open(database: &str) -> std::io::Result<DbConnection> {
-        let addr = env::var("DB").unwrap_or("127.0.0.1:8401".to_owned());
+        let addr = env::var("DB").unwrap_or("127.0.0.1:9401".to_owned());
         let mut conn = DbConnection {
             stream: BufReader::new(TcpStream::connect(addr).await?),
         };
