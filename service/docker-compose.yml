@@ -8,7 +8,7 @@ services:
       - ./data/db-engine-queries:/app/dbengine/queries
     # BEGIN REMOVE IN PROD
     ports:
-      - "9999:9999"  # for debug only
+      - "9401:9401"  # for debug only
     # END REMOVE IN PROD
     restart: unless-stopped
     cap_add:
@@ -25,7 +25,7 @@ services:
     ports:
       - "9400:9400"
     environment:
-      DB: "dbengine:9999"
+      DB: "dbengine:9401"
     depends_on:
       dbengine:
         condition: service_started

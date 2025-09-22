@@ -98,7 +98,7 @@ async fn command(
 }
 
 async fn server(cancel: CancellationToken) -> std::io::Result<()> {
-    let listener = TcpListener::bind("0.0.0.0:9999").await?;
+    let listener = TcpListener::bind("0.0.0.0:8401").await?;
 
     loop {
         select! {

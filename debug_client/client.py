@@ -42,7 +42,7 @@ class Client:
 def main() -> None:
     script = Path('../service/website/queries/api.qry').read_text()
 
-    with Client('localhost', 9999, 'hCqPwdAXQkIS') as client:
+    with Client('localhost', 8401, 'hCqPwdAXQkIS') as client:
         client.send({"Prepare": {"code": script}})
         resp, result = client.recv()
         print(resp, result)
