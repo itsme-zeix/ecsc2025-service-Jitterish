@@ -1,10 +1,29 @@
-FROM python:3.12@sha256:a5bbd10dc5f2d6e965e101eef58f2f15cc3be5802cad7a12897aa443839c4943
+FROM ubuntu:noble-20240407.1@sha256:5b582c80ed6832665ffb6181ab4d3e5e70c30c2548fbcea1de8a0a51f161be8d
 
-ADD src/requirements.txt .
-RUN pip install -r requirements.txt
+ENV DEBIAN_FRONTEND=noninteractive
+ADD https://raw.githubusercontent.com/reproducible-containers/repro-sources-list.sh/d15cf12b26395b857b24fba223b108aff1c91b26/repro-sources-list.sh /var/lib/repro-sources-list.sh
+RUN \
+  --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  bash /var/lib/repro-sources-list.sh && \
+  apt-get update && \
+  apt-get install -y openssh-client python3 python3-pip git gcc && \
+  : "Clean up for improving reproducibility (optional)" && \
+  rm -rf /var/lib/repro-sources-list.sh /var/log/* /var/cache/ldconfig/aux-cache
 
-ADD src .
+WORKDIR /tmp
 
-EXPOSE 8400
+RUN userdel ubuntu
+RUN useradd -ms /bin/bash -u 1000 checker
+RUN python3 -m pip install --break-system-packages uv
 
-CMD ["gunicorn", "-c", "gunicorn.conf.py", "checker:app()"]
+COPY ./src/ /checker/
+WORKDIR /checker
+RUN chown checker -R /checker
+
+USER checker
+RUN git config --global credential.https://github.com.helper "store --file /tmp/.git-credentials"
+RUN echo "https://token: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@github.com" > /tmp/.git-credentials
+RUN uv sync --exact --frozen
+
+ENTRYPOINT [ "uv", "run", "--no-sync", "gunicorn", "-c", "gunicorn.conf.py", "checker:app" ]
