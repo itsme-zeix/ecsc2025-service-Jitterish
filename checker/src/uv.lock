@@ -45,7 +45,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "enochecker3" },
+    { name = "enochecker3", git = "https://github.com/attacking-lab/enochecker3?rev=v0.13.4" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "uvicorn-worker", specifier = ">=0.3.0" },
 ]
@@ -81,19 +81,24 @@ wheels = [
 ]
 
 [[package]]
-name = "enochecker3"
-version = "0.10.0"
-source = { registry = "https://pypi.org/simple" }
+name = "enochecker-core"
+version = "0.13.0"
+source = { git = "https://github.com/attacking-lab/enochecker-core?rev=v0.13.0#da20abe0973a5596d21a2e725263b07078cf2ff8" }
 dependencies = [
+    { name = "pydantic" },
+]
+
+[[package]]
+name = "enochecker3"
+version = "0.13.4"
+source = { git = "https://github.com/attacking-lab/enochecker3?rev=v0.13.4#4c5373eea42545ae996ba08263656d4b4efd0233" }
+dependencies = [
+    { name = "enochecker-core" },
     { name = "fastapi" },
     { name = "gunicorn" },
     { name = "httpx" },
     { name = "motor" },
     { name = "uvicorn" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/2f/4de10d4ddaf4593e69d6ed636e551bd5887b0f15b9942a9a3874ade2fbdb/enochecker3-0.10.0.tar.gz", hash = "sha256:2cf9e6d6de0e7b7e3cadaa8be9d7852447e045127c65c68adc733f7edb1253aa", size = 13863, upload-time = "2025-01-17T18:28:57.325Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/b9/97b6b308c25df54c2281419fd0f2383820b06e7d8596f742206f92d08fe7/enochecker3-0.10.0-py3-none-any.whl", hash = "sha256:2fe2db33113c44eff1933b9373e3f43a21c0a1875675c3aebbfe1d8ac846754a", size = 15323, upload-time = "2025-01-17T18:28:55.173Z" },
 ]
 
 [[package]]
