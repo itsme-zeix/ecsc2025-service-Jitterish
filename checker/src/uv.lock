@@ -45,7 +45,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "enochecker3", specifier = ">=0.10.0" },
+    { name = "enochecker3" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "uvicorn-worker", specifier = ">=0.3.0" },
 ]
