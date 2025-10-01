@@ -1,7 +1,11 @@
 services:
   jitterish-checker:
     container_name: jitterish-checker
-    build: .
+    build: 
+      context: .
+      secrets:
+        - github-pat
+
     ports:
       - "8400:8400"
     environment:
@@ -32,3 +36,7 @@ services:
 networks:
   default:
     name: jitterish_checker
+
+secrets:
+  github-pat:
+    environment: GITHUB_PAT
