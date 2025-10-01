@@ -14,6 +14,7 @@ jobs:
     runs-on: arc-runner-dink
     env:
       ENOCHECKER_TEST_CHECKER_PORT: 8400
+      ENOCHECKER_CHECKER_PORT: 8400
     steps:
     - uses: attacking-lab/actions/.github/actions/github-credentials-store@main
       with:
@@ -49,6 +50,8 @@ jobs:
         docker network ls
         echo "ENOCHECKER_TEST_SERVICE_ADDRESS=$(docker network inspect jitterish_default | jq -r '.[].IPAM.Config[].Gateway')" | tee -a $GITHUB_ENV
         echo "ENOCHECKER_TEST_CHECKER_ADDRESS=$(docker network inspect jitterish_checker | jq -r '.[].IPAM.Config[].Gateway')" | tee -a $GITHUB_ENV
+        echo "ENOCHECKER_SERVICE_ADDRESS=$(docker network inspect jitterish_default | jq -r '.[].IPAM.Config[].Gateway')" | tee -a $GITHUB_ENV
+        echo "ENOCHECKER_CHECKER_ADDRESS=$(docker network inspect jitterish_checker | jq -r '.[].IPAM.Config[].Gateway')" | tee -a $GITHUB_ENV
     - name: run enochecker_test
       run: |
         enochecker_test
