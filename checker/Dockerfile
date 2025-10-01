@@ -15,7 +15,7 @@ WORKDIR /tmp
 
 RUN userdel ubuntu
 RUN useradd -ms /bin/bash -u 1000 checker
-RUN python3 -m pip install --break-system-packages uv
+RUN python3 -m pip install --break-system-packages uv git-pass-helper
 
 COPY ./src/ /checker/
 WORKDIR /checker
