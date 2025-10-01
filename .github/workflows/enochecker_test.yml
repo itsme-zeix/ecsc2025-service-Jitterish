@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: attacking-lab/actions/.github/actions/github-credentials-store@main
       with:
-        password: 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
+        password: ${{ secrets.CI_PAT }}
     - uses: actions/checkout@v2
       with:
         submodules: recursive
