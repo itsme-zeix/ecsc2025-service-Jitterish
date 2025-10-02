@@ -36,6 +36,8 @@ jobs:
       run: |
         cd service
         docker compose -f ../meta/docker-compose.override.yml --project-directory . run --rm cleanup-source
+    - name: "Package service and checker artifacts"
+      uses: attacking-lab/actions/package-service@main
     - name: start service
       run: |
         cd service
@@ -55,6 +57,8 @@ jobs:
     - name: run enochecker_test
       run: |
         enochecker_test
+    - name: Upload service package
+      uses: attacking-lab/actions/package-service-upload@main
     - name: Dump docker logs on failure
       if: failure()
       uses: jwalton/gh-docker-logs@v1
