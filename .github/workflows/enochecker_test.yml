@@ -59,6 +59,8 @@ jobs:
         enochecker_test
     - name: Upload service package
       uses: attacking-lab/actions/package-service-upload@main
+      with:
+        token: ${{ secrets.ARTIFACT_PUSH_TOKEN }}
     - name: Dump docker logs on failure
       if: failure()
       uses: jwalton/gh-docker-logs@v1
