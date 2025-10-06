@@ -66,15 +66,10 @@ jobs:
       uses: jwalton/gh-docker-logs@v1
       with:
         dest: './logs'
-    - name: Tar logs
+    - name: Print logs
       if: failure()
-      run: tar cvzf ./logs.tgz ./logs
-    - name: Upload logs to GitHub
-      if: failure()
-      uses: actions/upload-artifact@master
-      with:
-        name: logs.tgz
-        path: ./logs.tgz
+      run: |
+        find ./logs -type f -exec echo -e "\n\e[32m{}\e[0m": \; -exec cat {} \;
     - name: Kill docker containers
       if: failure() || success()
       run: |
