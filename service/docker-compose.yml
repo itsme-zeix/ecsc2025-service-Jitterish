@@ -1,3 +1,5 @@
+name: jitterishdb
+
 services:
   dbengine:
     build:

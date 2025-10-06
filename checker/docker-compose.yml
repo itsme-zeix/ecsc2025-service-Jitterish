@@ -1,3 +1,5 @@
+name: jitterishdb-checker
+
 services:
   jitterish-checker:
     container_name: jitterish-checker
