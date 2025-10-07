@@ -9,9 +9,6 @@
 using namespace nlohmann;
 
 
-Value jsonToValue(const std::string &str);
-
-
 class DataStorage {
     std::string filename;
     std::ifstream f;
