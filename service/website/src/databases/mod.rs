@@ -1,5 +1,5 @@
 pub mod api;
-mod cache;
+pub(crate) mod cache;
 mod operations;
 
 pub fn routes() -> Vec<rocket::Route> {

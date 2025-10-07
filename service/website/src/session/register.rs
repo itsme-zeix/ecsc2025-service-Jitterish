@@ -12,6 +12,7 @@ use rocket::State;
 use rocket_dyn_templates::Template;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use crate::databases::cache::user_by_username;
 
 lazy_static! {
     static ref USERNAME_REGEX: Regex = Regex::new(r"^\w{3,32}$").unwrap();
@@ -135,21 +136,17 @@ pub(super) async fn post_register(
     let mut db = DbConnection::open("_")
         .await
         .map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "Database not reachable"))?;
-    let existing_users: Vec<Value> = db
-        .execute(&queries.user, "user_by_username", &register.username, false)
-        .await
+    let existing_user = user_by_username(queries, &register.username).await
         .map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "User by username query error"))?;
-    if !existing_users.is_empty() {
+    if existing_user.is_some() {
         return Err(Flash::error(Redirect::to(uri!(register_page)), "Username already taken."));
     }
     db.append("users", user.clone())
         .await
         .map_err(|e| Flash::error(Redirect::to(uri!(register_page)), format!("Append failed: {}", e)))?;
-    let mut existing_users_new: Vec<UserModel> = db
-        .execute(&queries.user, "user_by_username", &register.username, false)
-        .await
+    let existing_user_new = user_by_username(queries, &register.username).await
         .map_err(|_| Flash::error(Redirect::to(uri!(register_page)), "User by username query error"))?;
-    if let Some(new_user) = existing_users_new.pop() {
+    if let Some(new_user) = existing_user_new {
         update_session(jar, &new_user)?;
         Ok(Redirect::to(uri!(crate::session::profile::index)))
     } else {

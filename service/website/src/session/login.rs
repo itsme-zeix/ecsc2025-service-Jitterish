@@ -1,4 +1,3 @@
-use crate::db_connector::{one, DbConnection};
 use crate::Queries;
 use interface::frontend::{Login, UserModel, UserSession};
 use rocket::form::Form;
@@ -8,6 +7,7 @@ use rocket::response::{Flash, Redirect};
 use rocket::State;
 use rocket_dyn_templates::{context, Template};
 use sha2::{Digest, Sha256};
+use crate::databases::cache::user_by_username;
 
 #[get("/session/login")]
 pub(super) fn login(_session: UserSession) -> Redirect {
@@ -38,17 +38,12 @@ pub(super) async fn post_login(
     jar: &CookieJar<'_>,
     login: Form<Login<'_>>,
 ) -> Result<Redirect, Flash<Redirect>> {
-    let mut db = DbConnection::open("_")
-        .await
-        .map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Database offline"))?;
-    let existing_users: Vec<UserModel> = db
-        .execute(&queries.user, "user_by_username", &login.username(), false)
-        .await
-        .map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Query error"))?;
-    let user = one(&existing_users).map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Invalid username"))?;
+    let user = user_by_username(queries, &login.username()).await
+        .map_err(|_| Flash::error(Redirect::to(uri!(login_page)), "Query error"))?
+        .ok_or(Flash::error(Redirect::to(uri!(login_page)), "Invalid username"))?;
     if hex::encode(Sha256::digest(login.password().as_bytes())) != user.password_hash {
         return Err(Flash::error(Redirect::to(uri!(login_page)), "Invalid password"));
     }
-    update_session(jar, user)?;
+    update_session(jar, &user)?;
     Ok(Redirect::to(uri!(crate::session::profile::index)))
 }

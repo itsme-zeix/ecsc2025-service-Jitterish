@@ -1,3 +1,4 @@
+use crate::databases::cache::{user_by_username};
 use interface::frontend::{now, Complaint, SupportForm, UserModel, UserSession};
 use rocket::{
     form::Form,
@@ -60,19 +61,12 @@ pub async fn save_complaint(
     let mut db = DbConnection::open("_")
         .await
         .map_err(|_| Flash::error(Redirect::to("/"), "Database not reachable"))?;
-    let target_user: UserModel = db
-        .execute(&queries.user, "user_by_username", &form.target_user, false)
-        .await
+    let target_user: UserModel = user_by_username(queries, &form.target_user).await
         .map_err(|_| Flash::error(Redirect::to("/"), "User by username query error"))?
-        .pop()
         .ok_or(Flash::error(Redirect::to(uri!(support)), "Database does not exist!"))?;
 
-    let mut logged_in_user: Vec<UserModel> = db
-        .execute(&queries.user, "user_by_username", &session.user.username, false)
-        .await
-        .map_err(|_| Flash::error(Redirect::to("/"), "User by username query error"))?;
-    let logged_in_user = logged_in_user
-        .pop()
+    let logged_in_user: UserModel = user_by_username(queries, &session.user.username).await
+        .map_err(|_| Flash::error(Redirect::to("/"), "User by username query error"))?
         .ok_or(Flash::error(Redirect::to(uri!(support)), "Your account is missing!"))?;
     let complaint = Complaint {
         reporting_user: logged_in_user,

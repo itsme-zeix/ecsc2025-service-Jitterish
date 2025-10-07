@@ -1,7 +1,6 @@
-use crate::databases::cache::USER_CACHE;
+use crate::databases::cache::{user_by_username};
 use crate::db_connector::DbConnection;
 use crate::Queries;
-use interface::frontend::UserModel;
 use interface::frontend::UserSession;
 use rocket::serde::json::Json;
 use rocket::State;
@@ -11,19 +10,9 @@ use serde_json::{json, Value};
 use std::io::{Error, ErrorKind};
 
 pub async fn get_database_permissions(queries: &Queries, name: &str) -> std::io::Result<(bool, bool)> {
-    match USER_CACHE.get(name).await {
-        Some(x) => Ok(x),
-        None => {
-            let mut db = DbConnection::open("_").await?;
-            let users: Vec<UserModel> = db.execute(&queries.user, "user_by_username", &name, false).await?;
-            let (allow_public_queries, allow_public_kv) = users
-                .into_iter()
-                .nth(0)
-                .map(|user| (user.allow_public_queries, user.allow_public_kv))
-                .unwrap_or((false, false));
-            USER_CACHE.set(name, allow_public_queries, allow_public_kv).await;
-            Ok((allow_public_queries, allow_public_kv))
-        }
+    match user_by_username(queries, name).await? {
+        Some(x) => Ok((x.allow_public_queries, x.allow_public_kv)),
+        None => Ok((false, false)),
     }
 }
 

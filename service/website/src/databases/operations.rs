@@ -2,7 +2,7 @@ use crate::databases::api::get_database_permissions;
 use crate::db_connector::DbConnection;
 use crate::Queries;
 use interface::database::Collection;
-use interface::frontend::{AppendForm, QueryForm, UserModel, UserSession};
+use interface::frontend::{AppendForm, QueryForm, UserSession};
 use rocket::form::Form;
 use rocket::request::FlashMessage;
 use rocket::response::{Flash, Redirect};

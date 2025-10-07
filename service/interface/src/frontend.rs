@@ -25,7 +25,7 @@ pub struct Register<'r> {
 
 #[derive(FromForm, Serialize, Deserialize, Debug, Clone)]
 pub struct Login<'r> {
-    username: &'r str,
+    pub username: &'r str,
     password: &'r str,
 }
 
