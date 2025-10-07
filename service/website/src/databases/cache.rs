@@ -21,7 +21,11 @@ impl UserCache {
     }
 
     pub async fn set(&self, user: UserModel) {
-        self.cache.write().await.insert(user.username.to_string(), user);
+        let mut map = self.cache.write().await;
+        if map.len() > 16384 {
+            map.clear();
+        }
+        map.insert(user.username.to_string(), user);
     }
 }
 
