@@ -82,31 +82,8 @@ Value jit_rt_print(Value v) {
     return {};
 }
 
-Value jsonToValue(const json &j) {
-    if (j.is_null()) return {ValueType::NULLVALUE, 0};
-    if (j.is_boolean()) return {ValueType::BOOL, j.template get<bool>()};
-    if (j.is_number()) return {ValueType::INT, j.template get<uint64_t>()};
-    if (j.is_string()) return {ValueType::STRING, new StringData(j.template get<std::string>())};
-    if (j.is_array()) {
-        auto data = new ArrayData();
-        for (const auto &item: j) {
-            data->push_back(jsonToValue(item));
-        }
-        return {ValueType::ARRAY, data};
-    }
-    if (j.is_object()) {
-        auto data = new ObjectData();
-        for (const auto &item: j.items()) {
-            (*data)[item.key()] = jsonToValue(item.value());
-        }
-        return {ValueType::OBJECT, data};
-    }
-    return {};
-}
-
 Value jit_rt_constant(const char *data, size_t len) {
-    auto result = json::parse(std::string(data, len));
-    return jsonToValue(result);
+    return jsonToValue(std::string(data, len));
 }
 
 Value jit_rt_add(Value v1, Value v2) {
@@ -252,8 +229,8 @@ Value jit_rt_query(const char *collection, JitFunction filter, JitFunction map, 
 
     Value result = Value {};
 
-    while (auto jsonEntry = storage.nextEntry()) {
-        Value entry = jsonToValue(*jsonEntry);
+    while (auto nextEntry = storage.nextEntry()) {
+        Value entry = nextEntry.value();
         if (filter && !callJitFunction(filter, entry, param).is_true()) {
             continue;
         }

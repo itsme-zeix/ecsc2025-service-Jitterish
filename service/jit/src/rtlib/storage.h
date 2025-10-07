@@ -4,8 +4,12 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 
+#include "jit_values.h"
+
 using namespace nlohmann;
 
+
+Value jsonToValue(const std::string &str);
 
 
 class DataStorage {
@@ -16,7 +20,7 @@ public:
 
     bool isPublic();
 
-    std::optional<json> nextEntry();
+    std::optional<Value> nextEntry();
 };
 
 #endif //RTLIB_STORAGE_H

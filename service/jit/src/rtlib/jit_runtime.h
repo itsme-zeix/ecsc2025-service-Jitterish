@@ -10,8 +10,6 @@ extern "C" {
 API_FUNCTION Value jit_rt_print(Value v);
 }
 
-Value jsonToValue(const nlohmann::json &j);
-
 __attribute__((visibility("hidden")))
 extern bool hasPrivilegedAccess;
 

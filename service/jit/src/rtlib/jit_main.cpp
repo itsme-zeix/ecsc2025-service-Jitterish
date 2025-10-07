@@ -4,6 +4,7 @@
 
 #include "jit_values.h"
 #include "jit_runtime.h"
+#include "storage.h"
 
 
 int main(int argc, const char* argv[]) {
@@ -14,7 +15,7 @@ int main(int argc, const char* argv[]) {
 
     Value param{};
     if (argc >= 3) {
-        param = jsonToValue(nlohmann::json::parse(argv[2]));
+        param = jsonToValue(argv[2]);
     }
     hasPrivilegedAccess = argc >= 4 && std::string(argv[3]) == "--privileged";
 
