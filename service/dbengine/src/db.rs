@@ -99,7 +99,7 @@ pub async fn execute_query(
 
 pub async fn cleanup(database: &str, collection: &str) -> std::io::Result<()> {
     let filename = dir(database).join(format!("{}.ndjson", collection));
-    let deadline = now() - 30 * 60;
+    let deadline = now() - 8 * 60;
     let _lock = write_lock.lock().await;
 
     let file = OpenOptions::new().read(true).write(true).open(&filename)?;
