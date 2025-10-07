@@ -60,7 +60,8 @@ add_library(jit_rt SHARED
 		src/rtlib/storage.cpp
 		src/rtlib/jit_main.cpp
 		src/rtlib/jit_runtime.h
-		src/rtlib/storage.cpp
+        src/rtlib/json_parser.h
+        src/rtlib/json_parser.cpp
 )
 
 add_executable(jit

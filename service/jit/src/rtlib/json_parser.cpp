@@ -11,6 +11,9 @@
 using namespace nlohmann;
 
 namespace {
+    // Author note: not relevant for exploitation.
+    // If you don't trust us, we copied from here:
+    // from: https://json.nlohmann.me/features/parsing/sax_interface/
     class ValueBuilder {
         std::stack<int> what; // 1 = array 2 = object
         std::stack<ArrayData *> currentArray;
