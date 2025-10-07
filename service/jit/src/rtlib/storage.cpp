@@ -16,7 +16,7 @@ namespace {
         std::stack<int> what; // 1 = array 2 = object
         std::stack<ArrayData *> currentArray;
         std::stack<ObjectData *> currentObject;
-        std::string lastKey;
+        std::stack<std::string> lastKey;
         Value result;
 
         void parsedValue(Value v) {
@@ -25,7 +25,8 @@ namespace {
             } else if (what.top() == 1) {
                 currentArray.top()->push_back(v);
             } else if (what.top() == 2) {
-                (*currentObject.top())[std::move(lastKey)] = v;
+                (*currentObject.top())[std::move(lastKey.top())] = v;
+                lastKey.pop();
             }
         }
 
@@ -104,7 +105,7 @@ namespace {
 
         // called when an object key is parsed; value is passed and can be safely moved away
         bool key(json::string_t &val) {
-            lastKey = std::move(val);
+            lastKey.emplace(std::move(val));
             return true;
         }
 
